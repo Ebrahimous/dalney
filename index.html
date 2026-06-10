@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>دلني - الكويت</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Firebase compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --bg:#0d1117;--surface:#161b22;--card:#21262d;--dark:#0d1117;
+      --blue:#58a6ff;--green:#3fb950;--red:#f85149;--gold:#f39c12;
+      --text:#eaeaea;--muted:#8892b0;--radius:16px;
+    }
+    body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);color:var(--text);height:100dvh;overflow:hidden;}
+    .screen{display:none;flex-direction:column;height:100dvh;overflow-y:auto;padding:16px;}
+    .screen.active{display:flex;}
+    .stat-card{background:var(--card);border-radius:var(--radius);padding:16px;text-align:center;border:1px solid rgba(255,255,255,.07);}
+    .stat-card .num{font-size:28px;font-weight:800;color:var(--blue);}
+    .stat-card .lbl{font-size:12px;color:var(--muted);margin-top:4px;}
+    .btn{width:100%;padding:16px;border:none;border-radius:var(--radius);font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;}
+    .btn-primary{background:var(--blue);color:#000;}
+    .btn-secondary{background:var(--surface);color:var(--text);border:1px solid rgba(255,255,255,.1);}
+    .btn-sm{padding:10px 16px;font-size:14px;width:auto;}
+    .back-btn{background:var(--surface);border:none;color:var(--text);padding:7px 10px;border-radius:10px;cursor:pointer;font-size:18px;line-height:1;}
+    .game-header{display:flex;align-items:center;justify-content:space-between;padding:10px 0;flex-shrink:0;}
+    .round-badge{background:var(--surface);border-radius:20px;padding:4px 12px;font-size:13px;font-weight:600;}
+    .hint-panel{background:var(--card);border-radius:var(--radius);padding:14px;flex-shrink:0;border:1px solid rgba(255,255,255,.07);}
+    .hint-photo{width:100%;max-height:160px;object-fit:cover;border-radius:10px;margin-top:10px;}
+    #game-map{flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;}
+    .score-flash{font-size:48px;font-weight:900;text-align:center;margin:16px 0;}
+    .dist-info{text-align:center;font-size:15px;color:var(--muted);margin-bottom:12px;}
+    #result-map{width:100%;border-radius:var(--radius);overflow:hidden;flex-shrink:0;}
+    .final-score-card{background:var(--card);border-radius:var(--radius);padding:24px;text-align:center;width:100%;border:1px solid rgba(255,255,255,.07);}
+    .final-score-card .big{font-size:56px;font-weight:900;color:var(--gold);}
+    .round-row{background:var(--card);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;}
+    .form-group{display:flex;flex-direction:column;gap:6px;}
+    .form-group label{font-size:13px;color:var(--muted);}
+    .form-group input,.form-group textarea,.form-group select{background:var(--card);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:10px;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;}
+    .admin-card{background:var(--card);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:12px;border:1px solid rgba(255,255,255,.07);}
+    #admin-map-picker{width:100%;height:260px;border-radius:10px;overflow:hidden;}
+    .loc-list{display:flex;flex-direction:column;gap:8px;}
+    .loc-card{background:var(--card);border-radius:12px;padding:14px;display:flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,.07);}
+    .loc-card .loc-info{flex:1;}
+    .loc-card .loc-name{font-weight:600;font-size:14px;}
+    .loc-card .loc-cat{font-size:12px;color:var(--muted);}
+    .loc-btn{border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:16px;}
+    #edit-modal{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.78);overflow-y:auto;padding:16px;}
+    .edit-inner{max-width:480px;margin:0 auto;background:var(--card);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;gap:14px;}
+    .close-btn{background:rgba(255,255,255,.1);border:none;color:var(--text);width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;line-height:1;}
+    #edit-map{width:100%;height:260px;border-radius:10px;overflow:hidden;}
+    #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#000;padding:10px 20px;border-radius:20px;font-weight:700;font-size:14px;opacity:0;transition:all .3s;pointer-events:none;z-index:9999;}
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+    .guess-marker-icon{width:32px;height:32px;background:var(--blue);border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;}
+    .correct-marker-icon{width:32px;height:32px;background:var(--green);border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;}
+    .draw-bar{display:flex;align-items:center;gap:8px;background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.3);border-radius:10px;padding:10px 12px;flex-wrap:wrap;}
+    .draw-bar span{font-size:13px;color:var(--blue);flex:1;}
+    /* Loading overlay */
+    #loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:99999;}
+    #loading-overlay.hidden{display:none;}
+    .spinner{width:40px;height:40px;border:3px solid rgba(88,166,255,.2);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    ::-webkit-scrollbar{width:3px;}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
+    .player-chip{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:10px;padding:12px;border:1px solid rgba(255,255,255,.07);}
+    .color-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+    .mp-timer{background:var(--surface);border-radius:20px;padding:4px 14px;font-size:16px;font-weight:800;color:var(--gold);}
+    .time-opt{background:var(--surface);border:1px solid rgba(255,255,255,.12);color:var(--muted);padding:10px 6px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;width:100%;}
+    .time-opt.active{background:var(--blue);color:#000;border-color:var(--blue);}
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p style="color:var(--muted);font-size:14px;">جاري التحميل...</p>
+</div>
+
+<!-- HOME SCREEN -->
+<div id="home-screen" class="screen">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:20px 0;">
+    <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <svg width="130" height="130" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <clipPath id="lc"><circle cx="56" cy="54" r="35"/></clipPath>
+          <radialGradient id="lf" cx="40%" cy="35%">
+            <stop offset="0%" stop-color="#1a2535"/>
+            <stop offset="100%" stop-color="#0d1117"/>
+          </radialGradient>
+        </defs>
+        <circle cx="56" cy="54" r="35" fill="url(#lf)"/>
+        <g clip-path="url(#lc)" opacity="0.18" stroke="#58a6ff" stroke-width="0.8">
+          <line x1="21" y1="36" x2="91" y2="36"/><line x1="21" y1="45" x2="91" y2="45"/>
+          <line x1="21" y1="54" x2="91" y2="54"/><line x1="21" y1="63" x2="91" y2="63"/>
+          <line x1="21" y1="72" x2="91" y2="72"/>
+          <line x1="38" y1="19" x2="38" y2="89"/><line x1="47" y1="19" x2="47" y2="89"/>
+          <line x1="56" y1="19" x2="56" y2="89"/><line x1="65" y1="19" x2="65" y2="89"/>
+          <line x1="74" y1="19" x2="74" y2="89"/>
+        </g>
+        <path d="M56 38 a13 13 0 0 1 13 13 c0 8-13 24-13 24 s-13-16-13-24 a13 13 0 0 1 13-13z" fill="#f85149"/>
+        <circle cx="56" cy="51" r="5.5" fill="#0d1117"/>
+        <circle cx="56" cy="54" r="35" fill="none" stroke="#58a6ff" stroke-width="4.5"/>
+        <path d="M32 36 a26 26 0 0 1 34-12" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3" stroke-linecap="round"/>
+        <line x1="83" y1="81" x2="112" y2="110" stroke="#58a6ff" stroke-width="9" stroke-linecap="round"/>
+        <line x1="85" y1="83" x2="108" y2="106" stroke="rgba(255,255,255,0.15)" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <h1 style="font-family:'Lalezar',sans-serif;font-size:58px;color:var(--blue);line-height:1.1;letter-spacing:-1px;">دلني</h1>
+      <p style="font-family:'Cairo',sans-serif;font-size:16px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-top:-4px;">ورنا شطارتك</p>
+    </div>
+    <div style="display:flex;gap:16px;width:100%;justify-content:center;">
+      <div class="stat-card" style="max-width:180px;"><div class="num" id="stat-highscore">0</div><div class="lbl">أعلى نتيجة</div></div>
+    </div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
+      <button class="btn btn-primary" onclick="startGame()">🗺️ العب منفرداً</button>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-secondary" style="flex:1;background:rgba(63,185,80,.15);border-color:rgba(63,185,80,.3);color:var(--green);" onclick="mpHostCreate()">👑 استضف لعبة</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="showScreen('mp-join-screen')">🎮 انضم للعبة</button>
+      </div>
+      <button class="btn btn-secondary" onclick="showScreen('how-screen')">❓ كيف تلعب</button>
+    </div>
+  </div>
+  <div style="text-align:center;padding:12px 0;">
+    <span id="admin-tap-zone" style="color:var(--surface);font-size:11px;cursor:default;user-select:none;" onclick="adminTap()">v1.0</span>
+  </div>
+</div>
+
+<!-- HOW TO PLAY -->
+<div id="how-screen" class="screen">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-shrink:0;">
+    <button class="back-btn" onclick="showScreen('home-screen')">→</button>
+    <h2 style="font-size:18px;">كيف تلعب؟</h2>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div><p style="padding-top:4px;">ستظهر لك تلميحات عن موقع معين في الكويت (اسم، وصف، أو صورة).</p></div>
+    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div><p style="padding-top:4px;">اضغط على الخريطة في المكان الذي تظن أنه الموقع الصحيح.</p></div>
+    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div><p style="padding-top:4px;">كلما كنت أقرب، حصلت على نقاط أكثر. الحد الأقصى 5000 نقطة في كل جولة.</p></div>
+    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div><p style="padding-top:4px;">تتكون كل لعبة من 5 جولات. اجمع أعلى نتيجة ممكنة!</p></div>
+  </div>
+  <button class="btn btn-primary" style="margin-top:24px;" onclick="startGame()">ابدأ الآن</button>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="game-screen" class="screen" style="padding:12px;gap:8px;overflow:hidden;">
+  <div class="game-header">
+    <button class="back-btn" onclick="exitGame()">→</button>
+    <span class="round-badge" id="round-badge">جولة 1 / 5</span>
+    <span id="score-badge" style="font-weight:700;color:var(--gold);">0</span>
+  </div>
+  <div class="hint-panel">
+    <p id="hint-name" style="font-weight:700;font-size:16px;"></p>
+    <p id="hint-text" style="color:var(--muted);font-size:13px;margin-top:4px;"></p>
+    <img id="hint-photo" class="hint-photo" src="" alt="" style="display:none"/>
+  </div>
+  <div id="game-map"></div>
+  <button class="btn btn-primary" onclick="submitGuess()" id="submit-btn" disabled style="flex-shrink:0;border-radius:12px;padding:13px;">تأكيد ✓</button>
+</div>
+
+<!-- RESULT SCREEN -->
+<div id="result-screen" class="screen" style="padding:12px;gap:8px;overflow:hidden;">
+  <div class="game-header">
+    <button class="back-btn" onclick="exitGame(true)">→</button>
+    <div class="score-flash" id="score-flash" style="margin:0;font-size:38px;">0</div>
+    <span style="width:36px;"></span>
+  </div>
+  <p class="dist-info" id="dist-info" style="margin-bottom:0;"></p>
+  <div id="result-map" style="flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;"></div>
+  <button class="btn btn-primary" onclick="nextRound()" id="next-btn" style="flex-shrink:0;border-radius:12px;padding:13px;">التالي ›</button>
+</div>
+
+<!-- SUMMARY SCREEN -->
+<div id="summary-screen" class="screen" style="gap:14px;align-items:center;">
+  <h2 style="font-size:22px;font-weight:800;margin-top:8px;">انتهت اللعبة!</h2>
+  <div class="final-score-card">
+    <div style="font-size:14px;color:var(--muted);margin-bottom:6px;">مجموع نقاطك</div>
+    <div class="big" id="final-score">0</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:8px;" id="new-best"></div>
+  </div>
+  <div style="width:100%;display:flex;flex-direction:column;gap:8px;" id="round-summary"></div>
+  <button class="btn btn-primary" onclick="startGame()">🔄 العب مرة أخرى</button>
+  <button class="btn btn-secondary" onclick="exitGame(true)">🏠 الرئيسية</button>
+</div>
+
+<!-- MP: HOST LOBBY -->
+<div id="mp-host-lobby" class="screen" style="gap:16px;padding:20px;">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button class="back-btn" onclick="mpHostCancel()">→</button>
+    <h2 style="font-size:18px;">انتظار اللاعبين</h2>
+  </div>
+  <div style="text-align:center;background:var(--card);border-radius:var(--radius);padding:20px;border:1px solid rgba(255,255,255,.07);">
+    <p style="color:var(--muted);font-size:13px;margin-bottom:6px;">رمز الغرفة — شاركه مع اللاعبين</p>
+    <div id="mp-room-code" style="font-size:56px;font-weight:900;color:var(--blue);letter-spacing:10px;font-family:monospace;">----</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px;flex-shrink:0;">
+    <div class="form-group">
+      <label>انضم كلاعب (اختياري)</label>
+      <div style="display:flex;gap:8px;">
+        <input id="mp-host-name" type="text" maxlength="14" placeholder="أدخل اسمك" style="flex:1;">
+        <button class="btn btn-secondary" id="mp-host-join-btn" onclick="mpHostAddSelf()" style="flex-shrink:0;padding:0 16px;border-radius:12px;">➕ أضف</button>
+      </div>
+    </div>
+    <div>
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">مدة الإجابة</label>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+        <button class="time-opt active" onclick="mpSetTime(this,10)">10 ثواني</button>
+        <button class="time-opt" onclick="mpSetTime(this,20)">20 ثانية</button>
+        <button class="time-opt" onclick="mpSetTime(this,30)">30 ثانية</button>
+        <button class="time-opt" onclick="mpSetTime(this,0)">بدون وقت</button>
+      </div>
+    </div>
+  </div>
+  <div id="mp-lobby-players" style="display:flex;flex-direction:column;gap:8px;flex:1;"></div>
+  <button class="btn btn-primary" id="mp-start-btn" onclick="mpHostStart()" disabled>▶ ابدأ اللعبة</button>
+</div>
+
+<!-- MP: JOIN SCREEN -->
+<div id="mp-join-screen" class="screen" style="gap:16px;padding:20px;justify-content:center;">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button class="back-btn" onclick="showScreen('home-screen')">→</button>
+    <h2 style="font-size:18px;">انضم للعبة</h2>
+  </div>
+  <div class="form-group">
+    <label>رمز الغرفة (4 أحرف)</label>
+    <input id="mp-code-input" type="text" maxlength="4" placeholder="ABCD" style="text-align:center;font-size:36px;letter-spacing:10px;text-transform:uppercase;font-family:monospace;padding:14px;">
+  </div>
+  <div class="form-group">
+    <label>اسمك</label>
+    <input id="mp-name-input" type="text" maxlength="14" placeholder="أدخل اسمك">
+  </div>
+  <button class="btn btn-primary" id="mp-join-btn" onclick="mpJoin()">انضم ›</button>
+</div>
+
+<!-- MP: PARTICIPANT WAITING -->
+<div id="mp-wait-screen" class="screen" style="gap:16px;padding:20px;">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button class="back-btn" onclick="mpLeave()">→</button>
+    <h2 style="font-size:18px;">في انتظار المضيف...</h2>
+  </div>
+  <div class="spinner" style="align-self:center;margin:16px 0;"></div>
+  <div id="mp-wait-players" style="display:flex;flex-direction:column;gap:8px;"></div>
+</div>
+
+<!-- MP: PARTICIPANT GAME -->
+<div id="mp-game-screen" class="screen" style="padding:12px;gap:8px;overflow:hidden;">
+  <div class="game-header">
+    <div class="mp-timer" id="mp-timer-badge">10</div>
+    <span class="round-badge" id="mp-round-badge">جولة 1</span>
+    <span id="mp-score-badge" style="font-weight:700;color:var(--gold);">0</span>
+  </div>
+  <div class="hint-panel">
+    <p id="mp-hint-name" style="font-weight:700;font-size:16px;"></p>
+    <p id="mp-hint-text" style="color:var(--muted);font-size:13px;margin-top:4px;"></p>
+    <img id="mp-hint-photo" class="hint-photo" src="" alt="" style="display:none"/>
+  </div>
+  <div id="mp-game-map"></div>
+  <button class="btn btn-primary" onclick="mpSubmitGuess()" id="mp-submit-btn" disabled style="flex-shrink:0;border-radius:12px;padding:13px;">تأكيد ✓</button>
+  <button class="btn btn-secondary" onclick="mpHostShowResults()" id="mp-end-round-btn" style="flex-shrink:0;border-radius:12px;padding:11px;display:none;">⏭ إنهاء الجولة</button>
+</div>
+
+<!-- MP: HOST GAME -->
+<div id="mp-host-game-screen" class="screen" style="padding:12px;gap:8px;overflow:hidden;">
+  <div class="game-header">
+    <div class="mp-timer" id="mp-host-timer">10</div>
+    <span class="round-badge" id="mp-host-round-badge">جولة 1</span>
+    <span id="mp-answered-badge" style="font-size:13px;color:var(--muted);">0/0 أجابوا</span>
+  </div>
+  <div class="hint-panel">
+    <p id="mp-host-hint-name" style="font-weight:700;font-size:16px;"></p>
+    <p id="mp-host-hint-text" style="color:var(--muted);font-size:13px;margin-top:4px;"></p>
+  </div>
+  <div id="mp-host-map"></div>
+  <button class="btn btn-primary" id="mp-next-btn" onclick="mpHostNextRound()" style="flex-shrink:0;border-radius:12px;padding:13px;display:none;">التالي ›</button>
+</div>
+
+<!-- MP: ROUND RESULTS (everyone sees this) -->
+<div id="mp-result-screen" class="screen" style="padding:12px;gap:8px;overflow:hidden;">
+  <div class="game-header">
+    <span class="round-badge" id="mr-round-badge">جولة 1 / 5</span>
+    <span id="mr-loc-name" style="font-weight:700;font-size:15px;flex:1;text-align:center;color:var(--green);"></span>
+    <span style="width:60px;"></span>
+  </div>
+  <div id="mp-result-map" style="flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;"></div>
+  <div id="mr-scores" style="flex-shrink:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:32vh;"></div>
+  <div id="mr-host-btns" style="display:none;flex-shrink:0;gap:8px;">
+    <button class="btn btn-secondary" style="flex:1;" onclick="mpEndGame()">🏳 إنهاء اللعبة</button>
+    <button class="btn btn-primary" style="flex:1;" id="mr-next-btn" onclick="mpHostNextRound()">التالي ›</button>
+  </div>
+  <p id="mr-wait-msg" style="display:none;text-align:center;color:var(--muted);font-size:13px;flex-shrink:0;">⏳ انتظر المضيف...</p>
+</div>
+
+<!-- MP: FINAL SCORES -->
+<div id="mp-final-screen" class="screen" style="gap:14px;align-items:center;padding:20px;">
+  <h2 style="font-size:22px;font-weight:800;margin-top:8px;">النتيجة النهائية 🏆</h2>
+  <div id="mp-final-scores" style="width:100%;display:flex;flex-direction:column;gap:8px;"></div>
+  <button class="btn btn-primary" style="width:100%;" onclick="mpBackHome()">🏠 الرئيسية</button>
+</div>
+
+<!-- ADMIN SCREEN -->
+<div id="admin-screen" class="screen" style="gap:14px;">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button class="back-btn" onclick="showScreen('home-screen')">→</button>
+    <h2 style="font-size:18px;">لوحة الإدارة</h2>
+  </div>
+  <div class="admin-card">
+    <h3 style="font-size:15px;font-weight:700;">إضافة موقع جديد</h3>
+    <div class="form-group"><label>اسم الموقع</label><input id="new-name" placeholder="مثال: برج الكويت"/></div>
+    <div class="form-group">
+      <label>الفئة</label>
+      <select id="new-category" style="background:var(--dark);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:10px;border-radius:8px;font-size:14px;">
+        <option>معالم</option><option>مولات</option><option>مساجد</option><option>حدائق</option>
+        <option>شواطئ</option><option>حكومي</option><option>مناطق</option><option>أخرى</option>
+      </select>
+    </div>
+    <div class="form-group"><label>تلميح / وصف</label><textarea id="new-hint" rows="2" placeholder="وصف يساعد اللاعب على التعرف على الموقع"></textarea></div>
+    <div class="form-group">
+      <label>صورة الموقع</label>
+      <input type="url" id="new-photo" placeholder="رابط URL أو اختر ملفاً ↓" dir="ltr" style="background:var(--dark);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:10px;border-radius:8px;font-size:14px;width:100%;">
+      <label style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px dashed rgba(255,255,255,.2);border-radius:8px;padding:10px;cursor:pointer;font-size:13px;color:var(--muted);margin-top:6px;">
+        <span>📁 رفع صورة من الجهاز</span>
+        <input type="file" id="new-photo-file" accept="image/*" style="display:none" onchange="handlePhotoUpload('new-photo','new-photo-preview',this)">
+      </label>
+      <img id="new-photo-preview" src="" alt="" style="display:none;width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-top:6px;">
+    </div>
+    <div class="form-group">
+      <label>الموقع على الخريطة (اضغط لتحديد)</label>
+      <div id="admin-map-picker"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <input type="number" id="new-lat" placeholder="خط العرض" step="any" dir="ltr" style="flex:1;background:var(--dark);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:10px;border-radius:8px;font-size:14px;">
+        <input type="number" id="new-lng" placeholder="خط الطول" step="any" dir="ltr" style="flex:1;background:var(--dark);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:10px;border-radius:8px;font-size:14px;">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>تحديد منطقة (اختياري)</label>
+      <div id="new-draw-bar" class="draw-bar" style="display:none;">
+        <span id="new-draw-status">انقر على الخريطة لإضافة نقاط الحدود</span>
+        <button type="button" onclick="finishPolygon('new')" class="btn btn-sm btn-primary" style="padding:6px 12px;font-size:12px;">إنهاء ✓</button>
+        <button type="button" onclick="undoPolygonPoint('new')" class="btn btn-sm btn-secondary" style="padding:6px 12px;font-size:12px;">تراجع</button>
+        <button type="button" onclick="clearPolygon('new')" class="btn btn-sm" style="padding:6px 12px;font-size:12px;background:rgba(248,81,73,.2);color:var(--red);border:none;border-radius:8px;">مسح</button>
+      </div>
+      <div id="new-poly-summary" style="font-size:12px;color:var(--muted);display:none;"></div>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button type="button" id="new-draw-btn" onclick="startPolygonDraw('new')" class="btn btn-sm btn-secondary" style="flex:1;">✏️ ارسم حدود المنطقة</button>
+        <button type="button" onclick="clearPolygon('new')" class="btn btn-sm" style="padding:10px 14px;background:rgba(248,81,73,.15);color:var(--red);border:1px solid rgba(248,81,73,.3);border-radius:8px;font-size:13px;cursor:pointer;">مسح</button>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveLocation()" id="save-new-btn">➕ إضافة موقع</button>
+  </div>
+  <h3 style="font-size:15px;font-weight:700;flex-shrink:0;">المواقع الحالية (<span id="loc-count">0</span>)</h3>
+  <div class="loc-list" id="loc-list"></div>
+</div>
+
+<!-- EDIT MODAL -->
+<div id="edit-modal">
+  <div class="edit-inner">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:16px;">تعديل الموقع</h3>
+      <button class="close-btn" onclick="closeEditModal()">✕</button>
+    </div>
+    <div class="form-group"><label>الاسم</label><input id="edit-name"/></div>
+    <div class="form-group">
+      <label>الفئة</label>
+      <select id="edit-category" style="background:var(--dark);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:10px;border-radius:8px;font-size:14px;">
+        <option>معالم</option><option>مولات</option><option>مساجد</option><option>حدائق</option>
+        <option>شواطئ</option><option>حكومي</option><option>مناطق</option><option>أخرى</option>
+      </select>
+    </div>
+    <div class="form-group"><label>التلميح</label><textarea id="edit-hint" rows="2"></textarea></div>
+    <div class="form-group">
+      <label>صورة الموقع</label>
+      <input type="url" id="edit-photo" placeholder="رابط URL أو اختر ملفاً ↓" dir="ltr" style="background:var(--dark);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:10px;border-radius:8px;font-size:14px;width:100%;">
+      <label style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px dashed rgba(255,255,255,.2);border-radius:8px;padding:10px;cursor:pointer;font-size:13px;color:var(--muted);margin-top:6px;">
+        <span>📁 رفع صورة من الجهاز</span>
+        <input type="file" id="edit-photo-file" accept="image/*" style="display:none" onchange="handlePhotoUpload('edit-photo','edit-photo-preview',this)">
+      </label>
+      <img id="edit-photo-preview" src="" alt="" style="display:none;width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-top:6px;">
+    </div>
+    <div class="form-group">
+      <label>الموقع على الخريطة</label>
+      <div id="edit-map"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <input type="number" id="edit-lat" step="any" dir="ltr" style="flex:1;background:var(--dark);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:10px;border-radius:8px;font-size:14px;">
+        <input type="number" id="edit-lng" step="any" dir="ltr" style="flex:1;background:var(--dark);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:10px;border-radius:8px;font-size:14px;">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>تحديد منطقة (اختياري)</label>
+      <div id="edit-draw-bar" class="draw-bar" style="display:none;">
+        <span id="edit-draw-status">انقر على الخريطة لإضافة نقاط الحدود</span>
+        <button type="button" onclick="finishPolygon('edit')" class="btn btn-sm btn-primary" style="padding:6px 12px;font-size:12px;">إنهاء ✓</button>
+        <button type="button" onclick="undoPolygonPoint('edit')" class="btn btn-sm btn-secondary" style="padding:6px 12px;font-size:12px;">تراجع</button>
+        <button type="button" onclick="clearPolygon('edit')" class="btn btn-sm" style="padding:6px 12px;font-size:12px;background:rgba(248,81,73,.2);color:var(--red);border:none;border-radius:8px;">مسح</button>
+      </div>
+      <div id="edit-poly-summary" style="font-size:12px;color:var(--muted);display:none;"></div>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button type="button" id="edit-draw-btn" onclick="startPolygonDraw('edit')" class="btn btn-sm btn-secondary" style="flex:1;">✏️ ارسم حدود المنطقة</button>
+        <button type="button" onclick="clearPolygon('edit')" class="btn btn-sm" style="padding:10px 14px;background:rgba(248,81,73,.15);color:var(--red);border:1px solid rgba(248,81,73,.3);border-radius:8px;font-size:13px;cursor:pointer;">مسح</button>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveEdit()" id="save-edit-btn">💾 حفظ التعديلات</button>
+    <button class="btn btn-secondary" onclick="closeEditModal()">إلغاء</button>
+  </div>
+</div>
+
+
+<!-- Custom confirm dialog -->
+<div id="confirm-modal" style="display:none;position:fixed;inset:0;z-index:99000;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:24px;">
+  <div style="background:var(--card);border-radius:var(--radius);padding:24px;width:100%;max-width:320px;display:flex;flex-direction:column;gap:16px;border:1px solid rgba(255,255,255,.1);">
+    <p id="confirm-msg" style="text-align:center;font-size:16px;font-weight:600;"></p>
+    <div style="display:flex;gap:10px;">
+      <button onclick="confirmResolve(false)" class="btn btn-secondary" style="flex:1;padding:12px;">إلغاء</button>
+      <button onclick="confirmResolve(true)"  class="btn btn-primary"   style="flex:1;padding:12px;">تأكيد</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+// ── Firebase setup ────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAO3joLL-aEJWYvKPHZ3lEhB1-hHq-Yj6w",
+  authDomain: "dalney.firebaseapp.com",
+  projectId: "dalney",
+  storageBucket: "dalney.firebasestorage.app",
+  messagingSenderId: "495698377887",
+  appId: "1:495698377887:web:75072ccc065dfacd11b6aa"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const locsCol = db.collection('locations');
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const KW = [29.3759, 47.9774];
+let locations = [], gameRounds = [], currentRound = 0, totalScore = 0, guess = null;
+let gameMap = null, resultMap = null, adminMap = null, adminMarker = null;
+let editMap = null, editMarker = null, editDocId = null, editIndex = -1;
+let adminTapCount = 0, adminTapTimer = null;
+
+const polyState = {
+  new:  {points:[],layer:null,previewLines:[],previewMarkers:[],drawing:false,polygon:null},
+  edit: {points:[],layer:null,previewLines:[],previewMarkers:[],drawing:false,polygon:null}
+};
+
+// ── Default locations ─────────────────────────────────────────────────────────
+const DEFAULTS = [
+  {id:'l1', name:'أبراج الكويت',           category:'معالم', hint:'أيقونة الكويت على كورنيش الخليج، ثلاثة أبراج كروية',        photo:'', lat:29.3697, lng:47.9783, polygon:null},
+  {id:'l2', name:'قصر السيف',               category:'معالم', hint:'القصر الأميري التاريخي على الكورنيش بعمارته الإسلامية',      photo:'', lat:29.3725, lng:47.9778, polygon:null},
+  {id:'l3', name:'مسجد الدولة الكبير',      category:'مساجد', hint:'أكبر مسجد في الكويت، يستوعب أكثر من عشرة آلاف مصلٍّ',       photo:'', lat:29.3647, lng:48.0033, polygon:null},
+  {id:'l4', name:'سوق المباركية',            category:'معالم', hint:'أقدم وأشهر سوق شعبي في الكويت',                             photo:'', lat:29.3710, lng:47.9790, polygon:null},
+  {id:'l5', name:'مول الكويت',              category:'مولات', hint:'من أكبر مراكز التسوق في السالمية',                            photo:'', lat:29.3394, lng:48.0798, polygon:null},
+  {id:'l6', name:'الأفنيوز',                category:'مولات', hint:'أكبر مول في الكويت بالقرب من ميدان الهوية الوطنية',          photo:'', lat:29.2821, lng:48.0189, polygon:null},
+  {id:'l7', name:'جزيرة فيلكا',             category:'معالم', hint:'جزيرة تاريخية في الخليج تحوي آثاراً يونانية وبابلية',        photo:'', lat:29.4390, lng:48.3440, polygon:null},
+  {id:'l8', name:'المتحف الوطني الكويتي',   category:'معالم', hint:'يحتوي مقتنيات تاريخية وتراثية من تاريخ الكويت العريق',       photo:'', lat:29.3719, lng:47.9826, polygon:null},
+  {id:'l9', name:'مطار الكويت الدولي',      category:'حكومي', hint:'المطار الرئيسي للكويت جنوب العاصمة',                         photo:'', lat:29.2267, lng:47.9689, polygon:null},
+  {id:'l10',name:'حديقة الشهيد',             category:'حدائق', hint:'حديقة تذكارية كبيرة على الكورنيش تكريماً لشهداء الكويت',    photo:'', lat:29.3786, lng:47.9897, polygon:null},
+  {id:'l11',name:'مارينا كريسنت',            category:'شواطئ', hint:'مرسى وممشى ترفيهي حديث على شاطئ الخليج',                   photo:'', lat:29.3461, lng:48.0845, polygon:null},
+  {id:'l12',name:'منطقة السالمية',           category:'مناطق', hint:'أحد أكثر الأحياء التجارية والسكنية ازدحاماً في الكويت',     photo:'', lat:29.3417, lng:48.0822, polygon:null},
+  {id:'l13',name:'نادي الكويت الرياضي',      category:'معالم', hint:'الملعب الرئيسي للنادي الأزرق في منطقة كيفان',               photo:'', lat:29.3500, lng:47.9981, polygon:null},
+  {id:'l14',name:'حديقة الحيوان الكويتية',  category:'حدائق', hint:'الحديقة الوطنية للحيوانات في منطقة الجهراء',                photo:'', lat:29.3433, lng:47.6869, polygon:null},
+  {id:'l15',name:'جامعة الكويت - الشدادية', category:'حكومي', hint:'الحرم الجامعي الجديد للجامعة الحكومية الرئيسية',            photo:'', lat:29.1753, lng:48.0036, polygon:null},
+  {id:'l17',name:'شاطئ المنقف',              category:'شواطئ', hint:'شاطئ شهير في جنوب الكويت بمنطقة الأحمدي',                 photo:'', lat:29.1444, lng:48.0939, polygon:null},
+  {id:'l26',name:'بوليفارد مول',             category:'مولات', hint:'مول ضخم على طريق الفحيحيل السريع في بنيد القار',             photo:'', lat:29.3295, lng:48.0775, polygon:null},
+  {id:'l27',name:'360 Mall',                 category:'مولات', hint:'مول راقٍ ومتكامل في منطقة الزهراء قرب الدائري السادس',      photo:'', lat:29.2678, lng:47.9930, polygon:null},
+  {id:'l28',name:'العاصمة مول',              category:'مولات', hint:'مركز تسوق حديث في قلب محافظة العاصمة',                       photo:'', lat:29.3739, lng:47.9870, polygon:null},
+  {id:'l29',name:'نادي المعاقين',            category:'معالم', hint:'النادي الكويتي الرياضي للمعاقين في منطقة حولي',               photo:'', lat:29.3369, lng:48.0042, polygon:null},
+  {id:'l30',name:'نادي القادسية',            category:'معالم', hint:'ملعب النادي القادسية الرياضي في منطقة القادسية',              photo:'', lat:29.3373, lng:48.0248, polygon:null},
+  {id:'l31',name:'نادي العربي',              category:'معالم', hint:'مقر النادي العربي الرياضي في منطقة المنصورية',               photo:'', lat:29.3571, lng:47.9997, polygon:null},
+  {id:'l32',name:'نادي اليرموك',             category:'معالم', hint:'ملعب نادي اليرموك في منطقة مشرف',                            photo:'', lat:29.2914, lng:48.0690, polygon:null},
+  {id:'l33',name:'جمعية الشرطة',             category:'معالم', hint:'الجمعية التعاونية للشرطة في منطقة الزهراء',                   photo:'', lat:29.2790, lng:47.9900, polygon:null},
+  {id:'l34',name:'نادي الضباط',              category:'معالم', hint:'نادي ضباط الجيش الكويتي على شارع الخليج العربي',             photo:'', lat:29.3771, lng:48.0046, polygon:null},
+  {id:'l35',name:'مركز دسمان للسكري',        category:'معالم', hint:'معهد دسمان لأبحاث وعلاج السكري على شارع جاسم محمد الباهر',  photo:'', lat:29.3898, lng:47.9935, polygon:null},
+  {id:'l36',name:'قصر دسمان',               category:'معالم', hint:'القصر الأميري الرسمي لأسرة الصباح الحاكمة في منطقة دسمان',   photo:'', lat:29.3858, lng:47.9991, polygon:null},
+  {id:'l37',name:'استاد جابر',              category:'معالم', hint:'الملعب الوطني الدولي الكبير في منطقة العارضية',              photo:'', lat:29.2715, lng:47.9188, polygon:null},
+  {id:'l38',name:'أرض المعارض',             category:'معالم', hint:'مركز الكويت الدولي للمعارض في منطقة مبارك عبدالله',         photo:'', lat:29.2701, lng:48.0468, polygon:null},
+  {id:'l39',name:'المركز العلمي',           category:'معالم', hint:'مركز علمي وأكواريوم ومتحف على شارع البلاجات في السالمية',   photo:'', lat:29.3497, lng:48.0893, polygon:null},
+  {id:'l40',name:'شاطئ المسيلة',            category:'شواطئ', hint:'شاطئ شعبي ممتد في منطقة المسيلة جنوب السالمية',            photo:'', lat:29.2777, lng:48.0891, polygon:null},
+  {id:'l41',name:'شاطئ أنجفة',              category:'شواطئ', hint:'شاطئ عائلي في منطقة أنجفة',                                photo:'', lat:29.2793, lng:48.0698, polygon:null},
+  {id:'l42',name:'خيران مول',               category:'مولات', hint:'مول الخيران في مدينة الخيران اللؤلؤة بمحافظة الأحمدي',     photo:'', lat:28.6733, lng:48.3482, polygon:null},
+  {id:'l43',name:'منتزه الخيران',            category:'شواطئ', hint:'منتزع الخيران السياحي على ساحل الخليج جنوب الكويت',        photo:'', lat:28.6691, lng:48.3689, polygon:null},
+  {id:'l44',name:'دوار الشيراتون',           category:'معالم', hint:'دوار الجهراء الشهير عند بداية شارع فهد السالم وبوابة الجهراء التاريخية', photo:'', lat:29.3690, lng:47.9742, polygon:null},
+  {id:'l45',name:'مصنع كي دي دي',           category:'معالم', hint:'مصنع شركة الكويتية الدنماركية للألبان في الشويخ الصناعية',   photo:'', lat:29.3545, lng:47.9375, polygon:null}
+];
+
+// ── Firestore data layer ──────────────────────────────────────────────────────
+// Firestore doesn't support nested arrays — convert polygon [[lat,lng],...] ↔ [{a,b},...]
+function polyToDb(polygon) {
+  if (!polygon) return null;
+  return polygon.map(p => ({a: p[0], b: p[1]}));
+}
+function polyFromDb(polygon) {
+  if (!polygon) return null;
+  return polygon.map(p => [p.a, p.b]);
+}
+function locToDb(loc) {
+  return {...loc, polygon: polyToDb(loc.polygon)};
+}
+function locFromDb(data) {
+  return {...data, polygon: polyFromDb(data.polygon)};
+}
+
+async function loadData() {
+  const snap = await locsCol.get();
+  if (snap.empty) {
+    // First run — seed defaults
+    const batch = db.batch();
+    DEFAULTS.forEach(loc => batch.set(locsCol.doc(loc.id), locToDb(loc)));
+    await batch.commit();
+    locations = DEFAULTS.map(l => ({...l, _docId: l.id}));
+  } else {
+    locations = snap.docs.map(d => ({...locFromDb(d.data()), _docId: d.id}));
+    // Sync any new DEFAULTS entries not yet in Firestore
+    const existingIds = new Set(locations.map(l => l._docId));
+    const missing = DEFAULTS.filter(l => !existingIds.has(l.id));
+    if (missing.length > 0) {
+      const batch = db.batch();
+      missing.forEach(loc => batch.set(locsCol.doc(loc.id), locToDb(loc)));
+      await batch.commit();
+      missing.forEach(l => locations.push({...l, _docId: l.id}));
+    }
+  }
+}
+
+async function addLocToDb(loc) {
+  const ref = await locsCol.add(locToDb(loc));
+  return ref.id;
+}
+
+async function updateLocInDb(docId, data) {
+  await locsCol.doc(docId).update(locToDb(data));
+}
+
+async function deleteLocFromDb(docId) {
+  await locsCol.doc(docId).delete();
+}
+
+// ── Stats (local — per player) ────────────────────────────────────────────────
+function getStats() { return {highscore: parseInt(localStorage.getItem('q8hs')||'0')}; }
+function setHighscore(v) { localStorage.setItem('q8hs', v); }
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'home-screen') updateHomeStats();
+  if (id === 'admin-screen') {
+    renderLocList();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      try { initAdminMap(); } catch(e) { console.warn(e); }
+    }));
+  }
+}
+function updateHomeStats() { document.getElementById('stat-highscore').textContent = getStats().highscore; }
+
+function fixMapHeight(mapId, screenId) {
+  const scr = document.getElementById(screenId), el = document.getElementById(mapId);
+  const ss = window.getComputedStyle(scr);
+  const gapPx = parseFloat(ss.rowGap) || parseFloat(ss.gap) || 0;
+  const padV = parseFloat(ss.paddingTop) + parseFloat(ss.paddingBottom);
+  let used = 0;
+  Array.from(scr.children).forEach(c => {
+    if (c.id !== mapId) {
+      const cs = window.getComputedStyle(c);
+      used += c.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom);
+    }
+  });
+  const gaps = (Array.from(scr.children).length - 1) * gapPx;
+  const h = Math.max(180, scr.offsetHeight - used - gaps - padV);
+  el.style.height = h + 'px';
+  el.style.flex = 'none';
+}
+
+function adminTap() {
+  adminTapCount++;
+  clearTimeout(adminTapTimer);
+  adminTapTimer = setTimeout(() => adminTapCount = 0, 2000);
+  if (adminTapCount >= 5) {
+    adminTapCount = 0;
+    const pw = prompt('كلمة المرور:');
+    if (pw === 'admin123') showScreen('admin-screen');
+  }
+}
+
+// ── Photo upload (with resize to keep under Firestore 1MB doc limit) ──────────
+function handlePhotoUpload(inputId, previewId, fileInput) {
+  const file = fileInput.files[0]; if (!file) return;
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = e => {
+    img.onload = () => {
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else       { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+      document.getElementById(inputId).value = dataUrl;
+      const prev = document.getElementById(previewId);
+      if (prev) { prev.src = dataUrl; prev.style.display = 'block'; }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Polygon drawing ───────────────────────────────────────────────────────────
+function getMap(ctx) { return ctx === 'new' ? adminMap : editMap; }
+
+function startPolygonDraw(ctx) {
+  clearPolygon(ctx);
+  const st = polyState[ctx]; st.drawing = true;
+  document.getElementById(ctx+'-draw-bar').style.display = 'flex';
+  document.getElementById(ctx+'-draw-btn').style.display = 'none';
+  updateDrawStatus(ctx);
+  const map = getMap(ctx);
+  map._polyDrawHandler = e => {
+    if (!st.drawing) return;
+    st.points.push([e.latlng.lat, e.latlng.lng]);
+    refreshPolyPreview(ctx); updateDrawStatus(ctx);
+  };
+  map.on('click', map._polyDrawHandler);
+  map.getContainer().style.cursor = 'crosshair';
+}
+
+function updateDrawStatus(ctx) {
+  const n = polyState[ctx].points.length;
+  document.getElementById(ctx+'-draw-status').textContent =
+    n === 0 ? 'انقر على الخريطة لإضافة نقاط الحدود' :
+    n < 3   ? `${n} نقطة — أضف على الأقل 3 نقاط` :
+              `${n} نقاط — اضغط "إنهاء" لإغلاق المنطقة`;
+}
+
+function refreshPolyPreview(ctx) {
+  const st = polyState[ctx], map = getMap(ctx);
+  st.previewLines.forEach(l => map.removeLayer(l));
+  st.previewMarkers.forEach(m => map.removeLayer(m));
+  st.previewLines = []; st.previewMarkers = [];
+  if (st.layer) { map.removeLayer(st.layer); st.layer = null; }
+  const pts = st.points; if (!pts.length) return;
+  pts.forEach(p => {
+    const m = L.circleMarker(p, {radius:5,color:'#58a6ff',fillColor:'#58a6ff',fillOpacity:1,weight:2}).addTo(map);
+    st.previewMarkers.push(m);
+  });
+  if (pts.length > 1) {
+    const line = L.polyline(pts, {color:'#58a6ff',weight:2,dashArray:'5,5'}).addTo(map);
+    st.previewLines.push(line);
+  }
+  if (!st.drawing && pts.length >= 3) {
+    st.layer = L.polygon(pts, {color:'#3fb950',fillColor:'#3fb950',fillOpacity:.15,weight:2}).addTo(map);
+  }
+}
+
+function finishPolygon(ctx) {
+  const st = polyState[ctx];
+  if (st.points.length < 3) { showToast('⚠️ أضف 3 نقاط على الأقل'); return; }
+  st.drawing = false;
+  const map = getMap(ctx);
+  if (map._polyDrawHandler) { map.off('click', map._polyDrawHandler); map._polyDrawHandler = null; }
+  map.getContainer().style.cursor = '';
+  st.polygon = [...st.points];
+  refreshPolyPreview(ctx);
+  document.getElementById(ctx+'-draw-bar').style.display = 'none';
+  document.getElementById(ctx+'-draw-btn').style.display = '';
+  const s = document.getElementById(ctx+'-poly-summary');
+  s.textContent = `✅ منطقة محددة — ${st.polygon.length} نقطة حدودية`;
+  s.style.display = 'block';
+}
+
+function undoPolygonPoint(ctx) {
+  const st = polyState[ctx];
+  if (st.points.length) { st.points.pop(); refreshPolyPreview(ctx); updateDrawStatus(ctx); }
+}
+
+function clearPolygon(ctx) {
+  const st = polyState[ctx], map = getMap(ctx);
+  if (!map) return;
+  st.points = []; st.polygon = null; st.drawing = false;
+  if (map._polyDrawHandler) { map.off('click', map._polyDrawHandler); map._polyDrawHandler = null; }
+  map.getContainer().style.cursor = '';
+  st.previewLines.forEach(l => map.removeLayer(l));
+  st.previewMarkers.forEach(m => map.removeLayer(m));
+  st.previewLines = []; st.previewMarkers = [];
+  if (st.layer) { map.removeLayer(st.layer); st.layer = null; }
+  document.getElementById(ctx+'-draw-bar').style.display = 'none';
+  document.getElementById(ctx+'-draw-btn').style.display = '';
+  document.getElementById(ctx+'-poly-summary').style.display = 'none';
+}
+
+// ── Point-in-polygon (ray casting) ────────────────────────────────────────────
+function pointInPolygon(lat, lng, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length-1; i < poly.length; j = i++) {
+    const [yi,xi] = poly[i], [yj,xj] = poly[j];
+    if (((yi>lat) !== (yj>lat)) && (lng < (xj-xi)*(lat-yi)/(yj-yi)+xi)) inside = !inside;
+  }
+  return inside;
+}
+function polygonCentroid(poly) {
+  let lat=0, lng=0;
+  poly.forEach(p => { lat+=p[0]; lng+=p[1]; });
+  return [lat/poly.length, lng/poly.length];
+}
+
+// ── Game ──────────────────────────────────────────────────────────────────────
+function startGame() {
+  gameRounds = shuffle([...locations]).slice(0, Math.min(5, locations.length));
+  currentRound = 0; totalScore = 0; guess = null;
+  showScreen('game-screen');
+  loadRound();
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    try { initGameMap(); } catch(e) { console.warn(e); }
+  }));
+}
+
+function shuffle(a) {
+  for (let i=a.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+function loadRound() {
+  guess = null;
+  document.getElementById('submit-btn').disabled = true;
+  const loc = gameRounds[currentRound];
+  document.getElementById('round-badge').textContent = `جولة ${currentRound+1} / ${gameRounds.length}`;
+  document.getElementById('score-badge').textContent = totalScore;
+  document.getElementById('hint-name').textContent = loc.name;
+  document.getElementById('hint-text').textContent = loc.hint || '';
+  const p = document.getElementById('hint-photo');
+  if (loc.photo) { p.src=loc.photo; p.style.display='block'; p.onerror=()=>{p.style.display='none';}; }
+  else p.style.display = 'none';
+  if (gameMap) gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
+}
+
+function initGameMap() {
+  if (gameMap) { gameMap.remove(); gameMap = null; }
+  fixMapHeight('game-map', 'game-screen');
+  gameMap = L.map('game-map', {zoomControl:true, minZoom:7, maxZoom:17});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OSM'}).addTo(gameMap);
+  gameMap.setView(KW, 9);
+  gameMap.on('click', e => {
+    guess = e.latlng;
+    gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
+    const icon = L.divIcon({className:'',html:'<div class="guess-marker-icon"></div>',iconSize:[32,32],iconAnchor:[16,32]});
+    L.marker(e.latlng, {icon}).addTo(gameMap);
+    document.getElementById('submit-btn').disabled = false;
+  });
+}
+
+function submitGuess() {
+  if (!guess) return;
+  const loc = gameRounds[currentRound];
+  const poly = loc.polygon;
+  let sc, dk, inArea = false;
+  if (poly && poly.length >= 3 && pointInPolygon(guess.lat, guess.lng, poly)) {
+    inArea = true; sc = 5000; dk = 0;
+  } else {
+    const target = poly && poly.length >= 3 ? polygonCentroid(poly) : [loc.lat, loc.lng];
+    dk = L.latLng(guess).distanceTo(L.latLng(target[0], target[1])) / 1000;
+    sc = Math.round(Math.max(0, 5000 * Math.exp(-dk / 3.5)));
+  }
+  totalScore += sc;
+  gameRounds[currentRound]._result = {score:sc, dist:dk, inArea};
+  document.getElementById('score-flash').textContent = sc;
+  document.getElementById('score-flash').style.color = sc>=4000?'var(--green)':sc>=2000?'var(--gold)':'var(--red)';
+  document.getElementById('dist-info').textContent = inArea
+    ? `✅ داخل المنطقة! 5000 نقطة`
+    : `📍 المسافة: ${dk<1?(dk*1000).toFixed(0)+' م':(dk).toFixed(1)+' كم'} — +${sc} نقطة`;
+  document.getElementById('next-btn').textContent = currentRound+1 >= gameRounds.length ? 'النتائج ›' : 'التالي ›';
+  showScreen('result-screen');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    try { initResultMap(loc, guess); } catch(e) { console.warn(e); }
+  }));
+}
+
+function initResultMap(loc, g) {
+  if (resultMap) { resultMap.remove(); resultMap = null; }
+  fixMapHeight('result-map', 'result-screen');
+  resultMap = L.map('result-map', {zoomControl:true, minZoom:7, maxZoom:17});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OSM'}).addTo(resultMap);
+  const ci = L.divIcon({className:'',html:'<div class="correct-marker-icon"></div>',iconSize:[32,32],iconAnchor:[16,32]});
+  const gi = L.divIcon({className:'',html:'<div class="guess-marker-icon"></div>',iconSize:[32,32],iconAnchor:[16,32]});
+  const poly = loc.polygon;
+  if (poly && poly.length >= 3)
+    L.polygon(poly, {color:'#3fb950',fillColor:'#3fb950',fillOpacity:.15,weight:2}).addTo(resultMap);
+  L.marker([loc.lat,loc.lng],{icon:ci}).addTo(resultMap).bindPopup('✅ '+loc.name).openPopup();
+  L.marker([g.lat,g.lng],{icon:gi}).addTo(resultMap).bindPopup('📍 تخمينك');
+  L.polyline([[loc.lat,loc.lng],[g.lat,g.lng]],{color:'#f39c12',weight:2,dashArray:'6,6',opacity:.8}).addTo(resultMap);
+  const bounds = poly && poly.length >= 3
+    ? L.latLngBounds([...poly.map(p=>L.latLng(p[0],p[1])), L.latLng(g.lat,g.lng)]).pad(0.3)
+    : L.latLngBounds([[loc.lat,loc.lng],[g.lat,g.lng]]).pad(0.4);
+  resultMap.fitBounds(bounds);
+}
+
+function nextRound() {
+  currentRound++;
+  if (currentRound >= gameRounds.length) { showSummary(); return; }
+  showScreen('game-screen');
+  loadRound();
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    try {
+      if (gameMap) gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
+      else initGameMap();
+    } catch(e) { console.warn(e); }
+  }));
+}
+
+function showSummary() {
+  document.getElementById('final-score').textContent = totalScore;
+  const hs = getStats().highscore;
+  const nb = document.getElementById('new-best');
+  if (totalScore > hs) { setHighscore(totalScore); nb.textContent = '🏆 رقم قياسي جديد!'; }
+  else nb.textContent = `أعلى نتيجة: ${hs}`;
+  const rs = document.getElementById('round-summary'); rs.innerHTML = '';
+  gameRounds.forEach(loc => {
+    const res = loc._result || {score:0};
+    const row = document.createElement('div'); row.className = 'round-row';
+    row.innerHTML = `<span style="font-size:13px;">${loc.name}</span><span style="font-weight:700;color:var(--gold);">${res.score}</span>`;
+    rs.appendChild(row);
+  });
+  showScreen('summary-screen');
+}
+
+function exitGame(toHome) {
+  if (toHome) { showScreen('home-screen'); return; }
+  showConfirm('هل تريد الخروج من اللعبة؟', ok => {
+    if (ok) { if (gameMap) { gameMap.remove(); gameMap = null; } showScreen('home-screen'); }
+  });
+}
+
+// ── Admin map ─────────────────────────────────────────────────────────────────
+function initAdminMap() {
+  if (adminMap) return;
+  adminMap = L.map('admin-map-picker', {zoomControl:true, minZoom:7, maxZoom:17});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OSM'}).addTo(adminMap);
+  adminMap.setView(KW, 9);
+  adminMap.on('click', e => {
+    if (polyState.new.drawing) return;
+    if (adminMarker) adminMap.removeLayer(adminMarker);
+    adminMarker = L.marker(e.latlng, {draggable:true}).addTo(adminMap);
+    adminMarker.on('drag', ev => {
+      document.getElementById('new-lat').value = ev.latlng.lat.toFixed(6);
+      document.getElementById('new-lng').value = ev.latlng.lng.toFixed(6);
+    });
+    document.getElementById('new-lat').value = e.latlng.lat.toFixed(6);
+    document.getElementById('new-lng').value = e.latlng.lng.toFixed(6);
+  });
+}
+
+// ── Admin CRUD ────────────────────────────────────────────────────────────────
+async function saveLocation() {
+  const name  = document.getElementById('new-name').value.trim();
+  const hint  = document.getElementById('new-hint').value.trim();
+  const photo = document.getElementById('new-photo').value.trim();
+  const lat   = parseFloat(document.getElementById('new-lat').value);
+  const lng   = parseFloat(document.getElementById('new-lng').value);
+  const cat   = document.getElementById('new-category').value;
+  const polygon = polyState.new.polygon && polyState.new.polygon.length >= 3 ? polyState.new.polygon : null;
+  if (!name || isNaN(lat) || isNaN(lng)) { showToast('⚠️ أدخل الاسم والموقع'); return; }
+
+  const btn = document.getElementById('save-new-btn');
+  btn.disabled = true; btn.textContent = 'جاري الحفظ...';
+  try {
+    const loc = {name, category:cat, hint, photo, lat, lng, polygon, updatedAt: new Date().toISOString()};
+    const docId = await addLocToDb(loc);
+    locations.push({...loc, id:docId, _docId:docId});
+    renderLocList();
+    ['new-name','new-hint','new-photo','new-lat','new-lng'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('new-photo-preview').style.display = 'none';
+    if (adminMarker) { adminMap.removeLayer(adminMarker); adminMarker = null; }
+    clearPolygon('new');
+    showToast('✅ تمت الإضافة');
+  } catch(e) { showToast('❌ خطأ: '+e.message); }
+  btn.disabled = false; btn.textContent = '➕ إضافة موقع';
+}
+
+function renderLocList() {
+  document.getElementById('loc-count').textContent = locations.length;
+  const list = document.getElementById('loc-list'); list.innerHTML = '';
+  locations.forEach((loc, i) => {
+    const hasPoly = loc.polygon && loc.polygon.length >= 3;
+    const card = document.createElement('div'); card.className = 'loc-card';
+    const ts = loc.updatedAt ? (() => {
+      const d = new Date(loc.updatedAt);
+      return d.toLocaleDateString('ar-KW',{day:'2-digit',month:'2-digit',year:'numeric'})
+           + ' ' + d.toLocaleTimeString('ar-KW',{hour:'2-digit',minute:'2-digit'});
+    })() : 'لم يُعدَّل بعد';
+    card.innerHTML = `
+      <div class="loc-info">
+        <div class="loc-name">${loc.name}</div>
+        <div class="loc-cat">${loc.category} · ${hasPoly?'منطقة':'نقطة'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">🕐 ${ts}</div>
+      </div>
+      <button class="loc-btn" style="background:var(--surface);" onclick="openEditModal(${i})">✏️</button>
+      <button class="loc-btn" style="background:rgba(248,81,73,.15);color:var(--red);" onclick="deleteLocation(${i})">🗑️</button>`;
+    list.appendChild(card);
+  });
+}
+
+async function deleteLocation(i) {
+  showConfirm('حذف هذا الموقع؟', async ok => { if (!ok) return;
+  try {
+    await deleteLocFromDb(locations[i]._docId);
+    locations.splice(i, 1);
+    renderLocList(); showToast('🗑️ تم الحذف');
+  } catch(e) { showToast('❌ خطأ: '+e.message); }
+  });
+}
+
+// ── Edit modal ────────────────────────────────────────────────────────────────
+function openEditModal(i) {
+  editIndex = i; editDocId = locations[i]._docId;
+  const loc = locations[i];
+  document.getElementById('edit-name').value     = loc.name;
+  document.getElementById('edit-hint').value     = loc.hint || '';
+  document.getElementById('edit-category').value = loc.category || 'معالم';
+  document.getElementById('edit-photo').value    = loc.photo || '';
+  document.getElementById('edit-lat').value      = loc.lat;
+  document.getElementById('edit-lng').value      = loc.lng;
+  const ep = document.getElementById('edit-photo-preview');
+  if (loc.photo) { ep.src=loc.photo; ep.style.display='block'; } else ep.style.display='none';
+  polyState.edit.polygon = loc.polygon && loc.polygon.length >= 3 ? [...loc.polygon] : null;
+  document.getElementById('edit-modal').style.display = 'block';
+  setTimeout(() => {
+    try {
+      if (editMap) { editMap.remove(); editMap = null; editMarker = null; }
+      editMap = L.map('edit-map', {zoomControl:true, minZoom:7, maxZoom:17});
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OSM'}).addTo(editMap);
+      editMap.setView([loc.lat, loc.lng], 14);
+      editMarker = L.marker([loc.lat,loc.lng], {draggable:true}).addTo(editMap);
+      editMarker.on('drag', e => {
+        document.getElementById('edit-lat').value = e.latlng.lat.toFixed(6);
+        document.getElementById('edit-lng').value = e.latlng.lng.toFixed(6);
+      });
+      editMap.on('click', e => {
+        if (polyState.edit.drawing) return;
+        editMarker.setLatLng(e.latlng);
+        document.getElementById('edit-lat').value = e.latlng.lat.toFixed(6);
+        document.getElementById('edit-lng').value = e.latlng.lng.toFixed(6);
+      });
+      if (polyState.edit.polygon) {
+        polyState.edit.points = [...polyState.edit.polygon];
+        polyState.edit.drawing = false;
+        refreshPolyPreview('edit');
+        const s = document.getElementById('edit-poly-summary');
+        s.textContent = `✅ منطقة محددة — ${polyState.edit.polygon.length} نقطة حدودية`;
+        s.style.display = 'block';
+        editMap.fitBounds(L.latLngBounds(polyState.edit.polygon.map(p=>L.latLng(p[0],p[1]))).pad(0.3));
+      } else {
+        polyState.edit.points = [];
+        document.getElementById('edit-poly-summary').style.display = 'none';
+      }
+    } catch(e) { console.warn(e); }
+  }, 200);
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').style.display = 'none';
+  if (editMap) { editMap.remove(); editMap = null; editMarker = null; }
+  clearPolygon('edit');
+}
+
+async function saveEdit() {
+  const lat = parseFloat(document.getElementById('edit-lat').value);
+  const lng = parseFloat(document.getElementById('edit-lng').value);
+  if (isNaN(lat) || isNaN(lng)) { showToast('⚠️ الموقع غير صحيح'); return; }
+  const polygon = polyState.edit.polygon && polyState.edit.polygon.length >= 3 ? polyState.edit.polygon : null;
+  const updated = {
+    name:     document.getElementById('edit-name').value.trim(),
+    category: document.getElementById('edit-category').value,
+    hint:     document.getElementById('edit-hint').value.trim(),
+    photo:    document.getElementById('edit-photo').value.trim(),
+    lat, lng, polygon, updatedAt: new Date().toISOString()
+  };
+  const btn = document.getElementById('save-edit-btn');
+  btn.disabled = true; btn.textContent = 'جاري الحفظ...';
+  try {
+    await updateLocInDb(editDocId, updated);
+    locations[editIndex] = {...locations[editIndex], ...updated};
+    closeEditModal(); renderLocList(); showToast('✅ تم الحفظ');
+  } catch(e) { showToast('❌ خطأ: '+e.message); }
+  btn.disabled = false; btn.textContent = '💾 حفظ التعديلات';
+}
+
+// ── Custom confirm dialog ──────────────────────────────────────────────────────
+let _confirmCb = null;
+function showConfirm(msg, cb) {
+  _confirmCb = cb;
+  document.getElementById('confirm-msg').textContent = msg;
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+function confirmResolve(result) {
+  document.getElementById('confirm-modal').style.display = 'none';
+  if (_confirmCb) { const cb = _confirmCb; _confirmCb = null; cb(result); }
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+window.addEventListener('resize', () => {
+  if (gameMap   && document.getElementById('game-screen').classList.contains('active'))
+    { fixMapHeight('game-map','game-screen'); gameMap.invalidateSize(); }
+  if (resultMap && document.getElementById('result-screen').classList.contains('active'))
+    { fixMapHeight('result-map','result-screen'); resultMap.invalidateSize(); }
+  if (mpGameMap && document.getElementById('mp-game-screen').classList.contains('active'))
+    { fixMapHeight('mp-game-map','mp-game-screen'); mpGameMap.invalidateSize(); }
+  if (mpHostMap && document.getElementById('mp-host-game-screen').classList.contains('active'))
+    { fixMapHeight('mp-host-map','mp-host-game-screen'); mpHostMap.invalidateSize(); }
+  if (mpResultMap && document.getElementById('mp-result-screen').classList.contains('active'))
+    { fixMapHeight('mp-result-map','mp-result-screen'); mpResultMap.invalidateSize(); }
+});
+
+// ── Multiplayer ───────────────────────────────────────────────────────────────
+const MP_COLORS = ['#f85149','#f39c12','#3fb950','#58a6ff','#bc8cff','#ff79c6','#f78166','#8be9fd'];
+const KW_CENTER = [29.3697, 47.9783];
+let mpRoomId=null, mpPlayerId=null, mpIsHost=false, mpRoom=null;
+let mpListener=null, mpTimerIv=null, mpGuess=null, mpCurrentRound=0;
+let mpGameMap=null, mpHostMap=null, mpResultMap=null, mpHostMapLayers=[], mpGameMarker=null;
+let mpTimeLimit=10, mpAnswered=false;
+
+function mpGenCode() {
+  const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:4},()=>c[Math.floor(Math.random()*c.length)]).join('');
+}
+function mpGenId() { return Math.random().toString(36).substr(2,9); }
+
+function mpSetTime(el, t) {
+  mpTimeLimit = t;
+  document.querySelectorAll('.time-opt').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+async function mpHostCreate() {
+  if (!locations.length) { showToast('⚠️ لا توجد مواقع'); return; }
+  mpReset();
+  mpIsHost = true;
+  mpPlayerId = mpGenId();
+  const code = mpGenCode();
+  mpRoomId = code;
+  const shuffled = [...locations].sort(()=>Math.random()-.5).slice(0,5);
+  const locs = shuffled.map(l=>({
+    name:l.name, hint:l.hint||'', photo:l.photo||'',
+    lat:l.lat, lng:l.lng, polygon: l.polygon ? polyToDb(l.polygon) : null
+  }));
+  // Host starts with empty players — name is read in mpHostStart after lobby
+  await db.collection('rooms').doc(code).set({
+    status:'waiting', round:0, totalRounds:5,
+    loc:null, roundStartAt:null,
+    players:[], answers:{}, locs,
+    timeLimit:mpTimeLimit, hostId:mpPlayerId
+  });
+  document.getElementById('mp-room-code').textContent = code;
+  mpUpdateLobby([]);
+  showScreen('mp-host-lobby');
+  mpListener = db.collection('rooms').doc(code).onSnapshot(snap=>{
+    if (!snap.exists) return;
+    mpRoom = snap.data();
+    mpSync();
+  });
+}
+
+function mpUpdateLobby(players) {
+  document.getElementById('mp-lobby-players').innerHTML = players.length
+    ? players.map(p=>`<div class="player-chip"><div class="color-dot" style="background:${p.color}"></div><span style="font-weight:600;font-size:15px;">${p.name}</span>${p.id===mpPlayerId?'<span style="margin-right:auto;font-size:11px;color:var(--gold);">👑 مضيف</span>':''}</div>`).join('')
+    : '<p style="text-align:center;color:var(--muted);font-size:14px;">في انتظار انضمام اللاعبين...</p>';
+  document.getElementById('mp-start-btn').disabled = players.length < 1;
+  // If host is already in the list, lock the join controls
+  const hostInList = players.find(p=>p.id===mpPlayerId);
+  const nameInput = document.getElementById('mp-host-name');
+  const joinBtn   = document.getElementById('mp-host-join-btn');
+  if (nameInput) nameInput.disabled = !!hostInList;
+  if (joinBtn)   joinBtn.disabled   = !!hostInList;
+}
+
+async function mpHostAddSelf() {
+  const name = document.getElementById('mp-host-name').value.trim();
+  if (!name) { showToast('⚠️ أدخل اسمك أولاً'); return; }
+  const currentPlayers = mpRoom ? (mpRoom.players||[]) : [];
+  if (currentPlayers.find(p=>p.id===mpPlayerId)) return; // already added
+  // Pick first color not already used
+  const usedColors = new Set(currentPlayers.map(p=>p.color));
+  const color = MP_COLORS.find(c=>!usedColors.has(c)) || MP_COLORS[0];
+  const hostPlayer = {id:mpPlayerId, name, color, score:0};
+  const updatedPlayers = [...currentPlayers, hostPlayer];
+  await db.collection('rooms').doc(mpRoomId).update({players:updatedPlayers});
+  // mpUpdateLobby will be called via onSnapshot
+}
+
+// ── Unified sync (host + participants) ────────────────────────────────────────
+function mpSync() {
+  if (!mpRoom) return;
+  const {status, players, round, answers} = mpRoom;
+  if (status === 'waiting') {
+    if (mpIsHost) mpUpdateLobby(players||[]);
+    else mpRenderWaitPlayers();
+    return;
+  }
+  if (status === 'playing') {
+    if (mpIsHost) {
+      const answered = Object.keys(answers||{}).length;
+      if ((players||[]).length > 0 && answered >= (players||[]).length) {
+        mpHostShowResults(); return;
+      }
+    }
+    if (mpCurrentRound !== round) {
+      mpCurrentRound = round;
+      mpGuess = null; mpAnswered = false;
+      showScreen('mp-game-screen');
+      mpInitGameRound();
+    }
+    return;
+  }
+  if (status === 'results') {
+    clearInterval(mpTimerIv);
+    if (!document.getElementById('mp-result-screen').classList.contains('active'))
+      mpShowRoundResult();
+    return;
+  }
+  if (status === 'finished') mpShowFinal();
+}
+
+// ── Shared game round (host + participants both answer here) ──────────────────
+function mpInitGameRound() {
+  const {loc, round, totalRounds, roundStartAt, timeLimit} = mpRoom;
+  if (!loc) return;
+  document.getElementById('mp-round-badge').textContent = `جولة ${round} / ${totalRounds}`;
+  document.getElementById('mp-hint-name').textContent = loc.name;
+  document.getElementById('mp-hint-text').textContent = loc.hint||'';
+  const pe = document.getElementById('mp-hint-photo');
+  if (loc.photo) { pe.src=loc.photo; pe.style.display='block'; } else pe.style.display='none';
+  const me = (mpRoom.players||[]).find(p=>p.id===mpPlayerId);
+  document.getElementById('mp-score-badge').textContent = me?me.score:0;
+  const sb = document.getElementById('mp-submit-btn');
+  sb.disabled=true; sb.textContent='تأكيد ✓'; sb.style.cssText='';
+  // End-round button: only host, only when no time limit
+  const eb = document.getElementById('mp-end-round-btn');
+  eb.style.display = (mpIsHost && (timeLimit||0)===0) ? '' : 'none';
+  setTimeout(()=>{
+    try {
+      if (mpGameMap) { mpGameMap.remove(); mpGameMap=null; mpGameMarker=null; }
+      mpGameMap = L.map('mp-game-map',{zoomControl:true,minZoom:7,maxZoom:17});
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(mpGameMap);
+      mpGameMap.setView(KW_CENTER,10);
+      fixMapHeight('mp-game-map','mp-game-screen');
+      mpGameMap.invalidateSize();
+      const myColor = me ? me.color : '#58a6ff';
+      mpGameMap.on('click',e=>{
+        if (mpAnswered) return;
+        mpGuess = {lat:e.latlng.lat, lng:e.latlng.lng};
+        if (mpGameMarker) mpGameMap.removeLayer(mpGameMarker);
+        const icon = L.divIcon({html:`<div style="width:28px;height:28px;background:${myColor};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;"></div>`,iconSize:[28,28],iconAnchor:[14,28],className:''});
+        mpGameMarker = L.marker([e.latlng.lat,e.latlng.lng],{icon}).addTo(mpGameMap);
+        document.getElementById('mp-submit-btn').disabled = false;
+      });
+    } catch(e){console.warn(e);}
+  },300);
+  // roundStartAt is 3s in the future — timer shows prep countdown, then game clock
+  mpStartTimer('mp-timer-badge', roundStartAt, timeLimit||0, async ()=>{
+    if (mpAnswered) { if (mpIsHost) mpHostShowResults(); return; }
+    if (mpGuess) {
+      // Has a pin — auto-submit it
+      await mpSubmitGuess();
+    } else {
+      // No guess — record zero-score so host count stays accurate
+      mpAnswered = true;
+      if (mpGameMap) mpGameMap.off('click');
+      const sb = document.getElementById('mp-submit-btn');
+      sb.disabled = true; sb.textContent = '⏰ انتهى الوقت';
+      const update = {};
+      update[`answers.${mpPlayerId}`] = {lat:null, lng:null, score:0, dist:null, inArea:false};
+      await db.collection('rooms').doc(mpRoomId).update(update).catch(()=>{});
+    }
+    // Host always ends the round on timer expiry
+    if (mpIsHost) mpHostShowResults();
+  });
+}
+
+function mpHostRenderPlaying() {} // kept for compat — logic moved to mpSync
+
+function mpShowRoundResult() {
+  const {round, totalRounds, loc, players, answers} = mpRoom;
+  showScreen('mp-result-screen');
+  document.getElementById('mr-round-badge').textContent = `جولة ${round} / ${totalRounds}`;
+  document.getElementById('mr-loc-name').textContent = loc ? loc.name : '';
+  // Host buttons vs wait message
+  const hostBtns = document.getElementById('mr-host-btns');
+  const waitMsg  = document.getElementById('mr-wait-msg');
+  if (mpIsHost) {
+    hostBtns.style.cssText = 'display:flex;flex-shrink:0;gap:8px;';
+    waitMsg.style.display = 'none';
+    const nextBtn = document.getElementById('mr-next-btn');
+    nextBtn.textContent = round >= totalRounds ? '🏆 النتائج النهائية' : 'التالي ›';
+  } else {
+    hostBtns.style.display = 'none';
+    waitMsg.style.display = '';
+  }
+  // Scores list
+  const sorted = [...(players||[])].sort((a,b)=>(b.score||0)-(a.score||0));
+  document.getElementById('mr-scores').innerHTML = sorted.map(p=>{
+    const ans = (answers||{})[p.id];
+    const gained = ans ? ans.score : 0;
+    const dist   = ans && !ans.inArea ? `${(ans.dist||0).toFixed(1)} كم` : ans && ans.inArea ? '🎯' : '—';
+    return `<div style="display:flex;align-items:center;gap:10px;background:var(--card);border-radius:10px;padding:10px 12px;border-right:4px solid ${p.color};">
+      <div class="color-dot" style="background:${p.color}"></div>
+      <span style="flex:1;font-weight:700;font-size:14px;">${p.name}</span>
+      <span style="font-size:12px;color:var(--muted);">${dist}</span>
+      <span style="font-size:13px;color:var(--gold);margin:0 4px;">+${gained}</span>
+      <span style="font-size:16px;font-weight:900;color:${p.color};">${p.score||0}</span>
+    </div>`;
+  }).join('');
+  // Map
+  setTimeout(()=>{
+    try {
+      if (mpResultMap) { mpResultMap.remove(); mpResultMap=null; }
+      mpResultMap = L.map('mp-result-map',{zoomControl:true,minZoom:7,maxZoom:17});
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(mpResultMap);
+      mpResultMap.setView(KW_CENTER,10);
+      fixMapHeight('mp-result-map','mp-result-screen');
+      mpResultMap.invalidateSize();
+      if (!loc) return;
+      const locObj = {...loc, polygon: loc.polygon ? polyFromDb(loc.polygon) : null};
+      const bounds = [[locObj.lat,locObj.lng]];
+      const ci = L.divIcon({html:`<div style="width:22px;height:22px;background:#3fb950;border-radius:50%;border:3px solid #fff;"></div>`,iconSize:[22,22],iconAnchor:[11,11],className:''});
+      L.marker([locObj.lat,locObj.lng],{icon:ci}).bindPopup(`<b>${locObj.name}</b>`).addTo(mpResultMap).openPopup();
+      if (locObj.polygon && locObj.polygon.length>=3)
+        L.polygon(locObj.polygon,{color:'#3fb950',fillOpacity:.1,weight:2}).addTo(mpResultMap);
+      (players||[]).forEach(p=>{
+        const ans = (answers||{})[p.id];
+        if (!ans || ans.lat == null) return;  // skip blank/no-answer entries
+        bounds.push([ans.lat,ans.lng]);
+        const pi = L.divIcon({html:`<div style="width:26px;height:26px;background:${p.color};border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#000;">${p.name[0]}</div>`,iconSize:[26,26],iconAnchor:[13,13],className:''});
+        L.marker([ans.lat,ans.lng],{icon:pi}).bindPopup(`<b>${p.name}</b><br>${ans.score} نقطة — ${(ans.dist||0).toFixed(1)} كم`).addTo(mpResultMap);
+        L.polyline([[ans.lat,ans.lng],[locObj.lat,locObj.lng]],{color:p.color,weight:1.5,dashArray:'5,5',opacity:.7}).addTo(mpResultMap);
+      });
+      if (bounds.length>1) mpResultMap.fitBounds(L.latLngBounds(bounds).pad(0.3));
+    } catch(e){console.warn(e);}
+  },300);
+}
+
+async function mpEndGame() {
+  if (!mpRoomId) return;
+  // Tally current round answers if game is still in 'playing' or 'results'
+  const snap = await db.collection('rooms').doc(mpRoomId).get();
+  if (!snap.exists) { mpLeave(); return; }
+  const room = snap.data();
+  if (room.status === 'playing') {
+    const updatedPlayers = (room.players||[]).map(p=>{
+      const ans = (room.answers||{})[p.id];
+      return {...p, score:(p.score||0)+(ans?ans.score:0)};
+    });
+    await db.collection('rooms').doc(mpRoomId).update({status:'finished', players:updatedPlayers});
+  } else {
+    await db.collection('rooms').doc(mpRoomId).update({status:'finished'});
+  }
+}
+
+function mpInitHostMap() {
+  setTimeout(()=>{
+    if (!mpHostMap) {
+      mpHostMap = L.map('mp-host-map',{zoomControl:true,minZoom:7,maxZoom:17});
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(mpHostMap);
+      mpHostMap.setView(KW_CENTER,10);
+    }
+    fixMapHeight('mp-host-map','mp-host-game-screen');
+    mpHostMap.invalidateSize();
+  },300);
+}
+
+async function mpHostStart() {
+  if (!mpRoom || (mpRoom.players||[]).length < 1) return;
+  document.getElementById('mp-start-btn').disabled = true;
+  await mpAdvanceToRound(0);
+}
+
+async function mpHostNextRound() {
+  if (!mpRoom) return;
+  await mpAdvanceToRound(mpRoom.round);
+}
+
+async function mpAdvanceToRound(prevRound) {
+  const snap = await db.collection('rooms').doc(mpRoomId).get();
+  const room = snap.data();
+  const nextRound = prevRound + 1;
+  if (nextRound > room.totalRounds) {
+    await db.collection('rooms').doc(mpRoomId).update({status:'finished', roundStartAt:null});
+    return;
+  }
+  const loc = room.locs[nextRound-1];
+  // 3-second prep window so all devices receive & render before timer starts
+  const roundStartAt = new Date(Date.now() + 3000).toISOString();
+  await db.collection('rooms').doc(mpRoomId).update({
+    status:'playing', round:nextRound,
+    loc, answers:{}, roundStartAt
+  });
+  if (mpHostMap) { mpHostMapLayers.forEach(l=>mpHostMap.removeLayer(l)); mpHostMapLayers=[]; }
+}
+
+async function mpHostShowResults() {
+  if (!mpRoom || mpRoom.status !== 'playing') return;
+  clearInterval(mpTimerIv);
+  const {players, answers} = mpRoom;
+  const updatedPlayers = players.map(p=>{
+    const ans = (answers||{})[p.id];
+    return {...p, score:(p.score||0)+(ans?ans.score:0)};
+  });
+  await db.collection('rooms').doc(mpRoomId).update({status:'results', players:updatedPlayers});
+}
+
+async function mpHostCancel() {
+  if (mpRoomId) await db.collection('rooms').doc(mpRoomId).delete().catch(()=>{});
+  mpReset();
+  showScreen('home-screen');
+}
+
+// ── Participant join ───────────────────────────────────────────────────────────
+async function mpJoin() {
+  const btn = document.getElementById('mp-join-btn');
+  if (btn) btn.disabled = true;
+  const code = document.getElementById('mp-code-input').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const name = document.getElementById('mp-name-input').value.trim();
+  if (code.length!==4) { showToast('⚠️ أدخل رمزاً من 4 أحرف'); if (btn) btn.disabled=false; return; }
+  if (!name) { showToast('⚠️ أدخل اسمك'); if (btn) btn.disabled=false; return; }
+  try {
+    const snap = await db.collection('rooms').doc(code).get();
+    if (!snap.exists) { showToast('❌ الغرفة غير موجودة'); if (btn) btn.disabled=false; return; }
+    const room = snap.data();
+    if (room.status !== 'waiting') { showToast('❌ اللعبة بدأت بالفعل'); if (btn) btn.disabled=false; return; }
+    if (room.players.length >= 8) { showToast('❌ الغرفة ممتلئة'); if (btn) btn.disabled=false; return; }
+    mpPlayerId = mpGenId();
+    mpRoomId = code;
+    mpIsHost = false;
+    const color = MP_COLORS[room.players.length % MP_COLORS.length];
+    await db.collection('rooms').doc(code).update({players:[...room.players,{id:mpPlayerId,name,color,score:0}]});
+    showScreen('mp-wait-screen');
+    mpListener = db.collection('rooms').doc(code).onSnapshot(snap=>{
+      if (!snap.exists) { mpLeave(); return; }
+      mpRoom = snap.data();
+      mpSync();
+    });
+  } catch(e) {
+    showToast('❌ خطأ في الاتصال');
+    if (btn) btn.disabled=false;
+  }
+}
+
+function mpRenderWaitPlayers() {
+  document.getElementById('mp-wait-players').innerHTML = (mpRoom.players||[]).map(p=>`
+    <div class="player-chip">
+      <div class="color-dot" style="background:${p.color}"></div>
+      <span style="font-weight:600;font-size:15px;">${p.name}</span>
+      ${p.id===mpPlayerId?'<span style="margin-right:auto;font-size:11px;color:var(--muted);">(أنت)</span>':''}
+      ${p.id===(mpRoom.hostId||'')?'<span style="font-size:13px;">👑</span>':''}
+    </div>`).join('');
+}
+
+async function mpSubmitGuess() {
+  if (!mpGuess || mpAnswered) return;
+  mpAnswered = true;
+  if (!mpIsHost) clearInterval(mpTimerIv); // host timer keeps running to auto-end round
+  const sb = document.getElementById('mp-submit-btn');
+  sb.disabled = true; sb.textContent = '✓ تم الإرسال';
+  const loc = mpRoom.loc;
+  const poly = loc.polygon ? polyFromDb(loc.polygon) : null;
+  let sc, dk=0, inArea=false;
+  if (poly && poly.length>=3 && pointInPolygon(mpGuess.lat,mpGuess.lng,poly)) {
+    inArea=true; sc=5000; dk=0;
+  } else {
+    const target = poly && poly.length>=3 ? polygonCentroid(poly) : [loc.lat,loc.lng];
+    dk = L.latLng(mpGuess).distanceTo(L.latLng(target[0],target[1]))/1000;
+    sc = Math.round(Math.max(0, 5000*Math.exp(-dk/3.5)));
+  }
+  const update = {};
+  update[`answers.${mpPlayerId}`] = {lat:mpGuess.lat, lng:mpGuess.lng, score:sc, dist:dk, inArea};
+  await db.collection('rooms').doc(mpRoomId).update(update);
+  // onSnapshot will trigger mpSync → check all answered → auto-results if so
+}
+
+function mpShowFinal() {
+  showScreen('mp-final-screen');
+  const players = [...(mpRoom.players||[])].sort((a,b)=>(b.score||0)-(a.score||0));
+  const medals = ['🥇','🥈','🥉'];
+  document.getElementById('mp-final-scores').innerHTML = players.map((p,i)=>`
+    <div style="display:flex;align-items:center;gap:12px;background:var(--card);border-radius:12px;padding:14px;border-right:4px solid ${p.color};">
+      <span style="font-size:24px;">${medals[i]||`#${i+1}`}</span>
+      <div class="color-dot" style="background:${p.color}"></div>
+      <span style="flex:1;font-weight:700;font-size:15px;">${p.name}</span>
+      <span style="font-size:22px;font-weight:900;color:${p.color};">${p.score||0}</span>
+    </div>`).join('');
+}
+
+function mpStartTimer(elId, startAt, duration, onExpire) {
+  clearInterval(mpTimerIv);
+  const el = document.getElementById(elId);
+  if (duration === 0) { el.textContent = '∞'; el.style.color = 'var(--gold)'; return; }
+  let expired = false;
+  function tick() {
+    const elapsed = (Date.now()-new Date(startAt).getTime())/1000;
+    if (elapsed < 0) {
+      // Prep window: show countdown to start
+      el.textContent = Math.ceil(-elapsed);
+      el.style.color = 'var(--muted)';
+      return;
+    }
+    const rem = Math.max(0, duration-elapsed);
+    el.textContent = Math.ceil(rem);
+    el.style.color = rem<=3 ? 'var(--red)' : 'var(--gold)';
+    if (rem<=0 && !expired) { expired=true; clearInterval(mpTimerIv); onExpire(); }
+  }
+  tick();
+  mpTimerIv = setInterval(tick, 250);
+}
+
+function mpLeave() {
+  if (mpListener) { mpListener(); mpListener=null; }
+  clearInterval(mpTimerIv);
+  if (mpGameMap)   { try{mpGameMap.remove();}catch(e){}   mpGameMap=null; }
+  if (mpHostMap)   { try{mpHostMap.remove();}catch(e){}   mpHostMap=null; }
+  if (mpResultMap) { try{mpResultMap.remove();}catch(e){} mpResultMap=null; }
+  mpRoomId=null; mpPlayerId=null; mpIsHost=false; mpRoom=null;
+  mpCurrentRound=0; mpGuess=null; mpAnswered=false;
+  showScreen('home-screen');
+}
+
+function mpBackHome() {
+  if (mpIsHost && mpRoomId) db.collection('rooms').doc(mpRoomId).delete().catch(()=>{});
+  mpLeave();
+}
+
+function mpReset() {
+  if (mpListener) { mpListener(); mpListener=null; }
+  clearInterval(mpTimerIv);
+  if (mpGameMap)   { try{mpGameMap.remove();}catch(e){}   mpGameMap=null; }
+  if (mpHostMap)   { try{mpHostMap.remove();}catch(e){}   mpHostMap=null; }
+  if (mpResultMap) { try{mpResultMap.remove();}catch(e){} mpResultMap=null; }
+  mpHostMapLayers=[]; mpGameMarker=null;
+  mpRoomId=null; mpPlayerId=null; mpIsHost=false; mpRoom=null;
+  mpCurrentRound=0; mpGuess=null; mpAnswered=false;
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+(async () => {
+  try {
+    await loadData();
+  } catch(e) {
+    console.error('Firebase load error:', e);
+    showToast('⚠️ تعذر الاتصال بالخادم');
+  }
+  document.getElementById('loading-overlay').classList.add('hidden');
+  showScreen('home-screen');
+})();
+</script>
+</body>
+</html>
+                            
