@@ -120,12 +120,8 @@
       <div class="stat-card" style="max-width:180px;"><div class="num" id="stat-highscore">0</div><div class="lbl">أعلى نتيجة</div></div>
     </div>
     <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
-      <button class="btn btn-primary" onclick="startGame('classic')">🗺️ العب منفرداً</button>
-      <button class="btn btn-secondary" style="background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.3);color:#ff7b72;" onclick="startGame('photo')">📷 وضع الصور</button>
-      <div style="display:flex;gap:10px;">
-        <button class="btn btn-secondary" style="flex:1;background:rgba(63,185,80,.15);border-color:rgba(63,185,80,.3);color:var(--green);" onclick="mpHostCreate()">👑 استضف لعبة</button>
-        <button class="btn btn-secondary" style="flex:1;" onclick="showScreen('mp-join-screen')">🎮 انضم للعبة</button>
-      </div>
+      <button class="btn btn-primary" onclick="showScreen('sp-mode-screen')">🗺️ العب بروحك</button>
+      <button class="btn btn-primary" onclick="showScreen('mp-menu-screen')">👥 العب مع مجموعة</button>
       <button class="btn btn-secondary" onclick="showScreen('how-screen')">❓ كيف تلعب</button>
     </div>
   </div>
@@ -147,7 +143,20 @@
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div><p style="padding-top:4px;">تتكون كل لعبة من 5 جولات. اجمع أعلى نتيجة ممكنة!</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">📷</div><p style="padding-top:4px;">في <b>وضع الصور</b>، تُعرض لك صورة فقط دون اسم الموقع — حدد مكانها على الخريطة بالاعتماد على الصورة وحدها.</p></div>
   </div>
-  <button class="btn btn-primary" style="margin-top:24px;" onclick="startGame('classic')">ابدأ الآن</button>
+  <button class="btn btn-primary" style="margin-top:24px;" onclick="showScreen('sp-mode-screen')">ابدأ الآن</button>
+</div>
+
+<!-- SINGLE PLAYER MODE SELECT -->
+<div id="sp-mode-screen" class="screen" style="gap:16px;padding:20px;justify-content:center;">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button class="back-btn" onclick="showScreen('home-screen')">→</button>
+    <h2 style="font-size:18px;">العب بروحك</h2>
+  </div>
+  <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
+    <button class="btn btn-primary" onclick="startGame('classic')">🗺️ كلاسيكي</button>
+    <button class="btn btn-secondary" style="background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.3);color:#ff7b72;" onclick="startGame('photo')">📷 وضع الصور</button>
+  </div>
+  <p style="color:var(--muted);font-size:13px;text-align:center;">في وضع الصور، تُعرض لك صورة الموقع فقط دون اسمه — حدد مكانه على الخريطة بالاعتماد على الصورة وحدها.</p>
 </div>
 
 <!-- GAME SCREEN -->
@@ -191,6 +200,26 @@
   <button class="btn btn-secondary" onclick="exitGame(true)">🏠 الرئيسية</button>
 </div>
 
+<!-- MULTIPLAYER MENU -->
+<div id="mp-menu-screen" class="screen" style="gap:16px;padding:20px;justify-content:center;">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button class="back-btn" onclick="showScreen('home-screen')">→</button>
+    <h2 style="font-size:18px;">العب مع مجموعة</h2>
+  </div>
+  <div>
+    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">وضع اللعب (عند الاستضافة)</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <button class="time-opt active" id="mp-mode-classic-btn" onclick="mpSetMode('classic')">🗺️ كلاسيكي</button>
+      <button class="time-opt" id="mp-mode-photo-btn" onclick="mpSetMode('photo')">📷 وضع الصور</button>
+    </div>
+  </div>
+  <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
+    <button class="btn btn-primary" style="background:rgba(63,185,80,.15);border:1px solid rgba(63,185,80,.3);color:var(--green);" onclick="mpHostCreate()">👑 استضف لعبة</button>
+    <button class="btn btn-secondary" onclick="showScreen('mp-join-screen')">🎮 انضم للعبة</button>
+  </div>
+  <p style="color:var(--muted);font-size:13px;text-align:center;">في وضع الصور، يشاهد اللاعبون صورة الموقع فقط دون اسمه عند التخمين.</p>
+</div>
+
 <!-- MP: HOST LOBBY -->
 <div id="mp-host-lobby" class="screen" style="gap:16px;padding:20px;">
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
@@ -226,7 +255,7 @@
 <!-- MP: JOIN SCREEN -->
 <div id="mp-join-screen" class="screen" style="gap:16px;padding:20px;justify-content:center;">
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-    <button class="back-btn" onclick="showScreen('home-screen')">→</button>
+    <button class="back-btn" onclick="showScreen('mp-menu-screen')">→</button>
     <h2 style="font-size:18px;">انضم للعبة</h2>
   </div>
   <div class="form-group">
@@ -502,7 +531,16 @@ const DEFAULTS = [
   {id:'l57',name:'مارينا مول',              category:'مولات', hint:'مول تجاري على شارع الخليج العربي في السالمية',                photo:'', lat:29.3395, lng:48.0658, polygon:null},
   {id:'l58',name:'الكوت مول',               category:'مولات', hint:'مول على الواجهة البحرية في الفحيحيل',                         photo:'', lat:29.0814, lng:48.1426, polygon:null},
   {id:'l59',name:'الجزيرة الخضراء',          category:'حدائق', hint:'جزيرة اصطناعية ومنتزه على الكورنيش قرب أبراج الكويت',         photo:'', lat:29.3815, lng:47.9975, polygon:null},
-  {id:'l60',name:'أكوا بارك الكويت',         category:'شواطئ', hint:'مدينة مائية شهيرة بجانب أبراج الكويت على الكورنيش',           photo:'', lat:29.3916, lng:48.0036, polygon:null}
+  {id:'l60',name:'أكوا بارك الكويت',         category:'شواطئ', hint:'مدينة مائية شهيرة بجانب أبراج الكويت على الكورنيش',           photo:'', lat:29.3916, lng:48.0036, polygon:null},
+  {id:'l61',name:'مجلس الأمة',              category:'حكومي', hint:'مبنى البرلمان الكويتي على شارع الخليج العربي، من تصميم مهندس دار أوبرا سيدني', photo:'', lat:29.3700, 'lng':47.9622, polygon:null},
+  {id:'l62',name:'جسر الشيخ جابر',          category:'معالم', hint:'أطول جسر بحري في المنطقة يربط مدينة الكويت بالصبية عبر الجون',  photo:'', lat:29.4140, lng:47.9170, polygon:null},
+  {id:'l63',name:'مسجد فاطمة',              category:'مساجد', hint:'مسجد بعمارة حديثة مميزة على شكل صدفة في منطقة عبدالله السالم',  photo:'', lat:29.3585, lng:47.9850, polygon:null},
+  {id:'l64',name:'جامعة الخليج GUST',       category:'معالم', hint:'جامعة خاصة معروفة في منطقة مشرف',                              photo:'', lat:29.3000, lng:48.0710, polygon:null},
+  {id:'l65',name:'الجامعة الأمريكية AUK',   category:'معالم', hint:'جامعة خاصة على الطراز الأمريكي في السالمية',                    photo:'', lat:29.3270, lng:48.0700, polygon:null},
+  {id:'l66',name:'جزيرة كبر',               category:'شواطئ', hint:'جزيرة صغيرة جنوب الكويت، وجهة شهيرة لرحلات القوارب والغوص',     photo:'', lat:29.0744, lng:48.4869, polygon:null},
+  {id:'l67',name:'جزيرة بوبيان',            category:'معالم', hint:'أكبر جزر الكويت في أقصى الشمال الشرقي قرب الصبية',              photo:'', lat:29.7500, lng:48.2000, polygon:null},
+  {id:'l68',name:'مكتبة الكويت الوطنية',    category:'حكومي', hint:'المكتبة الوطنية الرئيسية على شارع الخليج العربي قرب المتحف الوطني', photo:'', lat:29.3755, lng:47.9840, polygon:null},
+  {id:'l69',name:'حلبة الكويت لرياضة المحركات', category:'معالم', hint:'حلبة سباقات دولية جنوب البلاد قرب الوفرة',                  photo:'', lat:28.8550, lng:48.1700, polygon:null}
 ];
 
 // ── Firestore data layer ──────────────────────────────────────────────────────
@@ -540,6 +578,17 @@ async function loadData() {
       missing.forEach(loc => batch.set(locsCol.doc(loc.id), locToDb(loc)));
       await batch.commit();
       missing.forEach(l => locations.push({...l, _docId: l.id}));
+    }
+    // Backfill photos: DEFAULTS photo fills empty Firestore photo (admin-set photos always win)
+    const defById = new Map(DEFAULTS.map(l => [l.id, l]));
+    const toPatch = locations.filter(l => !l.photo && defById.get(l._docId) && defById.get(l._docId).photo);
+    if (toPatch.length > 0) {
+      const batch = db.batch();
+      toPatch.forEach(l => {
+        l.photo = defById.get(l._docId).photo;
+        batch.update(locsCol.doc(l._docId), {photo: l.photo});
+      });
+      await batch.commit();
     }
   }
 }
@@ -1071,6 +1120,13 @@ let mpRoomId=null, mpPlayerId=null, mpIsHost=false, mpRoom=null;
 let mpListener=null, mpTimerIv=null, mpGuess=null, mpCurrentRound=0;
 let mpGameMap=null, mpHostMap=null, mpResultMap=null, mpHostMapLayers=[], mpGameMarker=null;
 let mpTimeLimit=10, mpAnswered=false;
+let mpSelectedMode='classic'; // 'classic' | 'photo' — chosen by host before creating a room
+
+function mpSetMode(mode) {
+  mpSelectedMode = mode === 'photo' ? 'photo' : 'classic';
+  document.getElementById('mp-mode-classic-btn').classList.toggle('active', mpSelectedMode==='classic');
+  document.getElementById('mp-mode-photo-btn').classList.toggle('active', mpSelectedMode==='photo');
+}
 
 function mpGenCode() {
   const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -1086,21 +1142,27 @@ function mpSetTime(el, t) {
 
 async function mpHostCreate() {
   if (!locations.length) { showToast('⚠️ لا توجد مواقع'); return; }
+  let pool = locations;
+  if (mpSelectedMode === 'photo') {
+    pool = locations.filter(l=>l.photo);
+    if (!pool.length) { showToast('⚠️ لا توجد مواقع بصور بعد. أضف صوراً للمواقع من لوحة التحكم.'); return; }
+  }
+  const mode = mpSelectedMode;
   mpReset();
   mpIsHost = true;
   mpPlayerId = mpGenId();
   const code = mpGenCode();
   mpRoomId = code;
-  const shuffled = [...locations].sort(()=>Math.random()-.5).slice(0,5);
+  const shuffled = [...pool].sort(()=>Math.random()-.5).slice(0, Math.min(5, pool.length));
   const locs = shuffled.map(l=>({
     name:l.name, hint:l.hint||'', photo:l.photo||'',
     lat:l.lat, lng:l.lng, polygon: l.polygon ? polyToDb(l.polygon) : null
   }));
   // Host starts with empty players — name is read in mpHostStart after lobby
   await db.collection('rooms').doc(code).set({
-    status:'waiting', round:0, totalRounds:5,
+    status:'waiting', round:0, totalRounds:locs.length,
     loc:null, roundStartAt:null,
-    players:[], answers:{}, locs,
+    players:[], answers:{}, locs, mode,
     timeLimit:mpTimeLimit, hostId:mpPlayerId
   });
   document.getElementById('mp-room-code').textContent = code;
@@ -1177,9 +1239,19 @@ function mpSync() {
 function mpInitGameRound() {
   const {loc, round, totalRounds, roundStartAt, timeLimit} = mpRoom;
   if (!loc) return;
-  document.getElementById('mp-round-badge').textContent = `جولة ${round} / ${totalRounds}`;
-  document.getElementById('mp-hint-name').textContent = loc.name;
-  document.getElementById('mp-hint-text').textContent = loc.hint||'';
+  document.getElementById('mp-round-badge').textContent = `جولة ${round} / ${totalRounds}` + (mpRoom.mode==='photo' ? ' 📷' : '');
+  const mpHintPanel = document.querySelector('#mp-game-screen .hint-panel');
+  const mpNameEl = document.getElementById('mp-hint-name');
+  const mpTextEl = document.getElementById('mp-hint-text');
+  if (mpRoom.mode === 'photo') {
+    mpHintPanel.classList.add('photo-mode');
+    mpNameEl.style.display = 'none'; mpNameEl.textContent = '';
+    mpTextEl.style.display = 'none'; mpTextEl.textContent = '';
+  } else {
+    mpHintPanel.classList.remove('photo-mode');
+    mpNameEl.style.display = ''; mpNameEl.textContent = loc.name;
+    mpTextEl.style.display = ''; mpTextEl.textContent = loc.hint||'';
+  }
   const pe = document.getElementById('mp-hint-photo');
   if (loc.photo) { pe.src=loc.photo; pe.style.display='block'; } else pe.style.display='none';
   const me = (mpRoom.players||[]).find(p=>p.id===mpPlayerId);
@@ -1363,7 +1435,7 @@ async function mpHostShowResults() {
 async function mpHostCancel() {
   if (mpRoomId) await db.collection('rooms').doc(mpRoomId).delete().catch(()=>{});
   mpReset();
-  showScreen('home-screen');
+  showScreen('mp-menu-screen');
 }
 
 // ── Participant join ───────────────────────────────────────────────────────────
