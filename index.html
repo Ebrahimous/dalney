@@ -32,6 +32,9 @@
     .round-badge{background:var(--surface);border-radius:20px;padding:4px 12px;font-size:13px;font-weight:600;}
     .hint-panel{background:var(--card);border-radius:var(--radius);padding:14px;flex-shrink:0;border:1px solid rgba(255,255,255,.07);}
     .hint-photo{width:100%;max-height:160px;object-fit:cover;border-radius:10px;margin-top:10px;}
+    .hint-panel.photo-mode{padding:8px;}
+    .hint-panel.photo-mode .hint-photo{height:240px;max-height:240px;margin-top:0;}
+    .photo-mode-badge{display:inline-block;background:rgba(248,81,73,.15);color:#ff7b72;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;margin-inline-start:6px;}
     #game-map{flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;}
     .score-flash{font-size:48px;font-weight:900;text-align:center;margin:16px 0;}
     .dist-info{text-align:center;font-size:15px;color:var(--muted);margin-bottom:12px;}
@@ -117,7 +120,8 @@
       <div class="stat-card" style="max-width:180px;"><div class="num" id="stat-highscore">0</div><div class="lbl">أعلى نتيجة</div></div>
     </div>
     <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
-      <button class="btn btn-primary" onclick="startGame()">🗺️ العب منفرداً</button>
+      <button class="btn btn-primary" onclick="startGame('classic')">🗺️ العب منفرداً</button>
+      <button class="btn btn-secondary" style="background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.3);color:#ff7b72;" onclick="startGame('photo')">📷 وضع الصور</button>
       <div style="display:flex;gap:10px;">
         <button class="btn btn-secondary" style="flex:1;background:rgba(63,185,80,.15);border-color:rgba(63,185,80,.3);color:var(--green);" onclick="mpHostCreate()">👑 استضف لعبة</button>
         <button class="btn btn-secondary" style="flex:1;" onclick="showScreen('mp-join-screen')">🎮 انضم للعبة</button>
@@ -141,8 +145,9 @@
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div><p style="padding-top:4px;">اضغط على الخريطة في المكان الذي تظن أنه الموقع الصحيح.</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div><p style="padding-top:4px;">كلما كنت أقرب، حصلت على نقاط أكثر. الحد الأقصى 5000 نقطة في كل جولة.</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div><p style="padding-top:4px;">تتكون كل لعبة من 5 جولات. اجمع أعلى نتيجة ممكنة!</p></div>
+    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">📷</div><p style="padding-top:4px;">في <b>وضع الصور</b>، تُعرض لك صورة فقط دون اسم الموقع — حدد مكانها على الخريطة بالاعتماد على الصورة وحدها.</p></div>
   </div>
-  <button class="btn btn-primary" style="margin-top:24px;" onclick="startGame()">ابدأ الآن</button>
+  <button class="btn btn-primary" style="margin-top:24px;" onclick="startGame('classic')">ابدأ الآن</button>
 </div>
 
 <!-- GAME SCREEN -->
@@ -182,7 +187,7 @@
     <div style="font-size:13px;color:var(--muted);margin-top:8px;" id="new-best"></div>
   </div>
   <div style="width:100%;display:flex;flex-direction:column;gap:8px;" id="round-summary"></div>
-  <button class="btn btn-primary" onclick="startGame()">🔄 العب مرة أخرى</button>
+  <button class="btn btn-primary" onclick="startGame(gameMode)">🔄 العب مرة أخرى</button>
   <button class="btn btn-secondary" onclick="exitGame(true)">🏠 الرئيسية</button>
 </div>
 
@@ -436,6 +441,7 @@ const locsCol = db.collection('locations');
 // ── State ─────────────────────────────────────────────────────────────────────
 const KW = [29.3759, 47.9774];
 let locations = [], gameRounds = [], currentRound = 0, totalScore = 0, guess = null;
+let gameMode = 'classic'; // 'classic' | 'photo'
 let gameMap = null, resultMap = null, adminMap = null, adminMarker = null;
 let editMap = null, editMarker = null, editDocId = null, editIndex = -1;
 let adminTapCount = 0, adminTapTimer = null;
@@ -723,8 +729,18 @@ function polygonCentroid(poly) {
 }
 
 // ── Game ──────────────────────────────────────────────────────────────────────
-function startGame() {
-  gameRounds = shuffle([...locations]).slice(0, Math.min(5, locations.length));
+function startGame(mode) {
+  gameMode = mode === 'photo' ? 'photo' : 'classic';
+  let pool = locations;
+  if (gameMode === 'photo') {
+    pool = locations.filter(l => l.photo);
+    if (pool.length === 0) {
+      showToast('⚠️ لا توجد مواقع بصور بعد. أضف صوراً للمواقع من لوحة التحكم.');
+      gameMode = 'classic';
+      return;
+    }
+  }
+  gameRounds = shuffle([...pool]).slice(0, Math.min(5, pool.length));
   currentRound = 0; totalScore = 0; guess = null;
   showScreen('game-screen');
   loadRound();
@@ -742,11 +758,24 @@ function loadRound() {
   guess = null;
   document.getElementById('submit-btn').disabled = true;
   const loc = gameRounds[currentRound];
-  document.getElementById('round-badge').textContent = `جولة ${currentRound+1} / ${gameRounds.length}`;
+  document.getElementById('round-badge').textContent = `جولة ${currentRound+1} / ${gameRounds.length}` + (gameMode === 'photo' ? ' 📷' : '');
   document.getElementById('score-badge').textContent = totalScore;
-  document.getElementById('hint-name').textContent = loc.name;
-  document.getElementById('hint-text').textContent = loc.hint || '';
+  const hintPanel = document.querySelector('#game-screen .hint-panel');
+  const nameEl = document.getElementById('hint-name');
+  const textEl = document.getElementById('hint-text');
   const p = document.getElementById('hint-photo');
+  if (gameMode === 'photo') {
+    hintPanel.classList.add('photo-mode');
+    nameEl.style.display = 'none';
+    textEl.style.display = 'none';
+    nameEl.textContent = ''; textEl.textContent = '';
+  } else {
+    hintPanel.classList.remove('photo-mode');
+    nameEl.style.display = '';
+    textEl.style.display = '';
+    nameEl.textContent = loc.name;
+    textEl.textContent = loc.hint || '';
+  }
   if (loc.photo) { p.src=loc.photo; p.style.display='block'; p.onerror=()=>{p.style.display='none';}; }
   else p.style.display = 'none';
   if (gameMap) gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
@@ -783,9 +812,10 @@ function submitGuess() {
   gameRounds[currentRound]._result = {score:sc, dist:dk, inArea};
   document.getElementById('score-flash').textContent = sc;
   document.getElementById('score-flash').style.color = sc>=4000?'var(--green)':sc>=2000?'var(--gold)':'var(--red)';
-  document.getElementById('dist-info').textContent = inArea
+  const distText = inArea
     ? `✅ داخل المنطقة! 5000 نقطة`
     : `📍 المسافة: ${dk<1?(dk*1000).toFixed(0)+' م':(dk).toFixed(1)+' كم'} — +${sc} نقطة`;
+  document.getElementById('dist-info').textContent = gameMode === 'photo' ? `${loc.name} • ${distText}` : distText;
   document.getElementById('next-btn').textContent = currentRound+1 >= gameRounds.length ? 'النتائج ›' : 'التالي ›';
   showScreen('result-screen');
   requestAnimationFrame(() => requestAnimationFrame(() => {
