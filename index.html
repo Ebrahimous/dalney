@@ -142,7 +142,7 @@
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div><p style="padding-top:4px;">اضغط على الخريطة في المكان الذي تظن أنه الموقع الصحيح.</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div><p style="padding-top:4px;">كلما كنت أقرب، حصلت على نقاط أكثر. الحد الأقصى 5000 نقطة في كل جولة.</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div><p style="padding-top:4px;">يمكنك اختيار عدد جولات اللعبة (5، 10، أو 20). اجمع أعلى نتيجة ممكنة!</p></div>
-    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">📷</div><p style="padding-top:4px;">في <b>وضع الصور</b>، تُعرض لك صورة فقط دون اسم الموقع — حدد مكانها على الخريطة بالاعتماد على الصورة وحدها.</p></div>
+    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">📷</div><p style="padding-top:4px;">في <b>صور الأماكن</b>، تُعرض لك صورة فقط دون اسم الموقع — حدد مكانها على الخريطة بالاعتماد على الصورة وحدها.</p></div>
   </div>
   <button class="btn btn-primary" style="margin-top:24px;" onclick="showScreen('sp-mode-screen')">ابدأ الآن</button>
 </div>
@@ -162,8 +162,8 @@
     </div>
   </div>
   <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
-    <button class="btn btn-primary" onclick="startGame('classic')">🗺️ كلاسيكي</button>
-    <button class="btn btn-primary" onclick="startGame('photo')">📷 وضع الصور</button>
+    <button class="btn btn-primary" onclick="startGame('classic')">🗺️ أسماء الأماكن</button>
+    <button class="btn btn-primary" onclick="startGame('photo')">📷 صور الأماكن</button>
   </div>
 </div>
 
@@ -223,8 +223,8 @@
   <div>
     <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">وضع اللعب (عند الاستضافة)</label>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <button class="time-opt active" id="mp-mode-classic-btn" onclick="mpSetMode('classic')">🗺️ كلاسيكي</button>
-      <button class="time-opt" id="mp-mode-photo-btn" onclick="mpSetMode('photo')">📷 وضع الصور</button>
+      <button class="time-opt active" id="mp-mode-classic-btn" onclick="mpSetMode('classic')">🗺️ أسماء الأماكن</button>
+      <button class="time-opt" id="mp-mode-photo-btn" onclick="mpSetMode('photo')">📷 صور الأماكن</button>
     </div>
   </div>
   <div>
@@ -878,7 +878,7 @@ function loadRound() {
     nameEl.textContent = loc.name;
     textEl.textContent = loc.hint || '';
   }
-  if (loc.photo) { p.src=loc.photo; p.style.display='block'; p.onerror=()=>{p.style.display='none';}; }
+  if (gameMode === 'photo' && loc.photo) { p.src=loc.photo; p.style.display='block'; p.onerror=()=>{p.style.display='none';}; }
   else p.style.display = 'none';
   if (gameMap) gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
 }
@@ -1387,7 +1387,7 @@ function mpInitGameRound() {
     mpTextEl.style.display = ''; mpTextEl.textContent = loc.hint||'';
   }
   const pe = document.getElementById('mp-hint-photo');
-  if (loc.photo) { pe.src=loc.photo; pe.style.display='block'; } else pe.style.display='none';
+  if (mpRoom.mode === 'photo' && loc.photo) { pe.src=loc.photo; pe.style.display='block'; } else pe.style.display='none';
   const me = (mpRoom.players||[]).find(p=>p.id===mpPlayerId);
   document.getElementById('mp-score-badge').textContent = me?me.score:0;
   const sb = document.getElementById('mp-submit-btn');
