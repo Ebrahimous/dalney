@@ -1209,7 +1209,7 @@ function showToast(msg) {
 // ── Player report (flag) ────────────────────────────────────────────────────────
 function reportLocation(loc) {
   if (!loc) { showToast('⚠️ تعذر تحديد الموقع الحالي'); return; }
-  showConfirm(`هل تريد الإبلاغ عن مشكلة في صورة أو إحداثيات "${loc.name || 'هذا الموقع'}"؟`, async ok => {
+  showConfirm('هل تريد الإبلاغ عن مشكلة في صورة أو إحداثيات هذا الموقع؟', async ok => {
     if (!ok) return;
     try {
       await reportsCol.add({
