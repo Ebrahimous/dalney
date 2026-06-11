@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-  <title>دلني - الكويت</title>
+  <title>دَلني - الكويت</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Cairo:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -60,15 +60,18 @@
     #edit-map{width:100%;height:260px;border-radius:10px;overflow:hidden;}
     #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#000;padding:10px 20px;border-radius:20px;font-weight:700;font-size:14px;opacity:0;transition:all .3s;pointer-events:none;z-index:9999;}
     #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-    .guess-marker-icon{width:32px;height:32px;background:var(--blue);border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;}
-    .correct-marker-icon{position:relative;width:32px;height:32px;}
-    .correct-marker-icon .flag-pulse{position:absolute;left:50%;top:100%;width:16px;height:16px;margin:-8px 0 0 -8px;border:2px solid var(--green);border-radius:50%;animation:pulse-ring 1.6s ease-out infinite;}
-    .correct-marker-icon .flag-emoji{position:absolute;left:50%;bottom:0;transform:translateX(-50%);font-size:26px;line-height:1;}
+    .guess-marker-icon{width:42px;height:42px;background:var(--blue);border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:4px solid #fff;}
+    .correct-marker-icon{position:relative;width:42px;height:42px;}
+    .correct-marker-icon .flag-pulse{position:absolute;left:50%;top:100%;width:22px;height:22px;margin:-11px 0 0 -11px;border:2px solid var(--green);border-radius:50%;animation:pulse-ring 1.6s ease-out infinite;}
+    .correct-marker-icon .flag-emoji{position:absolute;left:50%;bottom:0;transform:translateX(-50%);font-size:34px;line-height:1;}
     @keyframes pulse-ring{0%{transform:scale(.4);opacity:.8;}100%{transform:scale(2.4);opacity:0;}}
-    .player-pin-icon{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;display:flex;align-items:center;justify-content:center;overflow:hidden;}
-    .player-pin-icon span{transform:rotate(45deg);font-size:11px;font-weight:800;color:#fff;}
+    .player-pin-icon{width:36px;height:36px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+    .player-pin-icon span{transform:rotate(45deg);font-size:15px;font-weight:800;color:#fff;}
     .player-pin-icon img{width:100%;height:100%;object-fit:cover;transform:rotate(45deg);}
     .selfie-btn{width:40px;height:40px;flex-shrink:0;border-radius:50%;background:var(--card2,rgba(255,255,255,.06));border:1px dashed rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;background-size:cover;background-position:center;color:var(--muted);}
+    .selfie-cam-box{position:relative;width:280px;height:280px;max-width:80vw;max-height:80vw;border-radius:16px;overflow:hidden;background:#000;}
+    .selfie-cam-box video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
+    .selfie-cam-outline{position:absolute;inset:0;margin:auto;width:74%;height:74%;border:3px dashed var(--blue);border-radius:50%;pointer-events:none;box-shadow:0 0 0 2000px rgba(0,0,0,.45);}
     .draw-bar{display:flex;align-items:center;gap:8px;background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.3);border-radius:10px;padding:10px 12px;flex-wrap:wrap;}
     .draw-bar span{font-size:13px;color:var(--blue);flex:1;}
     /* Loading overlay */
@@ -133,15 +136,15 @@
         <line x1="83" y1="81" x2="112" y2="110" stroke="#58a6ff" stroke-width="9" stroke-linecap="round"/>
         <line x1="85" y1="83" x2="108" y2="106" stroke="rgba(255,255,255,0.15)" stroke-width="3" stroke-linecap="round"/>
       </svg>
-      <h1 style="font-family:'Lalezar',sans-serif;font-size:58px;color:var(--blue);line-height:1.1;letter-spacing:-1px;">دلني</h1>
+      <h1 style="font-family:'Lalezar',sans-serif;font-size:58px;color:var(--blue);line-height:1.1;letter-spacing:-1px;">دَلني</h1>
       <p style="font-family:'Cairo',sans-serif;font-size:16px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-top:-4px;">ورنا شطارتك</p>
     </div>
     <div style="display:flex;gap:16px;width:100%;justify-content:center;">
       <div class="stat-card" style="max-width:180px;"><div class="num" id="stat-highscore">0</div><div class="lbl">أعلى نتيجة</div></div>
     </div>
     <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
-      <button class="btn btn-primary" onclick="showScreen('sp-mode-screen')">🗺️ العب بروحك</button>
-      <button class="btn btn-primary" onclick="showScreen('mp-menu-screen')">👥 العب مع مجموعة</button>
+      <button class="btn btn-primary" onclick="showScreen('sp-mode-screen')">🗺️ لعب فردي</button>
+      <button class="btn btn-primary" onclick="showScreen('mp-menu-screen')">👥 لعب جماعي</button>
       <button class="btn btn-secondary" onclick="showScreen('how-screen')">❓ كيف تلعب</button>
     </div>
   </div>
@@ -170,7 +173,7 @@
 <div id="sp-mode-screen" class="screen" style="padding:20px;">
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
     <button class="back-btn" onclick="showScreen('home-screen')">→</button>
-    <h2 style="font-size:18px;">العب بروحك</h2>
+    <h2 style="font-size:18px;">لعب فردي</h2>
   </div>
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:20px;">
     <div class="menu-intro">
@@ -259,7 +262,7 @@
 <div id="mp-menu-screen" class="screen" style="padding:20px;">
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
     <button class="back-btn" onclick="showScreen('home-screen')">→</button>
-    <h2 style="font-size:18px;">العب مع مجموعة</h2>
+    <h2 style="font-size:18px;">لعب جماعي</h2>
   </div>
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:20px;">
     <div class="menu-intro">
@@ -318,10 +321,10 @@
     <div class="form-group">
       <label>انضم كلاعب (اختياري)</label>
       <div style="display:flex;gap:8px;">
-        <label for="mp-host-selfie" class="selfie-btn" id="mp-host-selfie-preview" title="إضافة صورة شخصية">📷</label>
+        <button type="button" class="selfie-btn" id="mp-host-selfie-preview" title="إضافة صورة شخصية" onclick="mpOpenCamera('mp-host-selfie-preview')">📷</button>
         <input id="mp-host-selfie" type="file" accept="image/*" capture="user" style="display:none;" onchange="mpCaptureSelfie(this,'mp-host-selfie-preview')">
         <input id="mp-host-name" type="text" maxlength="14" placeholder="أدخل اسمك" style="flex:1;">
-        <button class="btn btn-secondary" id="mp-host-join-btn" onclick="mpHostAddSelf()" style="flex-shrink:0;padding:0 16px;border-radius:12px;">➕ أضف</button>
+        <button class="btn btn-secondary" id="mp-host-join-btn" onclick="mpHostAddSelf()" style="width:auto;flex-shrink:0;white-space:nowrap;padding:0 16px;border-radius:12px;">➕ أضف</button>
       </div>
     </div>
     <div>
@@ -351,7 +354,7 @@
   <div class="form-group">
     <label>اسمك</label>
     <div style="display:flex;gap:8px;">
-      <label for="mp-join-selfie" class="selfie-btn" id="mp-join-selfie-preview" title="إضافة صورة شخصية">📷</label>
+      <button type="button" class="selfie-btn" id="mp-join-selfie-preview" title="إضافة صورة شخصية" onclick="mpOpenCamera('mp-join-selfie-preview')">📷</button>
       <input id="mp-join-selfie" type="file" accept="image/*" capture="user" style="display:none;" onchange="mpCaptureSelfie(this,'mp-join-selfie-preview')">
       <input id="mp-name-input" type="text" maxlength="14" placeholder="أدخل اسمك" style="flex:1;">
     </div>
@@ -515,6 +518,11 @@
       <img id="edit-photo-preview" src="" alt="" style="display:none;width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-top:6px;">
     </div>
     <div class="form-group">
+      <label>صور إضافية (تُعرض عشوائياً في وضع الصور)</label>
+      <div id="edit-extra-photos"></div>
+      <button type="button" onclick="addExtraPhoto('edit')" class="btn btn-sm btn-secondary" style="margin-top:6px;">➕ إضافة صورة</button>
+    </div>
+    <div class="form-group">
       <label>الموقع على الخريطة</label>
       <div id="edit-map"></div>
       <div style="display:flex;gap:8px;margin-top:6px;">
@@ -553,6 +561,19 @@
   </div>
 </div>
 
+<!-- Selfie camera modal with face-outline guide -->
+<div id="selfie-cam-modal" style="display:none;position:fixed;inset:0;z-index:99500;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:24px;flex-direction:column;gap:16px;">
+  <div class="selfie-cam-box">
+    <video id="selfie-cam-video" autoplay playsinline muted></video>
+    <div class="selfie-cam-outline"></div>
+  </div>
+  <p style="color:var(--muted);font-size:13px;text-align:center;">ضع وجهك داخل الدائرة</p>
+  <div style="display:flex;gap:10px;width:100%;max-width:280px;">
+    <button onclick="mpCloseCamera()" class="btn btn-secondary" style="flex:1;padding:12px;">إلغاء</button>
+    <button onclick="mpTakeSelfie()" class="btn btn-primary" style="flex:1;padding:12px;">📸 التقط</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 <script>
 // ── Firebase setup ────────────────────────────────────────────────────────────
@@ -582,6 +603,19 @@ function setRoundCount(el, n) {
 let gameMode = 'classic'; // 'classic' | 'photo'
 let gameMap = null, resultMap = null, adminMap = null, adminMarker = null;
 let editMap = null, editMarker = null, editDocId = null, editIndex = -1;
+let editExtraPhotos = [];
+
+// Returns all photo URLs for a location (primary + extras), filtering out empties.
+function getLocPhotos(loc) {
+  const photos = [loc && loc.photo, ...((loc && loc.photos) || [])];
+  return photos.filter(Boolean);
+}
+// Picks one photo at random from all photos available for a location.
+function pickRandomPhoto(loc) {
+  const photos = getLocPhotos(loc);
+  if (!photos.length) return '';
+  return photos[Math.floor(Math.random() * photos.length)];
+}
 let adminTapCount = 0, adminTapTimer = null;
 
 // ── Sound effects (Web Audio — synthesized, no external files) ────────────────
@@ -861,6 +895,88 @@ function handlePhotoUpload(inputId, previewId, fileInput) {
   reader.readAsDataURL(file);
 }
 
+// Resize an image file to a base64 data URL (max 800px), invoking cb(dataUrl) when done.
+function resizeImageFile(file, cb) {
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = e => {
+    img.onload = () => {
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else       { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      cb(canvas.toDataURL('image/jpeg', 0.72));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Extra photos (multi-photo support per location) ────────────────────────────
+function renderExtraPhotos(prefix) {
+  const container = document.getElementById(prefix + '-extra-photos');
+  if (!container) return;
+  container.innerHTML = '';
+  editExtraPhotos.forEach((url, idx) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:6px;align-items:center;margin-top:6px;';
+
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.cssText = 'width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--dark);';
+    img.onerror = () => { img.style.visibility = 'hidden'; };
+
+    const input = document.createElement('input');
+    input.type = 'url';
+    input.value = url;
+    input.dir = 'ltr';
+    input.placeholder = 'رابط URL';
+    input.style.cssText = 'flex:1;min-width:0;background:var(--dark);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:8px;border-radius:8px;font-size:13px;';
+    input.oninput = () => { editExtraPhotos[idx] = input.value; img.src = input.value; img.style.visibility = 'visible'; };
+
+    const uploadLabel = document.createElement('label');
+    uploadLabel.style.cssText = 'background:var(--surface);border:1px dashed rgba(255,255,255,.2);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:13px;color:var(--muted);flex-shrink:0;';
+    uploadLabel.textContent = '📁';
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    fileInput.onchange = () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      resizeImageFile(file, dataUrl => {
+        editExtraPhotos[idx] = dataUrl;
+        input.value = dataUrl;
+        img.src = dataUrl;
+        img.style.visibility = 'visible';
+      });
+    };
+    uploadLabel.appendChild(fileInput);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '✕';
+    removeBtn.style.cssText = 'background:rgba(248,81,73,.15);color:var(--red);border:none;border-radius:8px;padding:8px 10px;cursor:pointer;flex-shrink:0;';
+    removeBtn.onclick = () => { editExtraPhotos.splice(idx, 1); renderExtraPhotos(prefix); };
+
+    row.appendChild(img);
+    row.appendChild(input);
+    row.appendChild(uploadLabel);
+    row.appendChild(removeBtn);
+    container.appendChild(row);
+  });
+}
+
+function addExtraPhoto(prefix) {
+  editExtraPhotos.push('');
+  renderExtraPhotos(prefix);
+}
+
 // ── Polygon drawing ───────────────────────────────────────────────────────────
 function getMap(ctx) { return ctx === 'new' ? adminMap : editMap; }
 
@@ -964,7 +1080,7 @@ function startGame(mode) {
   gameMode = mode === 'photo' ? 'photo' : 'classic';
   let pool = locations;
   if (gameMode === 'photo') {
-    pool = locations.filter(l => l.photo);
+    pool = locations.filter(l => getLocPhotos(l).length > 0);
     if (pool.length === 0) {
       showToast('⚠️ لا توجد مواقع بصور بعد. أضف صوراً للمواقع من لوحة التحكم.');
       gameMode = 'classic';
@@ -1013,7 +1129,8 @@ function loadRound() {
     nameEl.textContent = loc.name;
     textEl.textContent = loc.hint || '';
   }
-  if (gameMode === 'photo' && loc.photo) { p.src=loc.photo; p.style.display='block'; p.onerror=()=>{p.style.display='none';}; }
+  const roundPhoto = gameMode === 'photo' ? pickRandomPhoto(loc) : '';
+  if (roundPhoto) { p.src=roundPhoto; p.style.display='block'; p.onerror=()=>{p.style.display='none';}; }
   else p.style.display = 'none';
   if (gameMap) gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
 }
@@ -1027,7 +1144,7 @@ function initGameMap() {
   gameMap.on('click', e => {
     guess = e.latlng;
     gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
-    const icon = L.divIcon({className:'',html:'<div class="guess-marker-icon"></div>',iconSize:[32,32],iconAnchor:[16,32]});
+    const icon = L.divIcon({className:'',html:'<div class="guess-marker-icon"></div>',iconSize:[42,42],iconAnchor:[21,42]});
     L.marker(e.latlng, {icon}).addTo(gameMap);
     document.getElementById('submit-btn').disabled = false;
     playSound('pin');
@@ -1068,8 +1185,8 @@ function initResultMap(loc, g) {
   fixMapHeight('result-map', 'result-screen');
   resultMap = L.map('result-map', {zoomControl:true, minZoom:7, maxZoom:17});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OSM'}).addTo(resultMap);
-  const ci = L.divIcon({className:'',html:'<div class="correct-marker-icon"><div class="flag-pulse"></div><div class="flag-emoji">🚩</div></div>',iconSize:[32,32],iconAnchor:[16,32]});
-  const gi = L.divIcon({className:'',html:'<div class="guess-marker-icon"></div>',iconSize:[32,32],iconAnchor:[16,32]});
+  const ci = L.divIcon({className:'',html:'<div class="correct-marker-icon"><div class="flag-pulse"></div><div class="flag-emoji">🚩</div></div>',iconSize:[42,42],iconAnchor:[21,42]});
+  const gi = L.divIcon({className:'',html:'<div class="guess-marker-icon"></div>',iconSize:[42,42],iconAnchor:[21,42]});
   const poly = loc.polygon;
   if (poly && poly.length >= 3)
     L.polygon(poly, {color:'#3fb950',fillColor:'#3fb950',fillOpacity:.15,weight:2}).addTo(resultMap);
@@ -1090,8 +1207,10 @@ function nextRound() {
   loadRound();
   requestAnimationFrame(() => requestAnimationFrame(() => {
     try {
-      if (gameMap) gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
-      else initGameMap();
+      if (gameMap) {
+        gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
+        gameMap.setView(KW, 9);
+      } else initGameMap();
     } catch(e) { console.warn(e); }
   }));
 }
@@ -1263,6 +1382,8 @@ function openEditModal(i) {
   document.getElementById('edit-lng').value      = loc.lng;
   const ep = document.getElementById('edit-photo-preview');
   if (loc.photo) { ep.src=loc.photo; ep.style.display='block'; } else ep.style.display='none';
+  editExtraPhotos = Array.isArray(loc.photos) ? [...loc.photos] : [];
+  renderExtraPhotos('edit');
   polyState.edit.polygon = loc.polygon && loc.polygon.length >= 3 ? [...loc.polygon] : null;
   document.getElementById('edit-modal').style.display = 'block';
   setTimeout(() => {
@@ -1314,6 +1435,7 @@ async function saveEdit() {
     category: document.getElementById('edit-category').value,
     hint:     document.getElementById('edit-hint').value.trim(),
     photo:    document.getElementById('edit-photo').value.trim(),
+    photos:   editExtraPhotos.map(p=>p.trim()).filter(Boolean),
     lat, lng, polygon, updatedAt: new Date().toISOString()
   };
   const btn = document.getElementById('save-edit-btn');
@@ -1406,6 +1528,58 @@ function mpCaptureSelfie(input, previewId) {
   };
   reader.readAsDataURL(file);
 }
+
+// ── Camera-based selfie capture with face-outline guide ─────────────────────────
+let selfieCamStream = null, selfieCamTarget = null;
+
+async function mpOpenCamera(previewId) {
+  selfieCamTarget = previewId;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'user'}, audio:false });
+    selfieCamStream = stream;
+    const video = document.getElementById('selfie-cam-video');
+    video.srcObject = stream;
+    document.getElementById('selfie-cam-modal').style.display = 'flex';
+  } catch (e) {
+    // Camera unavailable/denied — fall back to the file picker
+    const input = document.getElementById(previewId.replace(/-preview$/, ''));
+    if (input) input.click();
+  }
+}
+
+function mpCloseCamera() {
+  if (selfieCamStream) { selfieCamStream.getTracks().forEach(t=>t.stop()); selfieCamStream = null; }
+  const video = document.getElementById('selfie-cam-video');
+  if (video) video.srcObject = null;
+  document.getElementById('selfie-cam-modal').style.display = 'none';
+  selfieCamTarget = null;
+}
+
+function mpTakeSelfie() {
+  const video = document.getElementById('selfie-cam-video');
+  if (!video || !video.videoWidth) return;
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const box = document.querySelector('#selfie-cam-modal .selfie-cam-box');
+  const outline = box.querySelector('.selfie-cam-outline');
+  const boxRect = box.getBoundingClientRect();
+  const outlineRect = outline.getBoundingClientRect();
+  // The outline circle covers this fraction of the box; map that to source video pixels
+  // (object-fit:cover means the box shows a centered min(vw,vh) square of the video).
+  const frac = outlineRect.width / boxRect.width;
+  const srcSide = frac * Math.min(vw, vh);
+  const srcX = (vw - srcSide) / 2, srcY = (vh - srcSide) / 2;
+  const size = 80;
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.translate(size, 0); ctx.scale(-1, 1); // mirror to match the on-screen preview
+  ctx.drawImage(video, srcX, srcY, srcSide, srcSide, 0, 0, size, size);
+  mpMySelfie = canvas.toDataURL('image/jpeg', 0.6);
+  const preview = document.getElementById(selfieCamTarget);
+  if (preview) { preview.style.backgroundImage = `url(${mpMySelfie})`; preview.textContent = ''; }
+  mpCloseCamera();
+}
+
 const KW_CENTER = [29.3697, 47.9783];
 let mpRoomId=null, mpPlayerId=null, mpIsHost=false, mpRoom=null;
 let mpListener=null, mpTimerIv=null, mpGuess=null, mpCurrentRound=0;
@@ -1452,7 +1626,7 @@ async function mpHostCreate() {
   if (!locations.length) { showToast('⚠️ لا توجد مواقع'); return; }
   let pool = locations;
   if (mpSelectedMode === 'photo') {
-    pool = locations.filter(l=>l.photo);
+    pool = locations.filter(l => getLocPhotos(l).length > 0);
     if (!pool.length) { showToast('⚠️ لا توجد مواقع بصور بعد. أضف صوراً للمواقع من لوحة التحكم.'); return; }
   }
   const mode = mpSelectedMode;
@@ -1461,10 +1635,10 @@ async function mpHostCreate() {
   mpPlayerId = mpGenId();
   const code = mpGenCode();
   mpRoomId = code;
-  const shuffled = [...pool].sort(()=>Math.random()-.5).slice(0, Math.min(mpSelectedRounds, pool.length));
+  const shuffled = shuffle([...pool]).slice(0, Math.min(mpSelectedRounds, pool.length));
   const locs = shuffled.map(l=>({
     id: l._docId || l.id || null,
-    name:l.name, hint:l.hint||'', photo:l.photo||'',
+    name:l.name, hint:l.hint||'', photo: pickRandomPhoto(l) || '',
     lat:l.lat, lng:l.lng, polygon: l.polygon ? polyToDb(l.polygon) : null
   }));
   // Host starts with empty players — name is read in mpHostStart after lobby
@@ -1586,7 +1760,7 @@ function mpInitGameRound() {
         if (mpAnswered) return;
         mpGuess = {lat:e.latlng.lat, lng:e.latlng.lng};
         if (mpGameMarker) mpGameMap.removeLayer(mpGameMarker);
-        const icon = L.divIcon({html:`<div style="width:28px;height:28px;background:${myColor};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;"></div>`,iconSize:[28,28],iconAnchor:[14,28],className:''});
+        const icon = L.divIcon({html:`<div style="width:38px;height:38px;background:${myColor};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:4px solid #fff;"></div>`,iconSize:[38,38],iconAnchor:[19,38],className:''});
         mpGameMarker = L.marker([e.latlng.lat,e.latlng.lng],{icon}).addTo(mpGameMap);
         document.getElementById('mp-submit-btn').disabled = false;
         playSound('pin');
@@ -1661,7 +1835,7 @@ function mpShowRoundResult() {
       if (!loc) return;
       const locObj = {...loc, polygon: loc.polygon ? polyFromDb(loc.polygon) : null};
       const bounds = [[locObj.lat,locObj.lng]];
-      const ci = L.divIcon({html:'<div class="correct-marker-icon"><div class="flag-pulse"></div><div class="flag-emoji">🚩</div></div>',iconSize:[32,32],iconAnchor:[16,32],className:''});
+      const ci = L.divIcon({html:'<div class="correct-marker-icon"><div class="flag-pulse"></div><div class="flag-emoji">🚩</div></div>',iconSize:[42,42],iconAnchor:[21,42],className:''});
       L.marker([locObj.lat,locObj.lng],{icon:ci}).bindPopup(`<b>${locObj.name}</b>`).addTo(mpResultMap).openPopup();
       if (locObj.polygon && locObj.polygon.length>=3)
         L.polygon(locObj.polygon,{color:'#3fb950',fillOpacity:.1,weight:2}).addTo(mpResultMap);
@@ -1670,7 +1844,7 @@ function mpShowRoundResult() {
         if (!ans || ans.lat == null) return;  // skip blank/no-answer entries
         bounds.push([ans.lat,ans.lng]);
         const avatarHtml = p.selfie ? `<img src="${p.selfie}" alt="">` : `<span>${p.name[0]}</span>`;
-        const pi = L.divIcon({html:`<div class="player-pin-icon" style="background:${p.color};">${avatarHtml}</div>`,iconSize:[26,26],iconAnchor:[13,26],className:''});
+        const pi = L.divIcon({html:`<div class="player-pin-icon" style="background:${p.color};">${avatarHtml}</div>`,iconSize:[36,36],iconAnchor:[18,36],className:''});
         L.marker([ans.lat,ans.lng],{icon:pi}).bindPopup(`<b>${p.name}</b><br>${ans.score} نقطة — ${(ans.dist||0).toFixed(1)} كم`).addTo(mpResultMap);
         L.polyline([[ans.lat,ans.lng],[locObj.lat,locObj.lng]],{color:p.color,weight:1.5,dashArray:'5,5',opacity:.7}).addTo(mpResultMap);
       });
@@ -1880,6 +2054,7 @@ function mpBackHome() {
 }
 
 function mpReset() {
+  mpCloseCamera();
   if (mpListener) { mpListener(); mpListener=null; }
   clearInterval(mpTimerIv);
   if (mpGameMap)   { try{mpGameMap.remove();}catch(e){}   mpGameMap=null; }
