@@ -61,7 +61,12 @@
     #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#000;padding:10px 20px;border-radius:20px;font-weight:700;font-size:14px;opacity:0;transition:all .3s;pointer-events:none;z-index:9999;}
     #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
     .guess-marker-icon{width:32px;height:32px;background:var(--blue);border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;}
-    .correct-marker-icon{width:32px;height:32px;background:var(--green);border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;}
+    .correct-marker-icon{position:relative;width:32px;height:32px;}
+    .correct-marker-icon .flag-pulse{position:absolute;left:50%;top:100%;width:16px;height:16px;margin:-8px 0 0 -8px;border:2px solid var(--green);border-radius:50%;animation:pulse-ring 1.6s ease-out infinite;}
+    .correct-marker-icon .flag-emoji{position:absolute;left:50%;bottom:0;transform:translateX(-50%);font-size:26px;line-height:1;}
+    @keyframes pulse-ring{0%{transform:scale(.4);opacity:.8;}100%{transform:scale(2.4);opacity:0;}}
+    .player-pin-icon{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;display:flex;align-items:center;justify-content:center;}
+    .player-pin-icon span{transform:rotate(45deg);font-size:11px;font-weight:800;color:#fff;}
     .draw-bar{display:flex;align-items:center;gap:8px;background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.3);border-radius:10px;padding:10px 12px;flex-wrap:wrap;}
     .draw-bar span{font-size:13px;color:var(--blue);flex:1;}
     /* Loading overlay */
@@ -930,7 +935,7 @@ function initResultMap(loc, g) {
   fixMapHeight('result-map', 'result-screen');
   resultMap = L.map('result-map', {zoomControl:true, minZoom:7, maxZoom:17});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OSM'}).addTo(resultMap);
-  const ci = L.divIcon({className:'',html:'<div class="correct-marker-icon"></div>',iconSize:[32,32],iconAnchor:[16,32]});
+  const ci = L.divIcon({className:'',html:'<div class="correct-marker-icon"><div class="flag-pulse"></div><div class="flag-emoji">🚩</div></div>',iconSize:[32,32],iconAnchor:[16,32]});
   const gi = L.divIcon({className:'',html:'<div class="guess-marker-icon"></div>',iconSize:[32,32],iconAnchor:[16,32]});
   const poly = loc.polygon;
   if (poly && poly.length >= 3)
@@ -1480,7 +1485,7 @@ function mpShowRoundResult() {
       if (!loc) return;
       const locObj = {...loc, polygon: loc.polygon ? polyFromDb(loc.polygon) : null};
       const bounds = [[locObj.lat,locObj.lng]];
-      const ci = L.divIcon({html:`<div style="width:22px;height:22px;background:#3fb950;border-radius:50%;border:3px solid #fff;"></div>`,iconSize:[22,22],iconAnchor:[11,11],className:''});
+      const ci = L.divIcon({html:'<div class="correct-marker-icon"><div class="flag-pulse"></div><div class="flag-emoji">🚩</div></div>',iconSize:[32,32],iconAnchor:[16,32],className:''});
       L.marker([locObj.lat,locObj.lng],{icon:ci}).bindPopup(`<b>${locObj.name}</b>`).addTo(mpResultMap).openPopup();
       if (locObj.polygon && locObj.polygon.length>=3)
         L.polygon(locObj.polygon,{color:'#3fb950',fillOpacity:.1,weight:2}).addTo(mpResultMap);
@@ -1488,7 +1493,7 @@ function mpShowRoundResult() {
         const ans = (answers||{})[p.id];
         if (!ans || ans.lat == null) return;  // skip blank/no-answer entries
         bounds.push([ans.lat,ans.lng]);
-        const pi = L.divIcon({html:`<div style="width:26px;height:26px;background:${p.color};border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#000;">${p.name[0]}</div>`,iconSize:[26,26],iconAnchor:[13,13],className:''});
+        const pi = L.divIcon({html:`<div class="player-pin-icon" style="background:${p.color};"><span>${p.name[0]}</span></div>`,iconSize:[26,26],iconAnchor:[13,26],className:''});
         L.marker([ans.lat,ans.lng],{icon:pi}).bindPopup(`<b>${p.name}</b><br>${ans.score} نقطة — ${(ans.dist||0).toFixed(1)} كم`).addTo(mpResultMap);
         L.polyline([[ans.lat,ans.lng],[locObj.lat,locObj.lng]],{color:p.color,weight:1.5,dashArray:'5,5',opacity:.7}).addTo(mpResultMap);
       });
