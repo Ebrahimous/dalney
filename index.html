@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-  <title>دَلني - الكويت</title>
+  <title>دلني - الكويت</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Cairo:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -86,8 +86,8 @@
     .mp-timer{background:var(--surface);border-radius:20px;padding:4px 14px;font-size:16px;font-weight:800;color:var(--gold);}
     .time-opt{background:var(--surface);border:1px solid rgba(255,255,255,.12);color:var(--muted);padding:10px 6px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;width:100%;}
     .time-opt.active{background:var(--blue);color:#000;border-color:var(--blue);}
-    .mode-card{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius);padding:14px 16px;cursor:pointer;width:100%;color:var(--text);font-family:inherit;}
-    .mode-card:active{border-color:var(--blue);}
+    .mode-card{display:flex;align-items:center;gap:14px;background:rgba(88,166,255,.10);border:1px solid rgba(88,166,255,.25);border-radius:var(--radius);padding:14px 16px;cursor:pointer;width:100%;color:var(--text);font-family:inherit;}
+    .mode-card:active{border-color:var(--blue);background:rgba(88,166,255,.18);}
     .mode-card .mode-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
     .mode-card .mode-text{flex:1;min-width:0;text-align:start;}
     .mode-card .mode-title{font-size:15px;font-weight:800;margin-bottom:2px;}
@@ -136,16 +136,16 @@
         <line x1="83" y1="81" x2="112" y2="110" stroke="#58a6ff" stroke-width="9" stroke-linecap="round"/>
         <line x1="85" y1="83" x2="108" y2="106" stroke="rgba(255,255,255,0.15)" stroke-width="3" stroke-linecap="round"/>
       </svg>
-      <h1 style="font-family:'Lalezar',sans-serif;font-size:58px;color:var(--blue);line-height:1.1;letter-spacing:-1px;">دَلني</h1>
+      <h1 style="font-family:'Lalezar',sans-serif;font-size:58px;color:var(--blue);line-height:1.1;letter-spacing:-1px;">دلني</h1>
       <p style="font-family:'Cairo',sans-serif;font-size:16px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-top:-4px;">ورنا شطارتك</p>
     </div>
     <div style="display:flex;gap:16px;width:100%;justify-content:center;">
-      <div class="stat-card" style="max-width:180px;"><div class="num" id="stat-highscore">0</div><div class="lbl">أعلى نتيجة</div></div>
+      <div class="stat-card" style="max-width:180px;"><div class="num" id="stat-highscore">0/100</div><div class="lbl">أفضل معدل</div></div>
     </div>
     <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
       <button class="btn btn-primary" onclick="showScreen('sp-mode-screen')">🗺️ لعب فردي</button>
       <button class="btn btn-primary" onclick="showScreen('mp-menu-screen')">👥 لعب جماعي</button>
-      <button class="btn btn-secondary" onclick="showScreen('how-screen')">❓ كيف تلعب</button>
+      <button class="btn btn-secondary" onclick="showScreen('how-screen')" style="font-size:12px;padding:8px;">❓ شرح طريقة اللعب</button>
     </div>
   </div>
   <div style="text-align:center;padding:12px 0;">
@@ -163,7 +163,7 @@
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div><p style="padding-top:4px;">ستظهر لك تلميحات عن موقع معين في الكويت (اسم، وصف، أو صورة).</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div><p style="padding-top:4px;">اضغط على الخريطة في المكان الذي تظن أنه الموقع الصحيح.</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div><p style="padding-top:4px;">كلما كنت أقرب، حصلت على نقاط أكثر. الحد الأقصى 100 نقطة في كل جولة.</p></div>
-    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div><p style="padding-top:4px;">يمكنك اختيار عدد جولات اللعبة (5، 10، أو 20). اجمع أعلى نتيجة ممكنة!</p></div>
+    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div><p style="padding-top:4px;">يمكنك اختيار عدد جولات اللعبة (5، 10، أو 20). يُحسب "أفضل معدل" كمتوسط نقاطك لكل جولة (من 100)، فهو قابل للمقارنة بغض النظر عن عدد الجولات.</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">📷</div><p style="padding-top:4px;">في <b>صور الأماكن</b>، تُعرض لك صورة فقط دون اسم الموقع — حدد مكانها على الخريطة بالاعتماد على الصورة وحدها.</p></div>
   </div>
   <button class="btn btn-primary" style="margin-top:24px;" onclick="showScreen('sp-mode-screen')">ابدأ الآن</button>
@@ -822,8 +822,8 @@ async function deleteLocFromDb(docId) {
 }
 
 // ── Stats (local — per player) ────────────────────────────────────────────────
-function getStats() { return {highscore: parseInt(localStorage.getItem('q8hs')||'0')}; }
-function setHighscore(v) { localStorage.setItem('q8hs', v); }
+function getStats() { return {highscore: parseFloat(localStorage.getItem('q8avg')||'0')}; }
+function setHighscore(v) { localStorage.setItem('q8avg', v); }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 function showScreen(id) {
@@ -838,7 +838,7 @@ function showScreen(id) {
     }));
   }
 }
-function updateHomeStats() { document.getElementById('stat-highscore').textContent = getStats().highscore; }
+function updateHomeStats() { document.getElementById('stat-highscore').textContent = getStats().highscore + '/100'; }
 
 function fixMapHeight(mapId, screenId) {
   const scr = document.getElementById(screenId), el = document.getElementById(mapId);
@@ -1218,9 +1218,10 @@ function nextRound() {
 function showSummary() {
   document.getElementById('final-score').textContent = totalScore;
   const hs = getStats().highscore;
+  const avg = Math.round((totalScore / gameRounds.length) * 10) / 10;
   const nb = document.getElementById('new-best');
-  if (totalScore > hs) { setHighscore(totalScore); nb.textContent = '🏆 رقم قياسي جديد!'; playSound('final'); }
-  else { nb.textContent = `أعلى نتيجة: ${hs}`; playSound('round'); }
+  if (avg > hs) { setHighscore(avg); nb.textContent = `🏆 رقم قياسي جديد! معدل ${avg}/100`; playSound('final'); }
+  else { nb.textContent = `معدلك: ${avg}/100 — الأفضل: ${hs}/100`; playSound('round'); }
   const rs = document.getElementById('round-summary'); rs.innerHTML = '';
   gameRounds.forEach(loc => {
     const res = loc._result || {score:0};
