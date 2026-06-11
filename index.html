@@ -65,8 +65,10 @@
     .correct-marker-icon .flag-pulse{position:absolute;left:50%;top:100%;width:16px;height:16px;margin:-8px 0 0 -8px;border:2px solid var(--green);border-radius:50%;animation:pulse-ring 1.6s ease-out infinite;}
     .correct-marker-icon .flag-emoji{position:absolute;left:50%;bottom:0;transform:translateX(-50%);font-size:26px;line-height:1;}
     @keyframes pulse-ring{0%{transform:scale(.4);opacity:.8;}100%{transform:scale(2.4);opacity:0;}}
-    .player-pin-icon{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;display:flex;align-items:center;justify-content:center;}
+    .player-pin-icon{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;display:flex;align-items:center;justify-content:center;overflow:hidden;}
     .player-pin-icon span{transform:rotate(45deg);font-size:11px;font-weight:800;color:#fff;}
+    .player-pin-icon img{width:100%;height:100%;object-fit:cover;transform:rotate(45deg);}
+    .selfie-btn{width:40px;height:40px;flex-shrink:0;border-radius:50%;background:var(--card2,rgba(255,255,255,.06));border:1px dashed rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;background-size:cover;background-position:center;color:var(--muted);}
     .draw-bar{display:flex;align-items:center;gap:8px;background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.3);border-radius:10px;padding:10px 12px;flex-wrap:wrap;}
     .draw-bar span{font-size:13px;color:var(--blue);flex:1;}
     /* Loading overlay */
@@ -260,6 +262,8 @@
     <div class="form-group">
       <label>انضم كلاعب (اختياري)</label>
       <div style="display:flex;gap:8px;">
+        <label for="mp-host-selfie" class="selfie-btn" id="mp-host-selfie-preview" title="إضافة صورة شخصية">📷</label>
+        <input id="mp-host-selfie" type="file" accept="image/*" capture="user" style="display:none;" onchange="mpCaptureSelfie(this,'mp-host-selfie-preview')">
         <input id="mp-host-name" type="text" maxlength="14" placeholder="أدخل اسمك" style="flex:1;">
         <button class="btn btn-secondary" id="mp-host-join-btn" onclick="mpHostAddSelf()" style="flex-shrink:0;padding:0 16px;border-radius:12px;">➕ أضف</button>
       </div>
@@ -290,7 +294,11 @@
   </div>
   <div class="form-group">
     <label>اسمك</label>
-    <input id="mp-name-input" type="text" maxlength="14" placeholder="أدخل اسمك">
+    <div style="display:flex;gap:8px;">
+      <label for="mp-join-selfie" class="selfie-btn" id="mp-join-selfie-preview" title="إضافة صورة شخصية">📷</label>
+      <input id="mp-join-selfie" type="file" accept="image/*" capture="user" style="display:none;" onchange="mpCaptureSelfie(this,'mp-join-selfie-preview')">
+      <input id="mp-name-input" type="text" maxlength="14" placeholder="أدخل اسمك" style="flex:1;">
+    </div>
   </div>
   <button class="btn btn-primary" id="mp-join-btn" onclick="mpJoin()">انضم ›</button>
 </div>
@@ -1245,6 +1253,33 @@ window.addEventListener('resize', () => {
 
 // ── Multiplayer ───────────────────────────────────────────────────────────────
 const MP_COLORS = ['#f85149','#f39c12','#3fb950','#58a6ff','#bc8cff','#ff79c6','#f78166','#8be9fd'];
+let mpMySelfie = null;
+
+// Reads an image file, crops it to a square, downsizes it, and stores a small
+// base64 JPEG thumbnail for use as the player's pin avatar (sent via Firestore
+// only for the duration of the round/game, then stripped — see mpEndGame/mpAdvanceToRound).
+function mpCaptureSelfie(input, previewId) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const size = 80;
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const side = Math.min(img.width, img.height);
+      const sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+      mpMySelfie = canvas.toDataURL('image/jpeg', 0.6);
+      const preview = document.getElementById(previewId);
+      if (preview) { preview.style.backgroundImage = `url(${mpMySelfie})`; preview.textContent = ''; }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 const KW_CENTER = [29.3697, 47.9783];
 let mpRoomId=null, mpPlayerId=null, mpIsHost=false, mpRoom=null;
 let mpListener=null, mpTimerIv=null, mpGuess=null, mpCurrentRound=0;
@@ -1335,7 +1370,7 @@ async function mpHostAddSelf() {
   // Pick first color not already used
   const usedColors = new Set(currentPlayers.map(p=>p.color));
   const color = MP_COLORS.find(c=>!usedColors.has(c)) || MP_COLORS[0];
-  const hostPlayer = {id:mpPlayerId, name, color, score:0};
+  const hostPlayer = {id:mpPlayerId, name, color, score:0, selfie:mpMySelfie||null};
   const updatedPlayers = [...currentPlayers, hostPlayer];
   await db.collection('rooms').doc(mpRoomId).update({players:updatedPlayers});
   // mpUpdateLobby will be called via onSnapshot
@@ -1493,7 +1528,8 @@ function mpShowRoundResult() {
         const ans = (answers||{})[p.id];
         if (!ans || ans.lat == null) return;  // skip blank/no-answer entries
         bounds.push([ans.lat,ans.lng]);
-        const pi = L.divIcon({html:`<div class="player-pin-icon" style="background:${p.color};"><span>${p.name[0]}</span></div>`,iconSize:[26,26],iconAnchor:[13,26],className:''});
+        const avatarHtml = p.selfie ? `<img src="${p.selfie}" alt="">` : `<span>${p.name[0]}</span>`;
+        const pi = L.divIcon({html:`<div class="player-pin-icon" style="background:${p.color};">${avatarHtml}</div>`,iconSize:[26,26],iconAnchor:[13,26],className:''});
         L.marker([ans.lat,ans.lng],{icon:pi}).bindPopup(`<b>${p.name}</b><br>${ans.score} نقطة — ${(ans.dist||0).toFixed(1)} كم`).addTo(mpResultMap);
         L.polyline([[ans.lat,ans.lng],[locObj.lat,locObj.lng]],{color:p.color,weight:1.5,dashArray:'5,5',opacity:.7}).addTo(mpResultMap);
       });
@@ -1511,11 +1547,12 @@ async function mpEndGame() {
   if (room.status === 'playing') {
     const updatedPlayers = (room.players||[]).map(p=>{
       const ans = (room.answers||{})[p.id];
-      return {...p, score:(p.score||0)+(ans?ans.score:0)};
+      return {...p, score:(p.score||0)+(ans?ans.score:0), selfie:null};
     });
     await db.collection('rooms').doc(mpRoomId).update({status:'finished', players:updatedPlayers});
   } else {
-    await db.collection('rooms').doc(mpRoomId).update({status:'finished'});
+    const strippedPlayers = (room.players||[]).map(p=>({...p, selfie:null}));
+    await db.collection('rooms').doc(mpRoomId).update({status:'finished', players:strippedPlayers});
   }
 }
 
@@ -1547,7 +1584,9 @@ async function mpAdvanceToRound(prevRound) {
   const room = snap.data();
   const nextRound = prevRound + 1;
   if (nextRound > room.totalRounds) {
-    await db.collection('rooms').doc(mpRoomId).update({status:'finished', roundStartAt:null});
+    // Strip selfies from Firestore once the game is over — they were only shared for the round results map.
+    const strippedPlayers = (room.players||[]).map(p=>({...p, selfie:null}));
+    await db.collection('rooms').doc(mpRoomId).update({status:'finished', roundStartAt:null, players:strippedPlayers});
     return;
   }
   const loc = room.locs[nextRound-1];
@@ -1595,7 +1634,7 @@ async function mpJoin() {
     mpRoomId = code;
     mpIsHost = false;
     const color = MP_COLORS[room.players.length % MP_COLORS.length];
-    await db.collection('rooms').doc(code).update({players:[...room.players,{id:mpPlayerId,name,color,score:0}]});
+    await db.collection('rooms').doc(code).update({players:[...room.players,{id:mpPlayerId,name,color,score:0,selfie:mpMySelfie||null}]});
     showScreen('mp-wait-screen');
     mpListener = db.collection('rooms').doc(code).onSnapshot(snap=>{
       if (!snap.exists) { mpLeave(); return; }
@@ -1700,6 +1739,15 @@ function mpReset() {
   mpHostMapLayers=[]; mpGameMarker=null;
   mpRoomId=null; mpPlayerId=null; mpIsHost=false; mpRoom=null;
   mpCurrentRound=0; mpGuess=null; mpAnswered=false;
+  mpMySelfie=null;
+  ['mp-host-selfie-preview','mp-join-selfie-preview'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) { el.style.backgroundImage=''; el.textContent='📷'; }
+  });
+  ['mp-host-selfie','mp-join-selfie'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
