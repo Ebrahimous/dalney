@@ -592,7 +592,6 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const locsCol = db.collection('locations');
 const reportsCol = db.collection('reports');
-const metaCol = db.collection('meta');
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const KW = [29.3759, 47.9774];
@@ -781,20 +780,20 @@ function locFromDb(data) {
 
 async function loadData() {
   const snap = await locsCol.get();
-  if (snap.empty) {
+  // A special doc (id "__meta__") stores admin bookkeeping inside the same
+  // collection so it's covered by the existing security rules.
+  const metaDoc = snap.docs.find(d => d.id === '__meta__');
+  const locDocs = snap.docs.filter(d => d.id !== '__meta__');
+  if (locDocs.length === 0) {
     // First run — seed defaults
     const batch = db.batch();
     DEFAULTS.forEach(loc => batch.set(locsCol.doc(loc.id), locToDb(loc)));
     await batch.commit();
     locations = DEFAULTS.map(l => ({...l, _docId: l.id}));
   } else {
-    locations = snap.docs.map(d => ({...locFromDb(d.data()), _docId: d.id}));
+    locations = locDocs.map(d => ({...locFromDb(d.data()), _docId: d.id}));
     // Don't resurrect DEFAULTS entries the admin intentionally deleted
-    let deletedDefaultIds = [];
-    try {
-      const metaSnap = await metaCol.doc('config').get();
-      deletedDefaultIds = (metaSnap.data() && metaSnap.data().deletedDefaultIds) || [];
-    } catch(e) { /* ignore */ }
+    const deletedDefaultIds = (metaDoc && metaDoc.data().deletedDefaultIds) || [];
     // Sync any new DEFAULTS entries not yet in Firestore
     const existingIds = new Set(locations.map(l => l._docId));
     const missing = DEFAULTS.filter(l => !existingIds.has(l.id) && !deletedDefaultIds.includes(l.id));
@@ -1325,7 +1324,7 @@ async function deleteLocation(i) {
     await deleteLocFromDb(docId);
     // If this was a built-in default location, remember it so it isn't re-added later
     if (DEFAULTS.some(d => d.id === docId)) {
-      await metaCol.doc('config').set({deletedDefaultIds: firebase.firestore.FieldValue.arrayUnion(docId)}, {merge:true});
+      await locsCol.doc('__meta__').set({deletedDefaultIds: firebase.firestore.FieldValue.arrayUnion(docId)}, {merge:true});
     }
     locations.splice(i, 1);
     renderLocList(); showToast('🗑️ تم الحذف');
@@ -1364,7 +1363,7 @@ async function removeDuplicateLocations() {
     for (const docId of toDeleteDocIds) {
       await deleteLocFromDb(docId);
       if (DEFAULTS.some(d => d.id === docId)) {
-        await metaCol.doc('config').set({deletedDefaultIds: firebase.firestore.FieldValue.arrayUnion(docId)}, {merge:true});
+        await locsCol.doc('__meta__').set({deletedDefaultIds: firebase.firestore.FieldValue.arrayUnion(docId)}, {merge:true});
       }
     }
     locations = locations.filter(l => !toDeleteDocIds.includes(l._docId));
