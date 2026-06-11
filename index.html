@@ -140,7 +140,7 @@
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div><p style="padding-top:4px;">ستظهر لك تلميحات عن موقع معين في الكويت (اسم، وصف، أو صورة).</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div><p style="padding-top:4px;">اضغط على الخريطة في المكان الذي تظن أنه الموقع الصحيح.</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div><p style="padding-top:4px;">كلما كنت أقرب، حصلت على نقاط أكثر. الحد الأقصى 5000 نقطة في كل جولة.</p></div>
-    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div><p style="padding-top:4px;">تتكون كل لعبة من 5 جولات. اجمع أعلى نتيجة ممكنة!</p></div>
+    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div><p style="padding-top:4px;">يمكنك اختيار عدد جولات اللعبة (5، 10، أو 20). اجمع أعلى نتيجة ممكنة!</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">📷</div><p style="padding-top:4px;">في <b>وضع الصور</b>، تُعرض لك صورة فقط دون اسم الموقع — حدد مكانها على الخريطة بالاعتماد على الصورة وحدها.</p></div>
   </div>
   <button class="btn btn-primary" style="margin-top:24px;" onclick="showScreen('sp-mode-screen')">ابدأ الآن</button>
@@ -152,11 +152,18 @@
     <button class="back-btn" onclick="showScreen('home-screen')">→</button>
     <h2 style="font-size:18px;">العب بروحك</h2>
   </div>
+  <div>
+    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات</label>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+      <button class="time-opt active" onclick="setRoundCount(this,5)">5</button>
+      <button class="time-opt" onclick="setRoundCount(this,10)">10</button>
+      <button class="time-opt" onclick="setRoundCount(this,20)">20</button>
+    </div>
+  </div>
   <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
     <button class="btn btn-primary" onclick="startGame('classic')">🗺️ كلاسيكي</button>
-    <button class="btn btn-secondary" style="background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.3);color:#ff7b72;" onclick="startGame('photo')">📷 وضع الصور</button>
+    <button class="btn btn-primary" onclick="startGame('photo')">📷 وضع الصور</button>
   </div>
-  <p style="color:var(--muted);font-size:13px;text-align:center;">في وضع الصور، تُعرض لك صورة الموقع فقط دون اسمه — حدد مكانه على الخريطة بالاعتماد على الصورة وحدها.</p>
 </div>
 
 <!-- GAME SCREEN -->
@@ -213,11 +220,18 @@
       <button class="time-opt" id="mp-mode-photo-btn" onclick="mpSetMode('photo')">📷 وضع الصور</button>
     </div>
   </div>
+  <div>
+    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات (عند الاستضافة)</label>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+      <button class="time-opt active" onclick="mpSetRounds(this,5)">5</button>
+      <button class="time-opt" onclick="mpSetRounds(this,10)">10</button>
+      <button class="time-opt" onclick="mpSetRounds(this,20)">20</button>
+    </div>
+  </div>
   <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
     <button class="btn btn-primary" style="background:rgba(63,185,80,.15);border:1px solid rgba(63,185,80,.3);color:var(--green);" onclick="mpHostCreate()">👑 استضف لعبة</button>
     <button class="btn btn-secondary" onclick="showScreen('mp-join-screen')">🎮 انضم للعبة</button>
   </div>
-  <p style="color:var(--muted);font-size:13px;text-align:center;">في وضع الصور، يشاهد اللاعبون صورة الموقع فقط دون اسمه عند التخمين.</p>
 </div>
 
 <!-- MP: HOST LOBBY -->
@@ -470,6 +484,13 @@ const locsCol = db.collection('locations');
 // ── State ─────────────────────────────────────────────────────────────────────
 const KW = [29.3759, 47.9774];
 let locations = [], gameRounds = [], currentRound = 0, totalScore = 0, guess = null;
+let selectedRounds = 5; // 5 | 10 | 20 — chosen on the solo mode-select screen
+
+function setRoundCount(el, n) {
+  selectedRounds = n;
+  el.parentElement.querySelectorAll('.time-opt').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
 let gameMode = 'classic'; // 'classic' | 'photo'
 let gameMap = null, resultMap = null, adminMap = null, adminMarker = null;
 let editMap = null, editMarker = null, editDocId = null, editIndex = -1;
@@ -482,16 +503,16 @@ const polyState = {
 
 // ── Default locations ─────────────────────────────────────────────────────────
 const DEFAULTS = [
-  {id:'l1', name:'أبراج الكويت',           category:'معالم', hint:'أيقونة الكويت على كورنيش الخليج، ثلاثة أبراج كروية',        photo:'', lat:29.3697, lng:47.9783, polygon:null},
+  {id:'l1', name:'أبراج الكويت',           category:'معالم', hint:'أيقونة الكويت على كورنيش الخليج، ثلاثة أبراج كروية',        photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Kuwait%20Towers%20View.jpg?width=900', lat:29.3697, lng:47.9783, polygon:null},
   {id:'l2', name:'قصر السيف',               category:'معالم', hint:'القصر الأميري التاريخي على الكورنيش بعمارته الإسلامية',      photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Seif%20Palace%2C%20Kuwait%20City.jpg?width=900', lat:29.3725, lng:47.9778, polygon:null},
   {id:'l3', name:'مسجد الدولة الكبير',      category:'مساجد', hint:'أكبر مسجد في الكويت، يستوعب أكثر من عشرة آلاف مصلٍّ',       photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Kuwait%20City%20Grand%20Mosque%20Exterior%20South%20Facade%205.jpg?width=900', lat:29.3647, lng:48.0033, polygon:null},
-  {id:'l4', name:'سوق المباركية',            category:'معالم', hint:'أقدم وأشهر سوق شعبي في الكويت',                             photo:'', lat:29.3710, lng:47.9790, polygon:null},
+  {id:'l4', name:'سوق المباركية',            category:'معالم', hint:'أقدم وأشهر سوق شعبي في الكويت',                             photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Souk%20Al-Mubarakiya%2C%20ciudad%20de%20Kuwait%2C%20Kuwait%2C%202024-08-12%2C%20DD%2047.jpg?width=900', lat:29.3710, lng:47.9790, polygon:null},
   {id:'l5', name:'مول الكويت',              category:'مولات', hint:'من أكبر مراكز التسوق في السالمية',                            photo:'', lat:29.3394, lng:48.0798, polygon:null},
-  {id:'l6', name:'الأفنيوز',                category:'مولات', hint:'أكبر مول في الكويت بالقرب من ميدان الهوية الوطنية',          photo:'', lat:29.2821, lng:48.0189, polygon:null},
+  {id:'l6', name:'الأفنيوز',                category:'مولات', hint:'أكبر مول في الكويت بالقرب من ميدان الهوية الوطنية',          photo:'https://commons.wikimedia.org/wiki/Special:FilePath/The%20Avenues%20Kuwait.jpg?width=900', lat:29.2821, lng:48.0189, polygon:null},
   {id:'l7', name:'جزيرة فيلكا',             category:'معالم', hint:'جزيرة تاريخية في الخليج تحوي آثاراً يونانية وبابلية',        photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Failaka%20Island%202.JPG', lat:29.4390, lng:48.3440, polygon:null},
-  {id:'l8', name:'المتحف الوطني الكويتي',   category:'معالم', hint:'يحتوي مقتنيات تاريخية وتراثية من تاريخ الكويت العريق',       photo:'', lat:29.3719, lng:47.9826, polygon:null},
+  {id:'l8', name:'المتحف الوطني الكويتي',   category:'معالم', hint:'يحتوي مقتنيات تاريخية وتراثية من تاريخ الكويت العريق',       photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Kwnmuseum.jpg?width=900', lat:29.3719, lng:47.9826, polygon:null},
   {id:'l9', name:'مطار الكويت الدولي',      category:'حكومي', hint:'المطار الرئيسي للكويت جنوب العاصمة',                         photo:'', lat:29.2267, lng:47.9689, polygon:null},
-  {id:'l10',name:'حديقة الشهيد',             category:'حدائق', hint:'حديقة تذكارية كبيرة على الكورنيش تكريماً لشهداء الكويت',    photo:'', lat:29.3786, lng:47.9897, polygon:null},
+  {id:'l10',name:'حديقة الشهيد',             category:'حدائق', hint:'حديقة تذكارية كبيرة على الكورنيش تكريماً لشهداء الكويت',    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Picture%20of%20miniature%20Kuwait%20city%20skyline%20surrounded%20with%20greenery%20in%20Al%20Shaheed%20Park%20-%20July%202025.jpg?width=900', lat:29.3786, lng:47.9897, polygon:null},
   {id:'l11',name:'مارينا كريسنت',            category:'شواطئ', hint:'مرسى وممشى ترفيهي حديث على شاطئ الخليج',                   photo:'', lat:29.3461, lng:48.0845, polygon:null},
   {id:'l13',name:'نادي الكويت الرياضي',      category:'معالم', hint:'الملعب الرئيسي للنادي الأزرق في منطقة كيفان',               photo:'', lat:29.3500, lng:47.9981, polygon:null},
   {id:'l14',name:'حديقة الحيوان الكويتية',  category:'حدائق', hint:'الحديقة الوطنية للحيوانات في منطقة الجهراء',                photo:'', lat:29.3433, lng:47.6869, polygon:null},
@@ -510,7 +531,7 @@ const DEFAULTS = [
   {id:'l36',name:'قصر دسمان',               category:'معالم', hint:'القصر الأميري الرسمي لأسرة الصباح الحاكمة في منطقة دسمان',   photo:'', lat:29.3858, lng:47.9991, polygon:null},
   {id:'l37',name:'استاد جابر',              category:'معالم', hint:'الملعب الوطني الدولي الكبير في منطقة العارضية',              photo:'', lat:29.2715, lng:47.9188, polygon:null},
   {id:'l38',name:'أرض المعارض',             category:'معالم', hint:'مركز الكويت الدولي للمعارض في منطقة مبارك عبدالله',         photo:'', lat:29.2701, lng:48.0468, polygon:null},
-  {id:'l39',name:'المركز العلمي',           category:'معالم', hint:'مركز علمي وأكواريوم ومتحف على شارع البلاجات في السالمية',   photo:'', lat:29.3497, lng:48.0893, polygon:null},
+  {id:'l39',name:'المركز العلمي',           category:'معالم', hint:'مركز علمي وأكواريوم ومتحف على شارع البلاجات في السالمية',   photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Kuwait%20Scientific%20Centre%2C%20Salmiya%2C%20Kuwait%2001.jpg?width=900', lat:29.3497, lng:48.0893, polygon:null},
   {id:'l40',name:'شاطئ المسيلة',            category:'شواطئ', hint:'شاطئ شعبي ممتد في منطقة المسيلة جنوب السالمية',            photo:'', lat:29.2777, lng:48.0891, polygon:null},
   {id:'l41',name:'شاطئ أنجفة',              category:'شواطئ', hint:'شاطئ عائلي في منطقة أنجفة',                                photo:'', lat:29.2793, lng:48.0698, polygon:null},
   {id:'l42',name:'خيران مول',               category:'مولات', hint:'مول الخيران في مدينة الخيران اللؤلؤة بمحافظة الأحمدي',     photo:'', lat:28.6733, lng:48.3482, polygon:null},
@@ -518,11 +539,11 @@ const DEFAULTS = [
   {id:'l44',name:'دوار الشيراتون',           category:'معالم', hint:'دوار الجهراء الشهير عند بداية شارع فهد السالم وبوابة الجهراء التاريخية', photo:'', lat:29.3690, lng:47.9742, polygon:null},
   {id:'l45',name:'مصنع كي دي دي',           category:'معالم', hint:'مصنع شركة الكويتية الدنماركية للألبان في الشويخ الصناعية',   photo:'', lat:29.3545, lng:47.9375, polygon:null},
   {id:'l46',name:'برج التحرير',             category:'معالم', hint:'برج اتصالات شاهق في منطقة القبلة، ثاني أطول برج في الكويت',  photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Liberationtower%20kuwait.jpg?width=900', lat:29.3676, lng:47.9716, polygon:null},
-  {id:'l47',name:'الحمراء تاور',            category:'معالم', hint:'أطول برج في الكويت، يضم مكاتب ومركزاً تجارياً في منطقة شرق', photo:'', lat:29.3793, lng:47.9931, polygon:null},
+  {id:'l47',name:'الحمراء تاور',            category:'معالم', hint:'أطول برج في الكويت، يضم مكاتب ومركزاً تجارياً في منطقة شرق', photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Al%20Hamra%20Tower%20Kuwait%20City%20Kuwait.jpg?width=900', lat:29.3793, lng:47.9931, polygon:null},
   {id:'l48',name:'قصر بيان',                category:'معالم', hint:'مقر القمم والمؤتمرات الرسمية في منطقة بيان',                  photo:'', lat:29.3070, lng:48.0337, polygon:null},
   {id:'l49',name:'مركز الشيخ جابر الأحمد الثقافي', category:'معالم', hint:'أكبر مركز ثقافي ودار أوبرا في الشرق الأوسط على شارع الخليج العربي', photo:'', lat:29.3611, lng:47.9586, polygon:null},
   {id:'l50',name:'بيت السدو',               category:'معالم', hint:'بيت تراثي ومتحف للنسيج البدوي بالقرب من المتحف الوطني',       photo:'', lat:29.3747, lng:47.9672, polygon:null},
-  {id:'l51',name:'قلعة الجهراء الحمراء',    category:'معالم', hint:'قلعة تاريخية من الطين الأحمر، موقع معركة الجهراء عام 1920',  photo:'', lat:29.3366, lng:47.6755, polygon:null},
+  {id:'l51',name:'قلعة الجهراء الحمراء',    category:'معالم', hint:'قلعة تاريخية من الطين الأحمر، موقع معركة الجهراء عام 1920',  photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Al%20Jahra%20al-Qasr%20al-Ahmar%20Exterior%201.jpg?width=900', lat:29.3366, lng:47.6755, polygon:null},
   {id:'l52',name:'ميدان الصفاة',            category:'معالم', hint:'ساحة تجارية تاريخية وسط العاصمة قرب شارع فهد السالم',         photo:'', lat:29.3716, lng:47.9736, polygon:null},
   {id:'l53',name:'متحف طارق رجب',           category:'معالم', hint:'متحف الفن الإسلامي والخط العربي في منطقة الجابرية',           photo:'', lat:29.3169, lng:48.0181, polygon:null},
   {id:'l54',name:'بيت ديكسون',              category:'معالم', hint:'بيت تراثي تاريخي على الكورنيش قرب سوق شرق',                   photo:'', lat:29.3838, lng:47.9790, polygon:null},
@@ -532,8 +553,8 @@ const DEFAULTS = [
   {id:'l58',name:'الكوت مول',               category:'مولات', hint:'مول على الواجهة البحرية في الفحيحيل',                         photo:'', lat:29.0814, lng:48.1426, polygon:null},
   {id:'l59',name:'الجزيرة الخضراء',          category:'حدائق', hint:'جزيرة اصطناعية ومنتزه على الكورنيش قرب أبراج الكويت',         photo:'', lat:29.3815, lng:47.9975, polygon:null},
   {id:'l60',name:'أكوا بارك الكويت',         category:'شواطئ', hint:'مدينة مائية شهيرة بجانب أبراج الكويت على الكورنيش',           photo:'', lat:29.3916, lng:48.0036, polygon:null},
-  {id:'l61',name:'مجلس الأمة',              category:'حكومي', hint:'مبنى البرلمان الكويتي على شارع الخليج العربي، من تصميم مهندس دار أوبرا سيدني', photo:'', lat:29.3703, lng:47.9639, polygon:null},
-  {id:'l62',name:'جسر الشيخ جابر',          category:'معالم', hint:'أطول جسر بحري في المنطقة يربط مدينة الكويت بالصبية عبر الجون',  photo:'', lat:29.4140, lng:47.9170, polygon:null},
+  {id:'l61',name:'مجلس الأمة',              category:'حكومي', hint:'مبنى البرلمان الكويتي على شارع الخليج العربي، من تصميم مهندس دار أوبرا سيدني', photo:'https://commons.wikimedia.org/wiki/Special:FilePath/%D8%B5%D9%88%D8%B1%D8%A9%20%D8%AC%D9%88%D9%8A%D8%A9%20%D9%84%D9%85%D8%A8%D9%86%D9%89%20%D9%85%D8%AC%D9%84%D8%B3%20%D8%A7%D9%84%D8%A7%D9%85%D8%A9.jpg?width=900', lat:29.3703, lng:47.9639, polygon:null},
+  {id:'l62',name:'جسر الشيخ جابر',          category:'معالم', hint:'أطول جسر بحري في المنطقة يربط مدينة الكويت بالصبية عبر الجون',  photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Sheikh%20Jaber%20Causeway.jpg?width=900', lat:29.4140, lng:47.9170, polygon:null},
   {id:'l63',name:'مسجد فاطمة',              category:'مساجد', hint:'مسجد بعمارة حديثة مميزة على شكل صدفة في منطقة عبدالله السالم',  photo:'', lat:29.3532, lng:47.9844, polygon:null},
   {id:'l64',name:'جامعة الخليج GUST',       category:'معالم', hint:'جامعة خاصة معروفة في منطقة مشرف',                              photo:'', lat:29.2755, lng:48.0538, polygon:null},
   {id:'l65',name:'الجامعة الأمريكية AUK',   category:'معالم', hint:'جامعة خاصة على الطراز الأمريكي في السالمية',                    photo:'', lat:29.3440, lng:48.0834, polygon:null},
@@ -795,7 +816,7 @@ function startGame(mode) {
     showScreen('home-screen');
     return;
   }
-  gameRounds = shuffle([...pool]).slice(0, Math.min(5, pool.length));
+  gameRounds = shuffle([...pool]).slice(0, Math.min(selectedRounds, pool.length));
   currentRound = 0; totalScore = 0; guess = null;
   showScreen('game-screen');
   loadRound();
@@ -1142,7 +1163,15 @@ function mpGenId() { return Math.random().toString(36).substr(2,9); }
 
 function mpSetTime(el, t) {
   mpTimeLimit = t;
-  document.querySelectorAll('.time-opt').forEach(b=>b.classList.remove('active'));
+  el.parentElement.querySelectorAll('.time-opt').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+let mpSelectedRounds = 5; // 5 | 10 | 20 — chosen by host before creating a room
+
+function mpSetRounds(el, n) {
+  mpSelectedRounds = n;
+  el.parentElement.querySelectorAll('.time-opt').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
 }
 
@@ -1159,7 +1188,7 @@ async function mpHostCreate() {
   mpPlayerId = mpGenId();
   const code = mpGenCode();
   mpRoomId = code;
-  const shuffled = [...pool].sort(()=>Math.random()-.5).slice(0, Math.min(5, pool.length));
+  const shuffled = [...pool].sort(()=>Math.random()-.5).slice(0, Math.min(mpSelectedRounds, pool.length));
   const locs = shuffled.map(l=>({
     name:l.name, hint:l.hint||'', photo:l.photo||'',
     lat:l.lat, lng:l.lng, polygon: l.polygon ? polyToDb(l.polygon) : null
