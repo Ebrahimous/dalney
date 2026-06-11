@@ -140,7 +140,7 @@
   <div style="display:flex;flex-direction:column;gap:12px;">
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div><p style="padding-top:4px;">ستظهر لك تلميحات عن موقع معين في الكويت (اسم، وصف، أو صورة).</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div><p style="padding-top:4px;">اضغط على الخريطة في المكان الذي تظن أنه الموقع الصحيح.</p></div>
-    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div><p style="padding-top:4px;">كلما كنت أقرب، حصلت على نقاط أكثر. الحد الأقصى 5000 نقطة في كل جولة.</p></div>
+    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div><p style="padding-top:4px;">كلما كنت أقرب، حصلت على نقاط أكثر. الحد الأقصى 100 نقطة في كل جولة.</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div><p style="padding-top:4px;">يمكنك اختيار عدد جولات اللعبة (5، 10، أو 20). اجمع أعلى نتيجة ممكنة!</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">📷</div><p style="padding-top:4px;">في <b>صور الأماكن</b>، تُعرض لك صورة فقط دون اسم الموقع — حدد مكانها على الخريطة بالاعتماد على الصورة وحدها.</p></div>
   </div>
@@ -904,18 +904,18 @@ function submitGuess() {
   const poly = loc.polygon;
   let sc, dk, inArea = false;
   if (poly && poly.length >= 3 && pointInPolygon(guess.lat, guess.lng, poly)) {
-    inArea = true; sc = 5000; dk = 0;
+    inArea = true; sc = 100; dk = 0;
   } else {
     const target = poly && poly.length >= 3 ? polygonCentroid(poly) : [loc.lat, loc.lng];
     dk = L.latLng(guess).distanceTo(L.latLng(target[0], target[1])) / 1000;
-    sc = Math.round(Math.max(0, 5000 * Math.exp(-dk / 3.5)));
+    sc = Math.round(Math.max(0, 100 * Math.exp(-dk / 3.5)));
   }
   totalScore += sc;
   gameRounds[currentRound]._result = {score:sc, dist:dk, inArea};
   document.getElementById('score-flash').textContent = sc;
-  document.getElementById('score-flash').style.color = sc>=4000?'var(--green)':sc>=2000?'var(--gold)':'var(--red)';
+  document.getElementById('score-flash').style.color = sc>=80?'var(--green)':sc>=40?'var(--gold)':'var(--red)';
   const distText = inArea
-    ? `✅ داخل المنطقة! 5000 نقطة`
+    ? `✅ داخل المنطقة! 100 نقطة`
     : `📍 المسافة: ${dk<1?(dk*1000).toFixed(0)+' م':(dk).toFixed(1)+' كم'} — +${sc} نقطة`;
   document.getElementById('dist-info').textContent = gameMode === 'photo' ? `${loc.name} • ${distText}` : distText;
   document.getElementById('next-btn').textContent = currentRound+1 >= gameRounds.length ? 'النتائج ›' : 'التالي ›';
@@ -1623,11 +1623,11 @@ async function mpSubmitGuess() {
   const poly = loc.polygon ? polyFromDb(loc.polygon) : null;
   let sc, dk=0, inArea=false;
   if (poly && poly.length>=3 && pointInPolygon(mpGuess.lat,mpGuess.lng,poly)) {
-    inArea=true; sc=5000; dk=0;
+    inArea=true; sc=100; dk=0;
   } else {
     const target = poly && poly.length>=3 ? polygonCentroid(poly) : [loc.lat,loc.lng];
     dk = L.latLng(mpGuess).distanceTo(L.latLng(target[0],target[1]))/1000;
-    sc = Math.round(Math.max(0, 5000*Math.exp(-dk/3.5)));
+    sc = Math.round(Math.max(0, 100*Math.exp(-dk/3.5)));
   }
   const update = {};
   update[`answers.${mpPlayerId}`] = {lat:mpGuess.lat, lng:mpGuess.lng, score:sc, dist:dk, inArea};
