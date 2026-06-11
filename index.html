@@ -53,6 +53,7 @@
     .loc-card .loc-name{font-weight:600;font-size:14px;}
     .loc-card .loc-cat{font-size:12px;color:var(--muted);}
     .loc-btn{border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:16px;}
+    .flag-btn{flex-shrink:0;width:48px;border-radius:12px;border:1px solid rgba(248,81,73,.3);background:rgba(248,81,73,.12);color:var(--red);font-size:18px;cursor:pointer;}
     #edit-modal{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.78);overflow-y:auto;padding:16px;}
     .edit-inner{max-width:480px;margin:0 auto;background:var(--card);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;gap:14px;}
     .close-btn{background:rgba(255,255,255,.1);border:none;color:var(--text);width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;line-height:1;}
@@ -179,7 +180,10 @@
     <img id="hint-photo" class="hint-photo" src="" alt="" style="display:none"/>
   </div>
   <div id="game-map"></div>
-  <button class="btn btn-primary" onclick="submitGuess()" id="submit-btn" disabled style="flex-shrink:0;border-radius:12px;padding:13px;">تأكيد ✓</button>
+  <div style="display:flex;gap:8px;flex-shrink:0;">
+    <button class="btn btn-primary" onclick="submitGuess()" id="submit-btn" disabled style="flex:1;border-radius:12px;padding:13px;">تأكيد ✓</button>
+    <button class="flag-btn" onclick="reportLocation(gameRounds[currentRound])" title="الإبلاغ عن مشكلة في الموقع">🚩</button>
+  </div>
 </div>
 
 <!-- RESULT SCREEN -->
@@ -191,7 +195,10 @@
   </div>
   <p class="dist-info" id="dist-info" style="margin-bottom:0;"></p>
   <div id="result-map" style="flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;"></div>
-  <button class="btn btn-primary" onclick="nextRound()" id="next-btn" style="flex-shrink:0;border-radius:12px;padding:13px;">التالي ›</button>
+  <div style="display:flex;gap:8px;flex-shrink:0;">
+    <button class="btn btn-primary" onclick="nextRound()" id="next-btn" style="flex:1;border-radius:12px;padding:13px;">التالي ›</button>
+    <button class="flag-btn" onclick="reportLocation(gameRounds[currentRound])" title="الإبلاغ عن مشكلة في الموقع">🚩</button>
+  </div>
 </div>
 
 <!-- SUMMARY SCREEN -->
@@ -306,7 +313,10 @@
     <img id="mp-hint-photo" class="hint-photo" src="" alt="" style="display:none"/>
   </div>
   <div id="mp-game-map"></div>
-  <button class="btn btn-primary" onclick="mpSubmitGuess()" id="mp-submit-btn" disabled style="flex-shrink:0;border-radius:12px;padding:13px;">تأكيد ✓</button>
+  <div style="display:flex;gap:8px;flex-shrink:0;">
+    <button class="btn btn-primary" onclick="mpSubmitGuess()" id="mp-submit-btn" disabled style="flex:1;border-radius:12px;padding:13px;">تأكيد ✓</button>
+    <button class="flag-btn" onclick="reportLocation(mpRoom && mpRoom.loc)" title="الإبلاغ عن مشكلة في الموقع">🚩</button>
+  </div>
   <button class="btn btn-secondary" onclick="mpHostShowResults()" id="mp-end-round-btn" style="flex-shrink:0;border-radius:12px;padding:11px;display:none;">⏭ إنهاء الجولة</button>
 </div>
 
@@ -322,7 +332,10 @@
     <p id="mp-host-hint-text" style="color:var(--muted);font-size:13px;margin-top:4px;"></p>
   </div>
   <div id="mp-host-map"></div>
-  <button class="btn btn-primary" id="mp-next-btn" onclick="mpHostNextRound()" style="flex-shrink:0;border-radius:12px;padding:13px;display:none;">التالي ›</button>
+  <div style="display:flex;gap:8px;flex-shrink:0;">
+    <button class="btn btn-primary" id="mp-next-btn" onclick="mpHostNextRound()" style="flex:1;border-radius:12px;padding:13px;display:none;">التالي ›</button>
+    <button class="flag-btn" onclick="reportLocation(mpRoom && mpRoom.loc)" title="الإبلاغ عن مشكلة في الموقع">🚩</button>
+  </div>
 </div>
 
 <!-- MP: ROUND RESULTS (everyone sees this) -->
@@ -334,6 +347,9 @@
   </div>
   <div id="mp-result-map" style="flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;"></div>
   <div id="mr-scores" style="flex-shrink:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:32vh;"></div>
+  <div style="display:flex;justify-content:flex-end;flex-shrink:0;">
+    <button class="flag-btn" onclick="reportLocation(mpRoom && mpRoom.loc)" title="الإبلاغ عن مشكلة في الموقع">🚩</button>
+  </div>
   <div id="mr-host-btns" style="display:none;flex-shrink:0;gap:8px;">
     <button class="btn btn-secondary" style="flex:1;" onclick="mpEndGame()">🏳 إنهاء اللعبة</button>
     <button class="btn btn-primary" style="flex:1;" id="mr-next-btn" onclick="mpHostNextRound()">التالي ›</button>
@@ -398,6 +414,8 @@
     </div>
     <button class="btn btn-primary" onclick="saveLocation()" id="save-new-btn">➕ إضافة موقع</button>
   </div>
+  <h3 style="font-size:15px;font-weight:700;flex-shrink:0;">🚩 البلاغات (<span id="report-count">0</span>)</h3>
+  <div class="loc-list" id="report-list"></div>
   <h3 style="font-size:15px;font-weight:700;flex-shrink:0;">المواقع الحالية (<span id="loc-count">0</span>)</h3>
   <div class="loc-list" id="loc-list"></div>
 </div>
@@ -480,6 +498,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const locsCol = db.collection('locations');
+const reportsCol = db.collection('reports');
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const KW = [29.3759, 47.9774];
@@ -561,7 +580,11 @@ const DEFAULTS = [
   {id:'l66',name:'جزيرة كبر',               category:'شواطئ', hint:'جزيرة صغيرة جنوب الكويت، وجهة شهيرة لرحلات القوارب والغوص',     photo:'', lat:29.0720, lng:48.4926, polygon:null},
   {id:'l67',name:'جزيرة بوبيان',            category:'معالم', hint:'أكبر جزر الكويت في أقصى الشمال الشرقي قرب الصبية',              photo:'', lat:29.7500, lng:48.2000, polygon:null},
   {id:'l68',name:'مكتبة الكويت الوطنية',    category:'حكومي', hint:'المكتبة الوطنية الرئيسية على شارع الخليج العربي قرب المتحف الوطني', photo:'', lat:29.3744, lng:47.9680, polygon:null},
-  {id:'l69',name:'حلبة الكويت لرياضة المحركات', category:'معالم', hint:'حلبة سباقات دولية جنوب البلاد قرب الوفرة',                  photo:'', lat:28.9213, lng:48.1396, polygon:null}
+  {id:'l69',name:'حلبة الكويت لرياضة المحركات', category:'معالم', hint:'حلبة سباقات دولية جنوب البلاد قرب الوفرة',                  photo:'', lat:28.9213, lng:48.1396, polygon:null},
+  {id:'l70',name:'بنك الكويت المركزي',      category:'حكومي', hint:'المقر الرئيسي لبنك الكويت المركزي بالقرب من بورصة الكويت في شرق', photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Central%20bank%20of%20Kuwait.jpg?width=900', lat:29.3808, lng:47.9774, polygon:null},
+  {id:'l71',name:'سوق الجمعة',              category:'أخرى', hint:'سوق شعبي أسبوعي كبير لبيع كل شيء تقريباً في منطقة الري',          photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Friday%20market%20people%20up.jpg?width=900', lat:29.3132, lng:47.9544, polygon:null},
+  {id:'l72',name:'جزيرة أم النمل',           category:'معالم', hint:'جزيرة صغيرة داخل خور الكويت قرب الساحل، تضم آثاراً قديمة ومنارة', photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Kuwait%20ESA21888966%20(Kuwait%20Bay)%20(cropped%20to%20Umm%20an%20Namil).jpg?width=600', lat:29.3817, lng:47.8669, polygon:null},
+  {id:'l73',name:'جزيرة عوهة',              category:'معالم', hint:'جزيرة صغيرة غير مأهولة جنوب شرق جزيرة فيلكا، تحوي منارة ومهبط طائرات صغير', photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Auhah%2C%20Kuwait%2C%20Sentinel-2.jpg', lat:29.3778, lng:48.4392, polygon:null}
 ];
 
 // ── Firestore data layer ──────────────────────────────────────────────────────
@@ -638,6 +661,7 @@ function showScreen(id) {
   if (id === 'home-screen') updateHomeStats();
   if (id === 'admin-screen') {
     renderLocList();
+    loadReports();
     requestAnimationFrame(() => requestAnimationFrame(() => {
       try { initAdminMap(); } catch(e) { console.warn(e); }
     }));
@@ -1033,6 +1057,59 @@ async function deleteLocation(i) {
   });
 }
 
+// ── Reports (player-flagged locations) ─────────────────────────────────────────
+let reports = [];
+async function loadReports() {
+  try {
+    const snap = await reportsCol.orderBy('createdAt', 'desc').get();
+    reports = snap.docs.map(d => ({...d.data(), _docId: d.id}));
+  } catch(e) { reports = []; console.warn(e); }
+  renderReportList();
+}
+
+function renderReportList() {
+  document.getElementById('report-count').textContent = reports.length;
+  const list = document.getElementById('report-list'); list.innerHTML = '';
+  if (!reports.length) {
+    list.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:13px;">لا توجد بلاغات حالياً 👍</p>';
+    return;
+  }
+  reports.forEach((r, i) => {
+    const card = document.createElement('div'); card.className = 'loc-card';
+    const ts = r.createdAt ? (() => {
+      const d = new Date(r.createdAt);
+      return d.toLocaleDateString('ar-KW',{day:'2-digit',month:'2-digit',year:'numeric'})
+           + ' ' + d.toLocaleTimeString('ar-KW',{hour:'2-digit',minute:'2-digit'});
+    })() : '';
+    card.innerHTML = `
+      <div class="loc-info">
+        <div class="loc-name">🚩 ${r.locName || 'موقع غير معروف'}</div>
+        <div class="loc-cat">${typeof r.lat==='number'?r.lat.toFixed(4):''}, ${typeof r.lng==='number'?r.lng.toFixed(4):''}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">🕐 ${ts}</div>
+      </div>
+      <button class="loc-btn" style="background:var(--surface);" onclick="editReportedLocation(${i})">✏️</button>
+      <button class="loc-btn" style="background:rgba(63,185,80,.15);color:var(--green);" onclick="dismissReport(${i})">✓</button>`;
+    list.appendChild(card);
+  });
+}
+
+function editReportedLocation(i) {
+  const r = reports[i];
+  const idx = locations.findIndex(l => l._docId === r.locId || l.id === r.locId);
+  if (idx === -1) { showToast('⚠️ تعذر العثور على هذا الموقع (ربما تم حذفه)'); return; }
+  openEditModal(idx);
+}
+
+async function dismissReport(i) {
+  const r = reports[i];
+  try {
+    await reportsCol.doc(r._docId).delete();
+    reports.splice(i, 1);
+    renderReportList();
+    showToast('✅ تم تجاهل البلاغ');
+  } catch(e) { showToast('❌ خطأ: '+e.message); }
+}
+
 // ── Edit modal ────────────────────────────────────────────────────────────────
 function openEditModal(i) {
   editIndex = i; editDocId = locations[i]._docId;
@@ -1127,6 +1204,25 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 
+// ── Player report (flag) ────────────────────────────────────────────────────────
+function reportLocation(loc) {
+  if (!loc) { showToast('⚠️ تعذر تحديد الموقع الحالي'); return; }
+  showConfirm(`هل تريد الإبلاغ عن مشكلة في صورة أو إحداثيات "${loc.name || 'هذا الموقع'}"؟`, async ok => {
+    if (!ok) return;
+    try {
+      await reportsCol.add({
+        locId: loc._docId || loc.id || null,
+        locName: loc.name || '',
+        lat: loc.lat, lng: loc.lng,
+        photo: loc.photo || '',
+        createdAt: new Date().toISOString(),
+        status: 'open'
+      });
+      showToast('🚩 شكراً لك، تم إرسال البلاغ');
+    } catch(e) { showToast('❌ تعذر إرسال البلاغ: '+e.message); }
+  });
+}
+
 window.addEventListener('resize', () => {
   if (gameMap   && document.getElementById('game-screen').classList.contains('active'))
     { fixMapHeight('game-map','game-screen'); gameMap.invalidateSize(); }
@@ -1190,6 +1286,7 @@ async function mpHostCreate() {
   mpRoomId = code;
   const shuffled = [...pool].sort(()=>Math.random()-.5).slice(0, Math.min(mpSelectedRounds, pool.length));
   const locs = shuffled.map(l=>({
+    id: l._docId || l.id || null,
     name:l.name, hint:l.hint||'', photo:l.photo||'',
     lat:l.lat, lng:l.lng, polygon: l.polygon ? polyToDb(l.polygon) : null
   }));
