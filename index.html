@@ -488,7 +488,10 @@
   </div>
   <h3 style="font-size:15px;font-weight:700;flex-shrink:0;">🚩 البلاغات (<span id="report-count">0</span>)</h3>
   <div class="loc-list" id="report-list"></div>
-  <h3 style="font-size:15px;font-weight:700;flex-shrink:0;">المواقع الحالية (<span id="loc-count">0</span>)</h3>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px;">
+    <h3 style="font-size:15px;font-weight:700;">المواقع الحالية (<span id="loc-count">0</span>)</h3>
+    <button class="btn btn-secondary" style="font-size:12px;padding:6px 10px;width:auto;" onclick="removeDuplicateLocations()">🧹 إزالة المكررات</button>
+  </div>
   <div class="loc-list" id="loc-list"></div>
 </div>
 
@@ -589,6 +592,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const locsCol = db.collection('locations');
 const reportsCol = db.collection('reports');
+const metaCol = db.collection('meta');
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const KW = [29.3759, 47.9774];
@@ -785,9 +789,15 @@ async function loadData() {
     locations = DEFAULTS.map(l => ({...l, _docId: l.id}));
   } else {
     locations = snap.docs.map(d => ({...locFromDb(d.data()), _docId: d.id}));
+    // Don't resurrect DEFAULTS entries the admin intentionally deleted
+    let deletedDefaultIds = [];
+    try {
+      const metaSnap = await metaCol.doc('config').get();
+      deletedDefaultIds = (metaSnap.data() && metaSnap.data().deletedDefaultIds) || [];
+    } catch(e) { /* ignore */ }
     // Sync any new DEFAULTS entries not yet in Firestore
     const existingIds = new Set(locations.map(l => l._docId));
-    const missing = DEFAULTS.filter(l => !existingIds.has(l.id));
+    const missing = DEFAULTS.filter(l => !existingIds.has(l.id) && !deletedDefaultIds.includes(l.id));
     if (missing.length > 0) {
       const batch = db.batch();
       missing.forEach(loc => batch.set(locsCol.doc(loc.id), locToDb(loc)));
@@ -1311,9 +1321,55 @@ function renderLocList() {
 async function deleteLocation(i) {
   showConfirm('حذف هذا الموقع؟', async ok => { if (!ok) return;
   try {
-    await deleteLocFromDb(locations[i]._docId);
+    const docId = locations[i]._docId;
+    await deleteLocFromDb(docId);
+    // If this was a built-in default location, remember it so it isn't re-added later
+    if (DEFAULTS.some(d => d.id === docId)) {
+      await metaCol.doc('config').set({deletedDefaultIds: firebase.firestore.FieldValue.arrayUnion(docId)}, {merge:true});
+    }
     locations.splice(i, 1);
     renderLocList(); showToast('🗑️ تم الحذف');
+  } catch(e) { showToast('❌ خطأ: '+e.message); }
+  });
+}
+
+// Find locations that share the same name and delete extra copies, keeping the best one
+async function removeDuplicateLocations() {
+  const groups = new Map();
+  locations.forEach((loc, i) => {
+    const key = (loc.name||'').trim();
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(i);
+  });
+  const dupGroups = [...groups.values()].filter(idxs => idxs.length > 1);
+  if (dupGroups.length === 0) { showToast('لا توجد مواقع مكررة'); return; }
+
+  showConfirm(`تم العثور على ${dupGroups.length} اسم مكرر. حذف النسخ الزائدة؟`, async ok => { if (!ok) return;
+  try {
+    const toDeleteDocIds = [];
+    dupGroups.forEach(idxs => {
+      // Score each duplicate: prefer one with photo, then polygon, then most recently updated
+      const scored = idxs.map(i => {
+        const loc = locations[i];
+        let score = 0;
+        if (loc.photo) score += 4;
+        if (loc.polygon && loc.polygon.length >= 3) score += 2;
+        const ts = loc.updatedAt ? new Date(loc.updatedAt).getTime() : 0;
+        return {i, score, ts};
+      });
+      scored.sort((a,b) => (b.score - a.score) || (b.ts - a.ts));
+      // Keep the first (best), mark the rest for deletion
+      scored.slice(1).forEach(s => toDeleteDocIds.push(locations[s.i]._docId));
+    });
+    for (const docId of toDeleteDocIds) {
+      await deleteLocFromDb(docId);
+      if (DEFAULTS.some(d => d.id === docId)) {
+        await metaCol.doc('config').set({deletedDefaultIds: firebase.firestore.FieldValue.arrayUnion(docId)}, {merge:true});
+      }
+    }
+    locations = locations.filter(l => !toDeleteDocIds.includes(l._docId));
+    renderLocList();
+    showToast(`🗑️ تم حذف ${toDeleteDocIds.length} نسخة مكررة`);
   } catch(e) { showToast('❌ خطأ: '+e.message); }
   });
 }
