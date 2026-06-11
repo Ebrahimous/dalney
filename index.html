@@ -83,6 +83,17 @@
     .mp-timer{background:var(--surface);border-radius:20px;padding:4px 14px;font-size:16px;font-weight:800;color:var(--gold);}
     .time-opt{background:var(--surface);border:1px solid rgba(255,255,255,.12);color:var(--muted);padding:10px 6px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;width:100%;}
     .time-opt.active{background:var(--blue);color:#000;border-color:var(--blue);}
+    .mode-card{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius);padding:14px 16px;cursor:pointer;width:100%;color:var(--text);font-family:inherit;}
+    .mode-card:active{border-color:var(--blue);}
+    .mode-card .mode-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+    .mode-card .mode-text{flex:1;min-width:0;text-align:start;}
+    .mode-card .mode-title{font-size:15px;font-weight:800;margin-bottom:2px;}
+    .mode-card .mode-desc{font-size:12px;color:var(--muted);line-height:1.4;}
+    .mode-card .mode-arrow{font-size:20px;color:var(--muted);flex-shrink:0;}
+    .menu-intro{text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;}
+    .menu-intro .menu-icon{font-size:46px;}
+    .menu-intro p{color:var(--muted);font-size:14px;max-width:280px;}
+    .settings-card{background:var(--card);border-radius:var(--radius);padding:16px;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:16px;}
   </style>
 </head>
 <body>
@@ -94,7 +105,8 @@
 </div>
 
 <!-- HOME SCREEN -->
-<div id="home-screen" class="screen">
+<div id="home-screen" class="screen" style="position:relative;">
+  <button id="sound-toggle-btn" class="back-btn" style="position:absolute;top:16px;left:16px;font-size:18px;" onclick="toggleSound()" title="تشغيل/كتم الصوت">🔊</button>
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:20px 0;">
     <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;">
       <svg width="130" height="130" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
@@ -155,22 +167,44 @@
 </div>
 
 <!-- SINGLE PLAYER MODE SELECT -->
-<div id="sp-mode-screen" class="screen" style="gap:16px;padding:20px;justify-content:center;">
+<div id="sp-mode-screen" class="screen" style="padding:20px;">
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
     <button class="back-btn" onclick="showScreen('home-screen')">→</button>
     <h2 style="font-size:18px;">العب بروحك</h2>
   </div>
-  <div>
-    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات</label>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-      <button class="time-opt active" onclick="setRoundCount(this,5)">5</button>
-      <button class="time-opt" onclick="setRoundCount(this,10)">10</button>
-      <button class="time-opt" onclick="setRoundCount(this,20)">20</button>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:20px;">
+    <div class="menu-intro">
+      <div class="menu-icon">🗺️</div>
+      <p>اختر عدد الجولات وطريقة اللعب، ثم ابدأ تحديك لاكتشاف الكويت</p>
     </div>
-  </div>
-  <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
-    <button class="btn btn-primary" onclick="startGame('classic')">🗺️ أسماء الأماكن</button>
-    <button class="btn btn-primary" onclick="startGame('photo')">📷 صور الأماكن</button>
+    <div class="settings-card">
+      <div>
+        <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+          <button class="time-opt active" onclick="setRoundCount(this,5)">5</button>
+          <button class="time-opt" onclick="setRoundCount(this,10)">10</button>
+          <button class="time-opt" onclick="setRoundCount(this,20)">20</button>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <button class="mode-card" onclick="startGame('classic')">
+        <div class="mode-icon" style="background:rgba(88,166,255,.15);color:var(--blue);">🗺️</div>
+        <div class="mode-text">
+          <div class="mode-title">أسماء الأماكن</div>
+          <div class="mode-desc">تُعرض لك تلميحات نصية — حدد الموقع على الخريطة</div>
+        </div>
+        <div class="mode-arrow">‹</div>
+      </button>
+      <button class="mode-card" onclick="startGame('photo')">
+        <div class="mode-icon" style="background:rgba(243,156,18,.15);color:var(--gold);">📷</div>
+        <div class="mode-text">
+          <div class="mode-title">صور الأماكن</div>
+          <div class="mode-desc">تُعرض لك صورة فقط — خمّن الموقع بالاعتماد عليها</div>
+        </div>
+        <div class="mode-arrow">‹</div>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -222,29 +256,51 @@
 </div>
 
 <!-- MULTIPLAYER MENU -->
-<div id="mp-menu-screen" class="screen" style="gap:16px;padding:20px;justify-content:center;">
+<div id="mp-menu-screen" class="screen" style="padding:20px;">
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
     <button class="back-btn" onclick="showScreen('home-screen')">→</button>
     <h2 style="font-size:18px;">العب مع مجموعة</h2>
   </div>
-  <div>
-    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">وضع اللعب (عند الاستضافة)</label>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <button class="time-opt active" id="mp-mode-classic-btn" onclick="mpSetMode('classic')">🗺️ أسماء الأماكن</button>
-      <button class="time-opt" id="mp-mode-photo-btn" onclick="mpSetMode('photo')">📷 صور الأماكن</button>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:20px;">
+    <div class="menu-intro">
+      <div class="menu-icon">👥</div>
+      <p>أنشئ غرفة وشارك رمزها مع أصدقائك، أو انضم لغرفة موجودة بالرمز</p>
     </div>
-  </div>
-  <div>
-    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات (عند الاستضافة)</label>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-      <button class="time-opt active" onclick="mpSetRounds(this,5)">5</button>
-      <button class="time-opt" onclick="mpSetRounds(this,10)">10</button>
-      <button class="time-opt" onclick="mpSetRounds(this,20)">20</button>
+    <div class="settings-card">
+      <div>
+        <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">وضع اللعب (عند الاستضافة)</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <button class="time-opt active" id="mp-mode-classic-btn" onclick="mpSetMode('classic')">🗺️ أسماء الأماكن</button>
+          <button class="time-opt" id="mp-mode-photo-btn" onclick="mpSetMode('photo')">📷 صور الأماكن</button>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات (عند الاستضافة)</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+          <button class="time-opt active" onclick="mpSetRounds(this,5)">5</button>
+          <button class="time-opt" onclick="mpSetRounds(this,10)">10</button>
+          <button class="time-opt" onclick="mpSetRounds(this,20)">20</button>
+        </div>
+      </div>
     </div>
-  </div>
-  <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
-    <button class="btn btn-primary" style="background:rgba(63,185,80,.15);border:1px solid rgba(63,185,80,.3);color:var(--green);" onclick="mpHostCreate()">👑 استضف لعبة</button>
-    <button class="btn btn-secondary" onclick="showScreen('mp-join-screen')">🎮 انضم للعبة</button>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <button class="mode-card" style="border-color:rgba(63,185,80,.25);" onclick="mpHostCreate()">
+        <div class="mode-icon" style="background:rgba(63,185,80,.15);color:var(--green);">👑</div>
+        <div class="mode-text">
+          <div class="mode-title">استضف لعبة</div>
+          <div class="mode-desc">أنشئ غرفة جديدة برمز خاص وادعُ أصدقاءك للانضمام</div>
+        </div>
+        <div class="mode-arrow">‹</div>
+      </button>
+      <button class="mode-card" onclick="showScreen('mp-join-screen')">
+        <div class="mode-icon" style="background:rgba(88,166,255,.15);color:var(--blue);">🎮</div>
+        <div class="mode-text">
+          <div class="mode-title">انضم للعبة</div>
+          <div class="mode-desc">أدخل رمز الغرفة للانضمام إلى لعبة صديقك</div>
+        </div>
+        <div class="mode-arrow">‹</div>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -527,6 +583,72 @@ let gameMode = 'classic'; // 'classic' | 'photo'
 let gameMap = null, resultMap = null, adminMap = null, adminMarker = null;
 let editMap = null, editMarker = null, editDocId = null, editIndex = -1;
 let adminTapCount = 0, adminTapTimer = null;
+
+// ── Sound effects (Web Audio — synthesized, no external files) ────────────────
+let audioCtx = null;
+let soundOn = localStorage.getItem('dalney_sound') !== 'off';
+
+function ensureAudioCtx() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e) { return null; }
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// Schedules a short tone. start/dur are in seconds, relative to "now".
+function tone(freq, start, dur, type='sine', vol=0.18) {
+  const ctx = ensureAudioCtx();
+  if (!ctx) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  const t0 = ctx.currentTime + start;
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(t0);
+  osc.stop(t0 + dur + 0.02);
+}
+
+function playSound(name) {
+  if (!soundOn) return;
+  try {
+    switch (name) {
+      case 'tap':    tone(600, 0, 0.05, 'sine', 0.06); break;
+      case 'pin':    tone(520, 0, 0.07, 'triangle', 0.14); tone(780, 0.05, 0.08, 'triangle', 0.1); break;
+      case 'submit': tone(440, 0, 0.09, 'sine', 0.15); tone(660, 0.08, 0.12, 'sine', 0.13); break;
+      case 'great':  [523,659,784,1047].forEach((f,i)=>tone(f, i*0.07, 0.18, 'sine', 0.16)); break;
+      case 'good':   [523,659].forEach((f,i)=>tone(f, i*0.08, 0.16, 'sine', 0.14)); break;
+      case 'poor':   tone(220, 0, 0.22, 'sawtooth', 0.12); tone(160, 0.12, 0.28, 'sawtooth', 0.1); break;
+      case 'round':  tone(700, 0, 0.06, 'sine', 0.1); tone(900, 0.07, 0.08, 'sine', 0.09); break;
+      case 'join':   tone(660, 0, 0.07, 'sine', 0.12); tone(880, 0.06, 0.09, 'sine', 0.1); break;
+      case 'tick':   tone(1000, 0, 0.04, 'square', 0.05); break;
+      case 'notify': tone(784, 0, 0.08, 'sine', 0.12); tone(1047, 0.06, 0.1, 'sine', 0.1); break;
+      case 'final':  [523,659,784,1047,1319].forEach((f,i)=>tone(f, i*0.09, 0.22, 'sine', 0.15)); break;
+    }
+  } catch(e) {}
+}
+
+// Plays a score-reveal tone based on the round score (matches the score-flash colors).
+function playScoreSound(sc) {
+  playSound(sc>=80 ? 'great' : sc>=40 ? 'good' : 'poor');
+}
+
+function setSoundEnabled(on) {
+  soundOn = on;
+  localStorage.setItem('dalney_sound', on ? 'on' : 'off');
+  updateSoundToggleUI();
+}
+
+function toggleSound() { setSoundEnabled(!soundOn); playSound('tap'); }
+
+function updateSoundToggleUI() {
+  const btn = document.getElementById('sound-toggle-btn');
+  if (btn) btn.textContent = soundOn ? '🔊' : '🔇';
+}
 
 const polyState = {
   new:  {points:[],layer:null,previewLines:[],previewMarkers:[],drawing:false,polygon:null},
@@ -908,11 +1030,13 @@ function initGameMap() {
     const icon = L.divIcon({className:'',html:'<div class="guess-marker-icon"></div>',iconSize:[32,32],iconAnchor:[16,32]});
     L.marker(e.latlng, {icon}).addTo(gameMap);
     document.getElementById('submit-btn').disabled = false;
+    playSound('pin');
   });
 }
 
 function submitGuess() {
   if (!guess) return;
+  playSound('submit');
   const loc = gameRounds[currentRound];
   const poly = loc.polygon;
   let sc, dk, inArea = false;
@@ -927,6 +1051,7 @@ function submitGuess() {
   gameRounds[currentRound]._result = {score:sc, dist:dk, inArea};
   document.getElementById('score-flash').textContent = sc;
   document.getElementById('score-flash').style.color = sc>=80?'var(--green)':sc>=40?'var(--gold)':'var(--red)';
+  setTimeout(()=>playScoreSound(sc), 150);
   const distText = inArea
     ? `✅ داخل المنطقة! 100 نقطة`
     : `📍 المسافة: ${dk<1?(dk*1000).toFixed(0)+' م':(dk).toFixed(1)+' كم'} — +${sc} نقطة`;
@@ -960,6 +1085,7 @@ function initResultMap(loc, g) {
 function nextRound() {
   currentRound++;
   if (currentRound >= gameRounds.length) { showSummary(); return; }
+  playSound('round');
   showScreen('game-screen');
   loadRound();
   requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -974,8 +1100,8 @@ function showSummary() {
   document.getElementById('final-score').textContent = totalScore;
   const hs = getStats().highscore;
   const nb = document.getElementById('new-best');
-  if (totalScore > hs) { setHighscore(totalScore); nb.textContent = '🏆 رقم قياسي جديد!'; }
-  else nb.textContent = `أعلى نتيجة: ${hs}`;
+  if (totalScore > hs) { setHighscore(totalScore); nb.textContent = '🏆 رقم قياسي جديد!'; playSound('final'); }
+  else { nb.textContent = `أعلى نتيجة: ${hs}`; playSound('round'); }
   const rs = document.getElementById('round-summary'); rs.innerHTML = '';
   gameRounds.forEach(loc => {
     const res = loc._result || {score:0};
@@ -1283,6 +1409,15 @@ function mpCaptureSelfie(input, previewId) {
 const KW_CENTER = [29.3697, 47.9783];
 let mpRoomId=null, mpPlayerId=null, mpIsHost=false, mpRoom=null;
 let mpListener=null, mpTimerIv=null, mpGuess=null, mpCurrentRound=0;
+let mpLastPlayerCount=0;
+
+// Plays a join chime when the player list grows (skips the initial render so
+// joining your own lobby doesn't trigger it).
+function checkPlayerJoinSound(players) {
+  const n = (players||[]).length;
+  if (n > mpLastPlayerCount && mpLastPlayerCount > 0) playSound('join');
+  mpLastPlayerCount = n;
+}
 let mpGameMap=null, mpHostMap=null, mpResultMap=null, mpHostMapLayers=[], mpGameMarker=null;
 let mpTimeLimit=10, mpAnswered=false;
 let mpSelectedMode='classic'; // 'classic' | 'photo' — chosen by host before creating a room
@@ -1350,6 +1485,7 @@ async function mpHostCreate() {
 }
 
 function mpUpdateLobby(players) {
+  checkPlayerJoinSound(players);
   document.getElementById('mp-lobby-players').innerHTML = players.length
     ? players.map(p=>`<div class="player-chip"><div class="color-dot" style="background:${p.color}"></div><span style="font-weight:600;font-size:15px;">${p.name}</span>${p.id===mpPlayerId?'<span style="margin-right:auto;font-size:11px;color:var(--gold);">👑 مضيف</span>':''}</div>`).join('')
     : '<p style="text-align:center;color:var(--muted);font-size:14px;">في انتظار انضمام اللاعبين...</p>';
@@ -1389,12 +1525,14 @@ function mpSync() {
     if (mpIsHost) {
       const answered = Object.keys(answers||{}).length;
       if ((players||[]).length > 0 && answered >= (players||[]).length) {
+        playSound('notify');
         mpHostShowResults(); return;
       }
     }
     if (mpCurrentRound !== round) {
       mpCurrentRound = round;
       mpGuess = null; mpAnswered = false;
+      playSound('round');
       showScreen('mp-game-screen');
       mpInitGameRound();
     }
@@ -1451,6 +1589,7 @@ function mpInitGameRound() {
         const icon = L.divIcon({html:`<div style="width:28px;height:28px;background:${myColor};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;"></div>`,iconSize:[28,28],iconAnchor:[14,28],className:''});
         mpGameMarker = L.marker([e.latlng.lat,e.latlng.lng],{icon}).addTo(mpGameMap);
         document.getElementById('mp-submit-btn').disabled = false;
+        playSound('pin');
       });
     } catch(e){console.warn(e);}
   },300);
@@ -1479,6 +1618,8 @@ function mpHostRenderPlaying() {} // kept for compat — logic moved to mpSync
 
 function mpShowRoundResult() {
   const {round, totalRounds, loc, players, answers} = mpRoom;
+  const myAns = (answers||{})[mpPlayerId];
+  playScoreSound(myAns ? myAns.score : 0);
   showScreen('mp-result-screen');
   document.getElementById('mr-round-badge').textContent = `جولة ${round} / ${totalRounds}`;
   document.getElementById('mr-loc-name').textContent = loc ? loc.name : '';
@@ -1648,6 +1789,7 @@ async function mpJoin() {
 }
 
 function mpRenderWaitPlayers() {
+  checkPlayerJoinSound(mpRoom.players);
   document.getElementById('mp-wait-players').innerHTML = (mpRoom.players||[]).map(p=>`
     <div class="player-chip">
       <div class="color-dot" style="background:${p.color}"></div>
@@ -1659,6 +1801,7 @@ function mpRenderWaitPlayers() {
 
 async function mpSubmitGuess() {
   if (!mpGuess || mpAnswered) return;
+  playSound('submit');
   mpAnswered = true;
   if (!mpIsHost) clearInterval(mpTimerIv); // host timer keeps running to auto-end round
   const sb = document.getElementById('mp-submit-btn');
@@ -1680,6 +1823,7 @@ async function mpSubmitGuess() {
 }
 
 function mpShowFinal() {
+  playSound('final');
   showScreen('mp-final-screen');
   const players = [...(mpRoom.players||[])].sort((a,b)=>(b.score||0)-(a.score||0));
   const medals = ['🥇','🥈','🥉'];
@@ -1697,6 +1841,7 @@ function mpStartTimer(elId, startAt, duration, onExpire) {
   const el = document.getElementById(elId);
   if (duration === 0) { el.textContent = '∞'; el.style.color = 'var(--gold)'; return; }
   let expired = false;
+  let lastTickSec = -1;
   function tick() {
     const elapsed = (Date.now()-new Date(startAt).getTime())/1000;
     if (elapsed < 0) {
@@ -1708,6 +1853,10 @@ function mpStartTimer(elId, startAt, duration, onExpire) {
     const rem = Math.max(0, duration-elapsed);
     el.textContent = Math.ceil(rem);
     el.style.color = rem<=3 ? 'var(--red)' : 'var(--gold)';
+    if (rem>0 && rem<=3) {
+      const sec = Math.ceil(rem);
+      if (sec !== lastTickSec) { lastTickSec = sec; playSound('tick'); }
+    }
     if (rem<=0 && !expired) { expired=true; clearInterval(mpTimerIv); onExpire(); }
   }
   tick();
@@ -1721,7 +1870,7 @@ function mpLeave() {
   if (mpHostMap)   { try{mpHostMap.remove();}catch(e){}   mpHostMap=null; }
   if (mpResultMap) { try{mpResultMap.remove();}catch(e){} mpResultMap=null; }
   mpRoomId=null; mpPlayerId=null; mpIsHost=false; mpRoom=null;
-  mpCurrentRound=0; mpGuess=null; mpAnswered=false;
+  mpCurrentRound=0; mpGuess=null; mpAnswered=false; mpLastPlayerCount=0;
   showScreen('home-screen');
 }
 
@@ -1738,7 +1887,7 @@ function mpReset() {
   if (mpResultMap) { try{mpResultMap.remove();}catch(e){} mpResultMap=null; }
   mpHostMapLayers=[]; mpGameMarker=null;
   mpRoomId=null; mpPlayerId=null; mpIsHost=false; mpRoom=null;
-  mpCurrentRound=0; mpGuess=null; mpAnswered=false;
+  mpCurrentRound=0; mpGuess=null; mpAnswered=false; mpLastPlayerCount=0;
   mpMySelfie=null;
   ['mp-host-selfie-preview','mp-join-selfie-preview'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1750,6 +1899,13 @@ function mpReset() {
   });
 }
 
+// ── Global UI tap sound ─────────────────────────────────────────────────────
+document.addEventListener('click', e => {
+  const target = e.target.closest('.btn, .back-btn, .time-opt, .mode-card, .player-chip');
+  if (!target || target.id === 'sound-toggle-btn') return;
+  playSound('tap');
+}, true);
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 (async () => {
   try {
@@ -1758,6 +1914,7 @@ function mpReset() {
     console.error('Firebase load error:', e);
     showToast('⚠️ تعذر الاتصال بالخادم');
   }
+  updateSoundToggleUI();
   document.getElementById('loading-overlay').classList.add('hidden');
   showScreen('home-screen');
 })();
