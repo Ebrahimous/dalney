@@ -441,7 +441,10 @@
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
     <button class="back-btn" onclick="showScreen('home-screen')">→</button>
     <h2 style="font-size:18px;">لوحة الإدارة</h2>
-    <div style="margin-right:auto;font-size:13px;color:var(--muted);">👁️ الزيارات: <span id="visitor-count">—</span> · نسخة: <span id="build-version"></span></div>
+    <div style="margin-right:auto;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);">
+      👁️ الزيارات: <span id="visitor-count">—</span> · نسخة: <span id="build-version"></span>
+      <button onclick="resetVisitorCount()" title="تصفير العداد" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:2px;">↺</button>
+    </div>
   </div>
   <div class="admin-card">
     <h3 style="font-size:15px;font-weight:700;">إضافة موقع جديد</h3>
@@ -1307,6 +1310,16 @@ async function renderVisitorCount() {
     const snap = await locsCol.doc('meta_config').get();
     el.textContent = (snap.data() && snap.data().visitCount) || 0;
   } catch(e) { el.textContent = '—'; }
+}
+
+function resetVisitorCount() {
+  showConfirm('تصفير عداد الزيارات؟', async ok => { if (!ok) return;
+  try {
+    await locsCol.doc('meta_config').set({visitCount: 0}, {merge:true});
+    renderVisitorCount();
+    showToast('✅ تم التصفير');
+  } catch(e) { showToast('❌ خطأ: '+e.message); }
+  });
 }
 
 function renderLocList() {
