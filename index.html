@@ -832,7 +832,15 @@ function getStats() { return {highscore: parseFloat(localStorage.getItem('q8avg'
 function setHighscore(v) { localStorage.setItem('q8avg', v); }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
-function showScreen(id) {
+// Tracks whether we've pushed a "guard" history entry for being on a non-home
+// screen. As long as the player is on any screen other than home-screen there
+// is exactly one extra history entry, so the phone's back button returns to
+// home-screen instead of exiting the game. Pressing back again from
+// home-screen behaves normally (leaves the page), which is expected.
+let navGuardActive = false;
+let suppressPopstate = false;
+
+function showScreen(id, fromPop) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if (id === 'home-screen') updateHomeStats();
@@ -845,7 +853,27 @@ function showScreen(id) {
       try { initAdminMap(); } catch(e) { console.warn(e); }
     }));
   }
+  if (!fromPop) {
+    if (id === 'home-screen') {
+      if (navGuardActive) {
+        navGuardActive = false;
+        suppressPopstate = true;
+        history.back();
+      }
+    } else if (!navGuardActive) {
+      navGuardActive = true;
+      history.pushState({dalneyGuard: true}, '', '');
+    }
+  }
 }
+
+window.addEventListener('popstate', () => {
+  if (suppressPopstate) { suppressPopstate = false; return; }
+  if (navGuardActive) {
+    navGuardActive = false;
+    showScreen('home-screen', true);
+  }
+});
 function updateHomeStats() { document.getElementById('stat-highscore').textContent = getStats().highscore + '/100'; }
 
 function fixMapHeight(mapId, screenId) {
