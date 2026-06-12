@@ -110,10 +110,10 @@
 <!-- HOME SCREEN -->
 <div id="home-screen" class="screen" style="position:relative;">
   <button id="sound-toggle-btn" class="back-btn" style="position:absolute;top:16px;left:16px;font-size:18px;" onclick="toggleSound()" title="تشغيل/كتم الصوت">🔊</button>
-  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:20px 0;position:relative;">
-    <div style="display:flex;align-items:center;justify-content:flex-start;width:100%;">
-      <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;">
-        <svg width="110" height="110" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:20px 0;max-width:480px;margin:0 auto;width:100%;">
+    <div style="display:flex;align-items:flex-start;justify-content:flex-start;width:100%;position:relative;">
+      <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <svg width="70" height="70" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <clipPath id="lc"><circle cx="56" cy="54" r="35"/></clipPath>
             <radialGradient id="lf" cx="40%" cy="35%">
@@ -137,12 +137,12 @@
           <line x1="83" y1="81" x2="112" y2="110" stroke="#58a6ff" stroke-width="9" stroke-linecap="round"/>
           <line x1="85" y1="83" x2="108" y2="106" stroke="rgba(255,255,255,0.15)" stroke-width="3" stroke-linecap="round"/>
         </svg>
-        <h1 style="font-family:'Lalezar',sans-serif;font-size:48px;color:var(--blue);line-height:1.1;letter-spacing:-1px;">دلني</h1>
-        <p style="font-family:'Cairo',sans-serif;font-size:14px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-top:-4px;">ورنا شطارتك</p>
-        <div class="stat-card" style="max-width:160px;"><div class="num" id="stat-highscore">0/100</div><div class="lbl">أفضل معدل</div></div>
+        <h1 style="font-family:'Lalezar',sans-serif;font-size:34px;color:var(--blue);line-height:1.1;letter-spacing:-1px;">دلني</h1>
+        <p style="font-family:'Cairo',sans-serif;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-top:-4px;">ورنا شطارتك</p>
+        <div class="stat-card" style="max-width:120px;padding:10px;"><div class="num" id="stat-highscore" style="font-size:22px;">0/100</div><div class="lbl" style="font-size:11px;">أفضل معدل</div></div>
       </div>
+      <img src="mascot-clear.png" alt="" style="position:absolute;top:0;left:0;width:66%;max-width:280px;object-fit:contain;z-index:1;pointer-events:none;">
     </div>
-    <img src="mascot-clear.png" alt="" style="position:absolute;top:0;left:0;width:62%;max-width:235px;object-fit:contain;z-index:1;pointer-events:none;">
     <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
       <button class="btn btn-primary" style="position:relative;z-index:2;" onclick="showScreen('sp-mode-screen')">🗺️ لعب فردي</button>
       <button class="btn btn-primary" onclick="showScreen('mp-menu-screen')">👥 لعب جماعي</button>
