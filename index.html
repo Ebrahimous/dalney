@@ -1998,6 +1998,10 @@ function mpInitHostMap() {
 async function mpHostStart() {
   if (!mpRoom || (mpRoom.players||[]).length < 1) return;
   document.getElementById('mp-start-btn').disabled = true;
+  // The time-limit chosen in the lobby (mpSetTime) only updates the local
+  // mpTimeLimit variable — the room doc still has whatever value was set when
+  // the room was created. Sync it now so the selected time actually applies.
+  await db.collection('rooms').doc(mpRoomId).update({timeLimit: mpTimeLimit});
   await mpAdvanceToRound(0);
 }
 
