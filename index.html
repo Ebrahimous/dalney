@@ -12,6 +12,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
+    /* Disable pinch-zoom/double-tap-zoom on the page itself — without this,
+       a stray two-finger touch outside the map zooms the whole browser
+       viewport (pushing buttons off-screen). pan-x/pan-y still allow normal
+       scrolling, and Leaflet's map containers set their own touch-action so
+       pinch-to-zoom keeps working on the map specifically. */
+    html,body{touch-action:pan-x pan-y;-ms-touch-action:pan-x pan-y;}
     :root{
       --bg:#0d1117;--surface:#161b22;--card:#21262d;--dark:#0d1117;
       --blue:#58a6ff;--green:#3fb950;--red:#f85149;--gold:#f39c12;
@@ -69,6 +75,7 @@
     .player-pin-icon span{transform:rotate(45deg);font-size:15px;font-weight:800;color:#fff;}
     .player-pin-icon img{width:100%;height:100%;object-fit:cover;transform:rotate(45deg);}
     .selfie-btn{width:40px;height:40px;flex-shrink:0;border-radius:50%;background:var(--card2,rgba(255,255,255,.06));border:1px dashed rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;background-size:cover;background-position:center;color:var(--muted);}
+    .emoji-opt{width:48px;height:48px;border-radius:12px;background:var(--card2,rgba(255,255,255,.06));border:1px solid rgba(255,255,255,.12);font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
     .selfie-cam-box{position:relative;width:280px;height:280px;max-width:80vw;max-height:80vw;border-radius:16px;overflow:hidden;background:#000;}
     .selfie-cam-box video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
     .selfie-cam-outline{position:absolute;inset:0;margin:auto;width:74%;height:74%;border:3px dashed var(--blue);border-radius:50%;pointer-events:none;box-shadow:0 0 0 2000px rgba(0,0,0,.45);}
@@ -270,23 +277,6 @@
       <div class="menu-icon">👥</div>
       <p>أنشئ غرفة وشارك رمزها مع أصدقائك، أو انضم لغرفة موجودة بالرمز</p>
     </div>
-    <div class="settings-card">
-      <div>
-        <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">وضع اللعب (عند الاستضافة)</label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <button class="time-opt active" id="mp-mode-classic-btn" onclick="mpSetMode('classic')">🗺️ أسماء الأماكن</button>
-          <button class="time-opt" id="mp-mode-photo-btn" onclick="mpSetMode('photo')">📷 صور الأماكن</button>
-        </div>
-      </div>
-      <div>
-        <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات (عند الاستضافة)</label>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-          <button class="time-opt active" onclick="mpSetRounds(this,5)">5</button>
-          <button class="time-opt" onclick="mpSetRounds(this,10)">10</button>
-          <button class="time-opt" onclick="mpSetRounds(this,20)">20</button>
-        </div>
-      </div>
-    </div>
     <div style="display:flex;flex-direction:column;gap:12px;">
       <button class="mode-card" style="border-color:rgba(63,185,80,.25);" onclick="mpHostCreate()">
         <div class="mode-icon" style="background:rgba(63,185,80,.15);color:var(--green);">👑</div>
@@ -324,16 +314,33 @@
       <div style="display:flex;gap:8px;">
         <button type="button" class="selfie-btn" id="mp-host-selfie-preview" title="إضافة صورة شخصية" onclick="mpOpenCamera('mp-host-selfie-preview')">📷</button>
         <input id="mp-host-selfie" type="file" accept="image/*" capture="user" style="display:none;" onchange="mpCaptureSelfie(this,'mp-host-selfie-preview')">
-        <input id="mp-host-name" type="text" maxlength="14" placeholder="أدخل اسمك" style="flex:1;">
+        <button type="button" class="selfie-btn" title="اختر رمزاً تعبيرياً" onclick="mpOpenEmojiPicker('mp-host-selfie-preview')">🙂</button>
+        <input id="mp-host-name" type="text" maxlength="14" placeholder="أدخل اسمك (اختياري)" style="flex:1;">
         <button class="btn btn-secondary" id="mp-host-join-btn" onclick="mpHostAddSelf()" style="width:auto;flex-shrink:0;white-space:nowrap;padding:0 16px;border-radius:12px;">➕ أضف</button>
       </div>
     </div>
     <div>
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">وضع اللعب</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="time-opt active" id="mp-mode-classic-btn" onclick="mpSetMode('classic')">🗺️ أسماء الأماكن</button>
+        <button class="time-opt" id="mp-mode-photo-btn" onclick="mpSetMode('photo')">📷 صور الأماكن</button>
+      </div>
+    </div>
+    <div>
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <button class="time-opt active" id="mp-rounds-5" onclick="mpSetRounds(this,5)">5</button>
+        <button class="time-opt" id="mp-rounds-10" onclick="mpSetRounds(this,10)">10</button>
+        <button class="time-opt" id="mp-rounds-20" onclick="mpSetRounds(this,20)">20</button>
+      </div>
+    </div>
+    <div>
       <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">مدة الإجابة</label>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-        <button class="time-opt active" onclick="mpSetTime(this,10)">10 ثواني</button>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
         <button class="time-opt" onclick="mpSetTime(this,20)">20 ثانية</button>
-        <button class="time-opt" onclick="mpSetTime(this,30)">30 ثانية</button>
+        <button class="time-opt active" onclick="mpSetTime(this,30)">30 ثانية</button>
+        <button class="time-opt" onclick="mpSetTime(this,45)">45 ثانية</button>
+        <button class="time-opt" onclick="mpSetTime(this,60)">60 ثانية</button>
         <button class="time-opt" onclick="mpSetTime(this,0)">بدون وقت</button>
       </div>
     </div>
@@ -357,7 +364,8 @@
     <div style="display:flex;gap:8px;">
       <button type="button" class="selfie-btn" id="mp-join-selfie-preview" title="إضافة صورة شخصية" onclick="mpOpenCamera('mp-join-selfie-preview')">📷</button>
       <input id="mp-join-selfie" type="file" accept="image/*" capture="user" style="display:none;" onchange="mpCaptureSelfie(this,'mp-join-selfie-preview')">
-      <input id="mp-name-input" type="text" maxlength="14" placeholder="أدخل اسمك" style="flex:1;">
+      <button type="button" class="selfie-btn" title="اختر رمزاً تعبيرياً" onclick="mpOpenEmojiPicker('mp-join-selfie-preview')">🙂</button>
+      <input id="mp-name-input" type="text" maxlength="14" placeholder="أدخل اسمك (اختياري)" style="flex:1;">
     </div>
   </div>
   <button class="btn btn-primary" id="mp-join-btn" onclick="mpJoin()">انضم ›</button>
@@ -583,6 +591,34 @@
   </div>
 </div>
 
+<!-- Emoji avatar picker modal -->
+<div id="emoji-picker-modal" style="display:none;position:fixed;inset:0;z-index:99500;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:24px;flex-direction:column;gap:16px;">
+  <p style="color:var(--muted);font-size:13px;text-align:center;">اختر رمزاً تعبيرياً ليكون رمزك في اللعبة</p>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;max-width:300px;">
+    <button class="emoji-opt" onclick="mpPickEmoji('😀')">😀</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('😎')">😎</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🤩')">🤩</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🥳')">🥳</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('😺')">😺</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🐶')">🐶</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🦁')">🦁</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🐸')">🐸</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🐵')">🐵</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🦊')">🦊</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🐼')">🐼</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🐨')">🐨</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🦄')">🦄</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🐙')">🐙</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🦋')">🦋</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🌟')">🌟</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('⚡')">⚡</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🔥')">🔥</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('👑')">👑</button>
+    <button class="emoji-opt" onclick="mpPickEmoji('🚀')">🚀</button>
+  </div>
+  <button onclick="mpCloseEmojiPicker()" class="btn btn-secondary" style="width:100%;max-width:280px;padding:12px;">إلغاء</button>
+</div>
+
 <div id="toast"></div>
 <script>
 // ── Firebase setup ────────────────────────────────────────────────────────────
@@ -659,7 +695,27 @@ function tone(freq, start, dur, type='sine', vol=0.18) {
   osc.stop(t0 + dur + 0.02);
 }
 
+// Haptic feedback via the Vibration API (feature-detected; silently no-ops on
+// unsupported browsers/desktops). Runs independently of the sound toggle so
+// muted devices still get tactile confirmation.
+function vibrate(pattern) {
+  try { if (navigator.vibrate) navigator.vibrate(pattern); } catch(e) {}
+}
+
 function playSound(name) {
+  switch (name) {
+    case 'tap':    vibrate(8); break;
+    case 'pin':    vibrate(15); break;
+    case 'submit': vibrate([0,15,30,15]); break;
+    case 'great':  vibrate([0,25,40,25,40,50]); break;
+    case 'good':   vibrate([0,20,40,20]); break;
+    case 'poor':   vibrate(35); break;
+    case 'round':  vibrate(12); break;
+    case 'join':   vibrate(10); break;
+    case 'tick':   vibrate(5); break;
+    case 'notify': vibrate([0,15,25,15]); break;
+    case 'final':  vibrate([0,25,40,25,40,25,70]); break;
+  }
   if (!soundOn) return;
   try {
     switch (name) {
@@ -872,10 +928,38 @@ window.addEventListener('popstate', () => {
   if (suppressPopstate) { suppressPopstate = false; return; }
   if (navGuardActive) {
     navGuardActive = false;
-    showScreen('home-screen', true);
+    // If a multiplayer room is active, the in-app back buttons normally call
+    // mpHostCancel()/mpLeave() to clean up Firestore (delete the room if we're
+    // the host, or remove ourselves from players[] if we're a guest). The
+    // hardware/browser back button bypasses those buttons entirely, so without
+    // this the old room doc is left behind — guests stay subscribed to it and,
+    // since nothing about it changes, never get kicked back to the menu (stuck
+    // until they refresh the page).
+    if (mpRoomId) {
+      if (mpIsHost) db.collection('rooms').doc(mpRoomId).delete().catch(()=>{});
+      mpLeave();
+    } else {
+      showScreen('home-screen', true);
+    }
   }
 });
 function updateHomeStats() { document.getElementById('stat-highscore').textContent = getStats().highscore + '/100'; }
+
+// OSM tile servers occasionally fail to return a tile (timeouts / rate
+// limiting, especially with several players loading maps at once in
+// multiplayer). Leaflet renders failed tiles as solid grey squares that
+// then sit there permanently. This helper retries a failed tile once after
+// a short delay, which clears up most of those grey squares.
+function osmTileLayer() {
+  const layer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OSM'});
+  layer.on('tileerror', e => {
+    if (e.tile && !e.tile._retried) {
+      e.tile._retried = true;
+      setTimeout(() => { e.tile.src = e.tile.src; }, 1200);
+    }
+  });
+  return layer;
+}
 
 function fixMapHeight(mapId, screenId) {
   const scr = document.getElementById(screenId), el = document.getElementById(mapId);
@@ -1187,7 +1271,7 @@ function initGameMap() {
   if (gameMap) { gameMap.remove(); gameMap = null; }
   fixMapHeight('game-map', 'game-screen');
   gameMap = L.map('game-map', {zoomControl:true, minZoom:7, maxZoom:17});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OSM'}).addTo(gameMap);
+  osmTileLayer().addTo(gameMap);
   gameMap.setView(KW, 9);
   gameMap.on('click', e => {
     guess = e.latlng;
@@ -1232,7 +1316,7 @@ function initResultMap(loc, g) {
   if (resultMap) { resultMap.remove(); resultMap = null; }
   fixMapHeight('result-map', 'result-screen');
   resultMap = L.map('result-map', {zoomControl:true, minZoom:7, maxZoom:17});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OSM'}).addTo(resultMap);
+  osmTileLayer().addTo(resultMap);
   const ci = L.divIcon({className:'',html:'<div class="correct-marker-icon"><div class="flag-pulse"></div><div class="flag-emoji">🚩</div></div>',iconSize:[42,42],iconAnchor:[21,42]});
   const gi = L.divIcon({className:'',html:'<div class="guess-marker-icon"></div>',iconSize:[42,42],iconAnchor:[21,42]});
   const poly = loc.polygon;
@@ -1291,7 +1375,7 @@ function exitGame(toHome) {
 function initAdminMap() {
   if (adminMap) return;
   adminMap = L.map('admin-map-picker', {zoomControl:true, minZoom:7, maxZoom:17});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OSM'}).addTo(adminMap);
+  osmTileLayer().addTo(adminMap);
   adminMap.setView(KW, 9);
   adminMap.on('click', e => {
     if (polyState.new.drawing) return;
@@ -1503,7 +1587,7 @@ function openEditModal(i) {
     try {
       if (editMap) { editMap.remove(); editMap = null; editMarker = null; }
       editMap = L.map('edit-map', {zoomControl:true, minZoom:7, maxZoom:17});
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OSM'}).addTo(editMap);
+      osmTileLayer().addTo(editMap);
       editMap.setView([loc.lat, loc.lng], 14);
       editMarker = L.marker([loc.lat,loc.lng], {draggable:true}).addTo(editMap);
       editMarker.on('drag', e => {
@@ -1615,6 +1699,38 @@ window.addEventListener('resize', () => {
 // ── Multiplayer ───────────────────────────────────────────────────────────────
 const MP_COLORS = ['#f85149','#f39c12','#3fb950','#58a6ff','#bc8cff','#ff79c6','#f78166','#8be9fd'];
 let mpMySelfie = null;
+let mpMyEmoji = null;
+
+// ── Emoji avatar picker (alternative to a selfie) ───────────────────────────
+let emojiPickerTarget = null;
+
+function mpOpenEmojiPicker(previewId) {
+  emojiPickerTarget = previewId;
+  document.getElementById('emoji-picker-modal').style.display = 'flex';
+}
+
+function mpCloseEmojiPicker() {
+  document.getElementById('emoji-picker-modal').style.display = 'none';
+  emojiPickerTarget = null;
+}
+
+function mpPickEmoji(emoji) {
+  mpMyEmoji = emoji;
+  mpMySelfie = null; // selfie and emoji are mutually exclusive
+  const preview = document.getElementById(emojiPickerTarget);
+  if (preview) { preview.style.backgroundImage = ''; preview.textContent = emoji; }
+  const fileInput = document.getElementById(emojiPickerTarget.replace(/-preview$/, ''));
+  if (fileInput) fileInput.value = '';
+  mpCloseEmojiPicker();
+}
+
+// Shared avatar renderer for player map pins: selfie photo > chosen emoji >
+// plain pin in the player's assigned color (no fallback initial letter).
+function mpAvatarHtml(p) {
+  if (p.selfie) return `<img src="${p.selfie}" alt="">`;
+  if (p.emoji)  return `<span style="font-size:18px;">${p.emoji}</span>`;
+  return '';
+}
 
 // Reads an image file, crops it to a square, downsizes it, and stores a small
 // base64 JPEG thumbnail for use as the player's pin avatar (sent via Firestore
@@ -1634,6 +1750,7 @@ function mpCaptureSelfie(input, previewId) {
       const sx = (img.width - side) / 2, sy = (img.height - side) / 2;
       ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
       mpMySelfie = canvas.toDataURL('image/jpeg', 0.6);
+      mpMyEmoji = null; // selfie and emoji are mutually exclusive
       const preview = document.getElementById(previewId);
       if (preview) { preview.style.backgroundImage = `url(${mpMySelfie})`; preview.textContent = ''; }
     };
@@ -1688,6 +1805,7 @@ function mpTakeSelfie() {
   ctx.translate(size, 0); ctx.scale(-1, 1); // mirror to match the on-screen preview
   ctx.drawImage(video, srcX, srcY, srcSide, srcSide, 0, 0, size, size);
   mpMySelfie = canvas.toDataURL('image/jpeg', 0.6);
+  mpMyEmoji = null; // selfie and emoji are mutually exclusive
   const preview = document.getElementById(selfieCamTarget);
   if (preview) { preview.style.backgroundImage = `url(${mpMySelfie})`; preview.textContent = ''; }
   mpCloseCamera();
@@ -1706,13 +1824,26 @@ function checkPlayerJoinSound(players) {
   mpLastPlayerCount = n;
 }
 let mpGameMap=null, mpHostMap=null, mpResultMap=null, mpHostMapLayers=[], mpGameMarker=null;
-let mpTimeLimit=10, mpAnswered=false;
+let mpTimeLimit=30, mpAnswered=false, mpResultsLock=false;
 let mpSelectedMode='classic'; // 'classic' | 'photo' — chosen by host before creating a room
 
 function mpSetMode(mode) {
   mpSelectedMode = mode === 'photo' ? 'photo' : 'classic';
   document.getElementById('mp-mode-classic-btn').classList.toggle('active', mpSelectedMode==='classic');
   document.getElementById('mp-mode-photo-btn').classList.toggle('active', mpSelectedMode==='photo');
+  mpHostRefreshLocs();
+}
+
+// Sets the mode/rounds buttons in the host lobby to match the current
+// mpSelectedMode/mpSelectedRounds values (these can carry over from a
+// previous hosted game).
+function mpSyncModeRoundsButtons() {
+  document.getElementById('mp-mode-classic-btn').classList.toggle('active', mpSelectedMode==='classic');
+  document.getElementById('mp-mode-photo-btn').classList.toggle('active', mpSelectedMode==='photo');
+  [5,10,20].forEach(n=>{
+    const el = document.getElementById('mp-rounds-'+n);
+    if (el) el.classList.toggle('active', mpSelectedRounds===n);
+  });
 }
 
 function mpGenCode() {
@@ -1733,14 +1864,31 @@ function mpSetRounds(el, n) {
   mpSelectedRounds = n;
   el.parentElement.querySelectorAll('.time-opt').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
+  mpHostRefreshLocs();
+}
+
+// Builds the list of round locations for a given mode/round-count, or
+// returns null if no eligible locations exist (e.g. photo mode with no
+// location photos uploaded yet).
+function mpBuildLocs(mode, rounds) {
+  let pool = locations;
+  if (mode === 'photo') pool = locations.filter(l => getLocPhotos(l).length > 0);
+  if (!pool.length) return null;
+  const shuffled = shuffle([...pool]).slice(0, Math.min(rounds, pool.length));
+  return shuffled.map(l=>({
+    id: l._docId || l.id || null,
+    name:l.name, hint:l.hint||'', photo: pickRandomPhoto(l) || '',
+    lat:l.lat, lng:l.lng, polygon: l.polygon ? polyToDb(l.polygon) : null
+  }));
 }
 
 async function mpHostCreate() {
   if (!locations.length) { showToast('⚠️ لا توجد مواقع'); return; }
-  let pool = locations;
-  if (mpSelectedMode === 'photo') {
-    pool = locations.filter(l => getLocPhotos(l).length > 0);
-    if (!pool.length) { showToast('⚠️ لا توجد مواقع بصور بعد. أضف صوراً للمواقع من لوحة التحكم.'); return; }
+  let locs = mpBuildLocs(mpSelectedMode, mpSelectedRounds);
+  if (!locs) {
+    showToast('⚠️ لا توجد مواقع بصور بعد. أضف صوراً للمواقع من لوحة التحكم.');
+    mpSelectedMode = 'classic';
+    locs = mpBuildLocs(mpSelectedMode, mpSelectedRounds);
   }
   const mode = mpSelectedMode;
   mpReset();
@@ -1748,27 +1896,48 @@ async function mpHostCreate() {
   mpPlayerId = mpGenId();
   const code = mpGenCode();
   mpRoomId = code;
-  const shuffled = shuffle([...pool]).slice(0, Math.min(mpSelectedRounds, pool.length));
-  const locs = shuffled.map(l=>({
-    id: l._docId || l.id || null,
-    name:l.name, hint:l.hint||'', photo: pickRandomPhoto(l) || '',
-    lat:l.lat, lng:l.lng, polygon: l.polygon ? polyToDb(l.polygon) : null
-  }));
-  // Host starts with empty players — name is read in mpHostStart after lobby
-  await db.collection('rooms').doc(code).set({
-    status:'waiting', round:0, totalRounds:locs.length,
-    loc:null, roundStartAt:null,
-    players:[], answers:{}, locs, mode,
-    timeLimit:mpTimeLimit, hostId:mpPlayerId
-  });
-  document.getElementById('mp-room-code').textContent = code;
+
+  // Transition to the lobby immediately so the host isn't stuck staring at
+  // the menu screen for the ~1-2s it takes to write the room doc — the
+  // room code shows a placeholder until the write completes.
+  document.getElementById('mp-room-code').textContent = '----';
   mpUpdateLobby([]);
+  mpSyncModeRoundsButtons();
   showScreen('mp-host-lobby');
-  mpListener = db.collection('rooms').doc(code).onSnapshot(snap=>{
-    if (!snap.exists) return;
-    mpRoom = snap.data();
-    mpSync();
-  });
+
+  try {
+    // Host starts with empty players — name is read in mpHostAddSelf after lobby
+    await db.collection('rooms').doc(code).set({
+      status:'waiting', round:0, totalRounds:locs.length,
+      loc:null, roundStartAt:null,
+      players:[], answers:{}, locs, mode,
+      timeLimit:mpTimeLimit, hostId:mpPlayerId
+    });
+    document.getElementById('mp-room-code').textContent = code;
+    mpListener = db.collection('rooms').doc(code).onSnapshot(snap=>{
+      if (!snap.exists) return;
+      mpRoom = snap.data();
+      mpSync();
+    });
+  } catch(e) {
+    showToast('❌ فشل إنشاء الغرفة');
+    mpHostCancel();
+  }
+}
+
+// Called when the host changes mode/round-count in the lobby (before the
+// game starts). Rebuilds the location list and syncs it to Firestore.
+async function mpHostRefreshLocs() {
+  if (!mpIsHost || !mpRoomId || !mpRoom || mpRoom.status !== 'waiting') return;
+  let locs = mpBuildLocs(mpSelectedMode, mpSelectedRounds);
+  if (!locs) {
+    showToast('⚠️ لا توجد مواقع بصور بعد. أضف صوراً للمواقع من لوحة التحكم.');
+    mpSelectedMode = 'classic';
+    mpSyncModeRoundsButtons();
+    locs = mpBuildLocs(mpSelectedMode, mpSelectedRounds);
+    if (!locs) return;
+  }
+  await db.collection('rooms').doc(mpRoomId).update({locs, totalRounds:locs.length, mode:mpSelectedMode}).catch(()=>{});
 }
 
 function mpUpdateLobby(players) {
@@ -1787,13 +1956,13 @@ function mpUpdateLobby(players) {
 
 async function mpHostAddSelf() {
   const name = document.getElementById('mp-host-name').value.trim();
-  if (!name) { showToast('⚠️ أدخل اسمك أولاً'); return; }
   const currentPlayers = mpRoom ? (mpRoom.players||[]) : [];
   if (currentPlayers.find(p=>p.id===mpPlayerId)) return; // already added
   // Pick first color not already used
   const usedColors = new Set(currentPlayers.map(p=>p.color));
   const color = MP_COLORS.find(c=>!usedColors.has(c)) || MP_COLORS[0];
-  const hostPlayer = {id:mpPlayerId, name, color, score:0, selfie:mpMySelfie||null};
+  const finalName = name || `لاعب ${currentPlayers.length+1}`;
+  const hostPlayer = {id:mpPlayerId, name:finalName, color, score:0, selfie:mpMySelfie||null, emoji:mpMyEmoji||null};
   const updatedPlayers = [...currentPlayers, hostPlayer];
   await db.collection('rooms').doc(mpRoomId).update({players:updatedPlayers});
   // mpUpdateLobby will be called via onSnapshot
@@ -1864,7 +2033,7 @@ function mpInitGameRound() {
     try {
       if (mpGameMap) { mpGameMap.remove(); mpGameMap=null; mpGameMarker=null; }
       mpGameMap = L.map('mp-game-map',{zoomControl:true,minZoom:7,maxZoom:17});
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(mpGameMap);
+      osmTileLayer().addTo(mpGameMap);
       mpGameMap.setView(KW_CENTER,10);
       fixMapHeight('mp-game-map','mp-game-screen');
       mpGameMap.invalidateSize();
@@ -1922,8 +2091,12 @@ function mpShowRoundResult() {
     hostBtns.style.display = 'none';
     waitMsg.style.display = '';
   }
-  // Scores list
-  const sorted = [...(players||[])].sort((a,b)=>(b.score||0)-(a.score||0));
+  // Scores list — show only this round's score, sorted highest first
+  const sorted = [...(players||[])].sort((a,b)=>{
+    const ga = ((answers||{})[a.id]||{}).score || 0;
+    const gb = ((answers||{})[b.id]||{}).score || 0;
+    return gb - ga;
+  });
   document.getElementById('mr-scores').innerHTML = sorted.map(p=>{
     const ans = (answers||{})[p.id];
     const gained = ans ? ans.score : 0;
@@ -1932,8 +2105,7 @@ function mpShowRoundResult() {
       <div class="color-dot" style="background:${p.color}"></div>
       <span style="flex:1;font-weight:700;font-size:14px;">${p.name}</span>
       <span style="font-size:12px;color:var(--muted);">${dist}</span>
-      <span style="font-size:13px;color:var(--gold);margin:0 4px;">+${gained}</span>
-      <span style="font-size:16px;font-weight:900;color:${p.color};">${p.score||0}</span>
+      <span style="font-size:16px;font-weight:900;color:${p.color};">${gained} نقطة</span>
     </div>`;
   }).join('');
   // Map
@@ -1941,7 +2113,7 @@ function mpShowRoundResult() {
     try {
       if (mpResultMap) { mpResultMap.remove(); mpResultMap=null; }
       mpResultMap = L.map('mp-result-map',{zoomControl:true,minZoom:7,maxZoom:17});
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(mpResultMap);
+      osmTileLayer().addTo(mpResultMap);
       mpResultMap.setView(KW_CENTER,10);
       fixMapHeight('mp-result-map','mp-result-screen');
       mpResultMap.invalidateSize();
@@ -1956,8 +2128,7 @@ function mpShowRoundResult() {
         const ans = (answers||{})[p.id];
         if (!ans || ans.lat == null) return;  // skip blank/no-answer entries
         bounds.push([ans.lat,ans.lng]);
-        const avatarHtml = p.selfie ? `<img src="${p.selfie}" alt="">` : `<span>${p.name[0]}</span>`;
-        const pi = L.divIcon({html:`<div class="player-pin-icon" style="background:${p.color};">${avatarHtml}</div>`,iconSize:[36,36],iconAnchor:[18,36],className:''});
+        const pi = L.divIcon({html:`<div class="player-pin-icon" style="background:${p.color};">${mpAvatarHtml(p)}</div>`,iconSize:[36,36],iconAnchor:[18,36],className:''});
         L.marker([ans.lat,ans.lng],{icon:pi}).bindPopup(`<b>${p.name}</b><br>${ans.score} نقطة — ${(ans.dist||0).toFixed(1)} كم`).addTo(mpResultMap);
         L.polyline([[ans.lat,ans.lng],[locObj.lat,locObj.lng]],{color:p.color,weight:1.5,dashArray:'5,5',opacity:.7}).addTo(mpResultMap);
       });
@@ -1988,7 +2159,7 @@ function mpInitHostMap() {
   setTimeout(()=>{
     if (!mpHostMap) {
       mpHostMap = L.map('mp-host-map',{zoomControl:true,minZoom:7,maxZoom:17});
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(mpHostMap);
+      osmTileLayer().addTo(mpHostMap);
       mpHostMap.setView(KW_CENTER,10);
     }
     fixMapHeight('mp-host-map','mp-host-game-screen');
@@ -2033,13 +2204,32 @@ async function mpAdvanceToRound(prevRound) {
 
 async function mpHostShowResults() {
   if (!mpRoom || mpRoom.status !== 'playing') return;
+  if (mpResultsLock) return;
+  mpResultsLock = true;
   clearInterval(mpTimerIv);
-  const {players, answers} = mpRoom;
-  const updatedPlayers = players.map(p=>{
-    const ans = (answers||{})[p.id];
-    return {...p, score:(p.score||0)+(ans?ans.score:0)};
-  });
-  await db.collection('rooms').doc(mpRoomId).update({status:'results', players:updatedPlayers});
+  try {
+    // Brief grace window: other players' timers expire at almost the same
+    // moment, so give their in-flight answer submissions a chance to reach
+    // Firestore before we tally final scores for the round. Without this,
+    // a late-arriving answer can merge into `answers` after we've already
+    // tallied `players[].score`, leaving that player's total out of sync
+    // across devices.
+    await new Promise(r=>setTimeout(r,600));
+    const ref = db.collection('rooms').doc(mpRoomId);
+    await db.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      const room = snap.data();
+      if (!room || room.status !== 'playing') return; // already advanced by another trigger
+      const {players, answers} = room;
+      const updatedPlayers = players.map(p=>{
+        const ans = (answers||{})[p.id];
+        return {...p, score:(p.score||0)+(ans?ans.score:0)};
+      });
+      tx.update(ref, {status:'results', players:updatedPlayers});
+    });
+  } finally {
+    mpResultsLock = false;
+  }
 }
 
 async function mpHostCancel() {
@@ -2051,22 +2241,27 @@ async function mpHostCancel() {
 // ── Participant join ───────────────────────────────────────────────────────────
 async function mpJoin() {
   const btn = document.getElementById('mp-join-btn');
-  if (btn) btn.disabled = true;
+  if (!btn || btn.disabled) return; // already submitting — ignore repeat taps
   const code = document.getElementById('mp-code-input').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
   const name = document.getElementById('mp-name-input').value.trim();
-  if (code.length!==4) { showToast('⚠️ أدخل رمزاً من 4 أحرف'); if (btn) btn.disabled=false; return; }
-  if (!name) { showToast('⚠️ أدخل اسمك'); if (btn) btn.disabled=false; return; }
+  if (code.length!==4) { showToast('⚠️ أدخل رمزاً من 4 أحرف'); return; }
+  const originalHtml = btn.innerHTML;
+  const reset = () => { btn.disabled=false; btn.innerHTML=originalHtml; };
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width:18px;height:18px;border-width:2px;margin:0;"></span>';
   try {
     const snap = await db.collection('rooms').doc(code).get();
-    if (!snap.exists) { showToast('❌ الغرفة غير موجودة'); if (btn) btn.disabled=false; return; }
+    if (!snap.exists) { showToast('❌ الغرفة غير موجودة'); reset(); return; }
     const room = snap.data();
-    if (room.status !== 'waiting') { showToast('❌ اللعبة بدأت بالفعل'); if (btn) btn.disabled=false; return; }
-    if (room.players.length >= 8) { showToast('❌ الغرفة ممتلئة'); if (btn) btn.disabled=false; return; }
+    if (room.status !== 'waiting') { showToast('❌ اللعبة بدأت بالفعل'); reset(); return; }
+    if (room.players.length >= 8) { showToast('❌ الغرفة ممتلئة'); reset(); return; }
     mpPlayerId = mpGenId();
     mpRoomId = code;
     mpIsHost = false;
     const color = MP_COLORS[room.players.length % MP_COLORS.length];
-    await db.collection('rooms').doc(code).update({players:[...room.players,{id:mpPlayerId,name,color,score:0,selfie:mpMySelfie||null}]});
+    const finalName = name || `لاعب ${room.players.length+1}`;
+    await db.collection('rooms').doc(code).update({players:[...room.players,{id:mpPlayerId,name:finalName,color,score:0,selfie:mpMySelfie||null,emoji:mpMyEmoji||null}]});
+    reset();
     showScreen('mp-wait-screen');
     mpListener = db.collection('rooms').doc(code).onSnapshot(snap=>{
       if (!snap.exists) { mpLeave(); return; }
@@ -2075,7 +2270,7 @@ async function mpJoin() {
     });
   } catch(e) {
     showToast('❌ خطأ في الاتصال');
-    if (btn) btn.disabled=false;
+    reset();
   }
 }
 
@@ -2163,9 +2358,19 @@ function mpStartTimer(elId, startAt, duration, onExpire) {
   mpTimerIv = setInterval(tick, 250);
 }
 
-function mpLeave() {
+async function mpLeave() {
   if (mpListener) { mpListener(); mpListener=null; }
   clearInterval(mpTimerIv);
+  // If we're still in the lobby (game hasn't started), remove ourselves
+  // from the room's player list so we don't leave behind a "ghost" entry
+  // that shows up stuck in the host's lobby and occupies a player slot,
+  // blocking others from joining and preventing us from rejoining.
+  if (mpRoomId && mpPlayerId && !mpIsHost && mpRoom && mpRoom.status === 'waiting') {
+    try {
+      const updatedPlayers = (mpRoom.players||[]).filter(p=>p.id!==mpPlayerId);
+      await db.collection('rooms').doc(mpRoomId).update({players:updatedPlayers});
+    } catch(e) {}
+  }
   if (mpGameMap)   { try{mpGameMap.remove();}catch(e){}   mpGameMap=null; }
   if (mpHostMap)   { try{mpHostMap.remove();}catch(e){}   mpHostMap=null; }
   if (mpResultMap) { try{mpResultMap.remove();}catch(e){} mpResultMap=null; }
@@ -2181,6 +2386,7 @@ function mpBackHome() {
 
 function mpReset() {
   mpCloseCamera();
+  mpCloseEmojiPicker();
   if (mpListener) { mpListener(); mpListener=null; }
   clearInterval(mpTimerIv);
   if (mpGameMap)   { try{mpGameMap.remove();}catch(e){}   mpGameMap=null; }
@@ -2189,7 +2395,7 @@ function mpReset() {
   mpHostMapLayers=[]; mpGameMarker=null;
   mpRoomId=null; mpPlayerId=null; mpIsHost=false; mpRoom=null;
   mpCurrentRound=0; mpGuess=null; mpAnswered=false; mpLastPlayerCount=0;
-  mpMySelfie=null;
+  mpMySelfie=null; mpMyEmoji=null;
   ['mp-host-selfie-preview','mp-join-selfie-preview'].forEach(id=>{
     const el = document.getElementById(id);
     if (el) { el.style.backgroundImage=''; el.textContent='📷'; }
