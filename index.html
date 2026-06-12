@@ -441,6 +441,7 @@
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
     <button class="back-btn" onclick="showScreen('home-screen')">→</button>
     <h2 style="font-size:18px;">لوحة الإدارة</h2>
+    <div style="margin-right:auto;font-size:13px;color:var(--muted);">👁️ الزيارات: <span id="visitor-count">—</span> · نسخة: <span id="build-version"></span></div>
   </div>
   <div class="admin-card">
     <h3 style="font-size:15px;font-weight:700;">إضافة موقع جديد</h3>
@@ -604,6 +605,9 @@ function setRoundCount(el, n) {
   el.parentElement.querySelectorAll('.time-opt').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
 }
+// Bump this whenever you deploy — shown in the admin panel so you can tell
+// whether a device (e.g. your phone) is running stale cached code.
+const BUILD_VERSION = '2026-06-12.1';
 let gameMode = 'classic'; // 'classic' | 'photo'
 let gameMap = null, resultMap = null, adminMap = null, adminMarker = null;
 let editMap = null, editMarker = null, editDocId = null, editIndex = -1;
@@ -832,6 +836,8 @@ function showScreen(id) {
   if (id === 'admin-screen') {
     renderLocList();
     loadReports();
+    renderVisitorCount();
+    document.getElementById('build-version').textContent = BUILD_VERSION;
     requestAnimationFrame(() => requestAnimationFrame(() => {
       try { initAdminMap(); } catch(e) { console.warn(e); }
     }));
@@ -864,7 +870,7 @@ function adminTap() {
   if (adminTapCount >= 5) {
     adminTapCount = 0;
     const pw = prompt('كلمة المرور:');
-    if (pw === 'admin123') showScreen('admin-screen');
+    if (pw === 'admin123') { localStorage.setItem('dalney_owner','1'); showScreen('admin-screen'); }
   }
 }
 
@@ -1293,6 +1299,14 @@ async function saveLocation() {
     showToast('✅ تمت الإضافة');
   } catch(e) { showToast('❌ خطأ: '+e.message); }
   btn.disabled = false; btn.textContent = '➕ إضافة موقع';
+}
+
+async function renderVisitorCount() {
+  const el = document.getElementById('visitor-count');
+  try {
+    const snap = await locsCol.doc('meta_config').get();
+    el.textContent = (snap.data() && snap.data().visitCount) || 0;
+  } catch(e) { el.textContent = '—'; }
 }
 
 function renderLocList() {
@@ -2047,6 +2061,15 @@ async function mpSubmitGuess() {
     dk = L.latLng(mpGuess).distanceTo(L.latLng(target[0],target[1]))/1000;
     sc = Math.round(Math.max(0, 100*Math.exp(-dk/3.5)));
   }
+  // Speed bonus: answering faster keeps more of the accuracy score (up to 10%).
+  // Two players with identical accuracy will get different scores based on how
+  // quickly they answered. No effect in untimed (∞) rounds.
+  const timeLimit = mpRoom.timeLimit || 0;
+  if (timeLimit > 0 && mpRoom.roundStartAt) {
+    const elapsed = Math.max(0, (Date.now() - new Date(mpRoom.roundStartAt).getTime())/1000);
+    const speedFactor = Math.max(0, 1 - elapsed/timeLimit); // 1 = instant, 0 = used full time
+    sc = Math.round(sc * (0.9 + 0.1*speedFactor));
+  }
   const update = {};
   update[`answers.${mpPlayerId}`] = {lat:mpGuess.lat, lng:mpGuess.lng, score:sc, dist:dk, inArea};
   await db.collection('rooms').doc(mpRoomId).update(update);
@@ -2145,6 +2168,10 @@ document.addEventListener('click', e => {
   } catch(e) {
     console.error('Firebase load error:', e);
     showToast('⚠️ تعذر الاتصال بالخادم');
+  }
+  // Count this page load as a visit (fire-and-forget) — skip devices that have logged into admin
+  if (localStorage.getItem('dalney_owner') !== '1') {
+    locsCol.doc('meta_config').set({visitCount: firebase.firestore.FieldValue.increment(1)}, {merge:true}).catch(()=>{});
   }
   updateSoundToggleUI();
   document.getElementById('loading-overlay').classList.add('hidden');
