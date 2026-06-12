@@ -116,7 +116,7 @@
 
 <!-- HOME SCREEN -->
 <div id="home-screen" class="screen" style="position:relative;">
-  <button id="sound-toggle-btn" class="back-btn" style="position:absolute;top:16px;left:16px;font-size:18px;" onclick="toggleSound()" title="تشغيل/كتم الصوت">🔊</button>
+  <button id="settings-btn" class="back-btn" style="position:absolute;top:16px;left:16px;font-size:18px;" onclick="openSettings()" title="الإعدادات">⚙️</button>
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:20px 0;max-width:480px;margin:0 auto;width:100%;">
     <div style="display:flex;align-items:flex-start;justify-content:flex-start;width:100%;position:relative;">
       <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;">
@@ -315,7 +315,7 @@
         <button type="button" class="selfie-btn" id="mp-host-selfie-preview" title="إضافة صورة شخصية" onclick="mpOpenCamera('mp-host-selfie-preview')">📷</button>
         <input id="mp-host-selfie" type="file" accept="image/*" capture="user" style="display:none;" onchange="mpCaptureSelfie(this,'mp-host-selfie-preview')">
         <button type="button" class="selfie-btn" title="اختر رمزاً تعبيرياً" onclick="mpOpenEmojiPicker('mp-host-selfie-preview')">🙂</button>
-        <input id="mp-host-name" type="text" maxlength="14" placeholder="أدخل اسمك (اختياري)" style="flex:1;">
+        <input id="mp-host-name" type="text" maxlength="14" placeholder="أدخل اسمك (اختياري)" style="flex:1;min-width:0;">
         <button class="btn btn-secondary" id="mp-host-join-btn" onclick="mpHostAddSelf()" style="width:auto;flex-shrink:0;white-space:nowrap;padding:0 16px;border-radius:12px;">➕ أضف</button>
       </div>
     </div>
@@ -365,7 +365,7 @@
       <button type="button" class="selfie-btn" id="mp-join-selfie-preview" title="إضافة صورة شخصية" onclick="mpOpenCamera('mp-join-selfie-preview')">📷</button>
       <input id="mp-join-selfie" type="file" accept="image/*" capture="user" style="display:none;" onchange="mpCaptureSelfie(this,'mp-join-selfie-preview')">
       <button type="button" class="selfie-btn" title="اختر رمزاً تعبيرياً" onclick="mpOpenEmojiPicker('mp-join-selfie-preview')">🙂</button>
-      <input id="mp-name-input" type="text" maxlength="14" placeholder="أدخل اسمك (اختياري)" style="flex:1;">
+      <input id="mp-name-input" type="text" maxlength="14" placeholder="أدخل اسمك (اختياري)" style="flex:1;min-width:0;">
     </div>
   </div>
   <button class="btn btn-primary" id="mp-join-btn" onclick="mpJoin()">انضم ›</button>
@@ -424,13 +424,10 @@
   <div class="game-header">
     <span class="round-badge" id="mr-round-badge">جولة 1 / 5</span>
     <span id="mr-loc-name" style="font-weight:700;font-size:15px;flex:1;text-align:center;color:var(--green);"></span>
-    <span style="width:60px;"></span>
+    <button class="flag-btn" onclick="reportLocation(mpRoom && mpRoom.loc)" title="الإبلاغ عن مشكلة في الموقع" style="width:36px;height:28px;padding:0;font-size:14px;flex-shrink:0;">🚩</button>
   </div>
   <div id="mp-result-map" style="flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;"></div>
   <div id="mr-scores" style="flex-shrink:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:32vh;"></div>
-  <div style="display:flex;justify-content:flex-end;flex-shrink:0;">
-    <button class="flag-btn" onclick="reportLocation(mpRoom && mpRoom.loc)" title="الإبلاغ عن مشكلة في الموقع">🚩</button>
-  </div>
   <div id="mr-host-btns" style="display:none;flex-shrink:0;gap:8px;">
     <button class="btn btn-secondary" style="flex:1;" onclick="mpEndGame()">🏳 إنهاء اللعبة</button>
     <button class="btn btn-primary" style="flex:1;" id="mr-next-btn" onclick="mpHostNextRound()">التالي ›</button>
@@ -619,6 +616,24 @@
   <button onclick="mpCloseEmojiPicker()" class="btn btn-secondary" style="width:100%;max-width:280px;padding:12px;">إلغاء</button>
 </div>
 
+<!-- Settings modal -->
+<div id="settings-modal" style="display:none;position:fixed;inset:0;z-index:99500;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:24px;">
+  <div class="edit-inner" style="max-width:340px;width:100%;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:17px;">⚙️ الإعدادات</h3>
+      <button class="close-btn" onclick="closeSettings()">✕</button>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <span style="font-size:14px;font-weight:600;">🔊 الصوت</span>
+      <button id="sound-toggle-btn" class="time-opt" onclick="toggleSound()" style="width:auto;padding:8px 22px;">مفعّل</button>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <span style="font-size:14px;font-weight:600;">📳 الهزّاز</span>
+      <button id="vibration-toggle-btn" class="time-opt" onclick="toggleVibration()" style="width:auto;padding:8px 22px;">مفعّل</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <script>
 // ── Firebase setup ────────────────────────────────────────────────────────────
@@ -696,9 +711,12 @@ function tone(freq, start, dur, type='sine', vol=0.18) {
 }
 
 // Haptic feedback via the Vibration API (feature-detected; silently no-ops on
-// unsupported browsers/desktops). Runs independently of the sound toggle so
-// muted devices still get tactile confirmation.
+// unsupported browsers/desktops). Controlled by its own settings toggle,
+// independent of the sound toggle.
+let vibrationOn = localStorage.getItem('dalney_vibration') !== 'off';
+
 function vibrate(pattern) {
+  if (!vibrationOn) return;
   try { if (navigator.vibrate) navigator.vibrate(pattern); } catch(e) {}
 }
 
@@ -749,7 +767,39 @@ function toggleSound() { setSoundEnabled(!soundOn); playSound('tap'); }
 
 function updateSoundToggleUI() {
   const btn = document.getElementById('sound-toggle-btn');
-  if (btn) btn.textContent = soundOn ? '🔊' : '🔇';
+  if (!btn) return;
+  btn.textContent = soundOn ? 'مفعّل' : 'متوقف';
+  btn.classList.toggle('active', soundOn);
+}
+
+function setVibrationEnabled(on) {
+  vibrationOn = on;
+  localStorage.setItem('dalney_vibration', on ? 'on' : 'off');
+  updateVibrationToggleUI();
+}
+
+function toggleVibration() {
+  setVibrationEnabled(!vibrationOn);
+  playSound('tap');
+  if (vibrationOn) vibrate(15); // immediate confirmation that it's on
+}
+
+function updateVibrationToggleUI() {
+  const btn = document.getElementById('vibration-toggle-btn');
+  if (!btn) return;
+  btn.textContent = vibrationOn ? 'مفعّل' : 'متوقف';
+  btn.classList.toggle('active', vibrationOn);
+}
+
+// ── Settings modal ───────────────────────────────────────────────────────────
+function openSettings() {
+  updateSoundToggleUI();
+  updateVibrationToggleUI();
+  document.getElementById('settings-modal').style.display = 'flex';
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal').style.display = 'none';
 }
 
 const polyState = {
@@ -2409,7 +2459,7 @@ function mpReset() {
 // ── Global UI tap sound ─────────────────────────────────────────────────────
 document.addEventListener('click', e => {
   const target = e.target.closest('.btn, .back-btn, .time-opt, .mode-card, .player-chip');
-  if (!target || target.id === 'sound-toggle-btn') return;
+  if (!target || target.id === 'sound-toggle-btn' || target.id === 'vibration-toggle-btn') return;
   playSound('tap');
 }, true);
 
@@ -2426,6 +2476,7 @@ document.addEventListener('click', e => {
     locsCol.doc('meta_config').set({visitCount: firebase.firestore.FieldValue.increment(1)}, {merge:true}).catch(()=>{});
   }
   updateSoundToggleUI();
+  updateVibrationToggleUI();
   document.getElementById('loading-overlay').classList.add('hidden');
   showScreen('home-screen');
 })();
