@@ -100,6 +100,7 @@
     .mp-timer{background:var(--surface);border-radius:20px;padding:4px 14px;font-size:16px;font-weight:800;color:var(--gold);}
     .time-opt{background:var(--surface);border:1px solid rgba(255,255,255,.12);color:var(--muted);padding:10px 6px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;width:100%;}
     .time-opt.active{background:var(--blue);color:#000;border-color:var(--blue);}
+    .time-opt-sm{padding:8px 2px;font-size:12px;}
     .mode-card{display:flex;align-items:center;gap:14px;background:var(--blue);border:1px solid var(--blue);border-radius:var(--radius);padding:14px 16px;cursor:pointer;width:100%;color:#000;font-family:inherit;}
     .mode-card:active{background:#4a95e8;border-color:#4a95e8;}
     .mode-card .mode-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
@@ -232,6 +233,7 @@
     <button class="back-btn" onclick="exitGame()">→</button>
     <span class="round-badge" id="round-badge">جولة 1 / 5</span>
     <span id="score-badge" style="font-weight:700;color:var(--gold);">0</span>
+    <button class="flag-btn" onclick="reportLocation(gameRounds[currentRound])" title="الإبلاغ عن مشكلة في الموقع" style="width:36px;height:28px;padding:0;font-size:14px;flex-shrink:0;">🚩</button>
   </div>
   <div class="hint-panel">
     <p id="hint-name" style="font-weight:700;font-size:16px;"></p>
@@ -241,7 +243,6 @@
   <div id="game-map"></div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
     <button class="btn btn-primary" onclick="submitGuess()" id="submit-btn" disabled style="flex:1;border-radius:12px;padding:13px;">تأكيد ✓</button>
-    <button class="flag-btn" onclick="reportLocation(gameRounds[currentRound])" title="الإبلاغ عن مشكلة في الموقع">🚩</button>
   </div>
 </div>
 
@@ -343,12 +344,12 @@
     </div>
     <div>
       <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">مدة الإجابة</label>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-        <button class="time-opt" onclick="mpSetTime(this,20)">20 ثانية</button>
-        <button class="time-opt active" onclick="mpSetTime(this,30)">30 ثانية</button>
-        <button class="time-opt" onclick="mpSetTime(this,45)">45 ثانية</button>
-        <button class="time-opt" onclick="mpSetTime(this,60)">60 ثانية</button>
-        <button class="time-opt" onclick="mpSetTime(this,0)">بدون وقت</button>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;">
+        <button class="time-opt time-opt-sm" onclick="mpSetTime(this,20)">20 ث</button>
+        <button class="time-opt time-opt-sm active" onclick="mpSetTime(this,30)">30 ث</button>
+        <button class="time-opt time-opt-sm" onclick="mpSetTime(this,45)">45 ث</button>
+        <button class="time-opt time-opt-sm" onclick="mpSetTime(this,60)">60 ث</button>
+        <button class="time-opt time-opt-sm" onclick="mpSetTime(this,0)">∞</button>
       </div>
     </div>
   </div>
@@ -393,7 +394,8 @@
   <div class="game-header">
     <div class="mp-timer" id="mp-timer-badge">10</div>
     <span class="round-badge" id="mp-round-badge">جولة 1</span>
-    <span id="mp-score-badge" style="font-weight:700;color:var(--gold);">0</span>
+    <span id="mp-score-badge" style="background:var(--surface);border-radius:20px;padding:4px 14px;font-size:16px;font-weight:800;color:var(--green);">0</span>
+    <button class="flag-btn" onclick="reportLocation(mpRoom && mpRoom.loc)" title="الإبلاغ عن مشكلة في الموقع" style="width:36px;height:28px;padding:0;font-size:14px;flex-shrink:0;">🚩</button>
   </div>
   <div class="hint-panel">
     <p id="mp-hint-name" style="font-weight:700;font-size:16px;"></p>
@@ -403,7 +405,6 @@
   <div id="mp-game-map"></div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
     <button class="btn btn-primary" onclick="mpSubmitGuess()" id="mp-submit-btn" disabled style="flex:1;border-radius:12px;padding:13px;">تأكيد ✓</button>
-    <button class="flag-btn" onclick="reportLocation(mpRoom && mpRoom.loc)" title="الإبلاغ عن مشكلة في الموقع">🚩</button>
   </div>
   <button class="btn btn-secondary" onclick="mpHostShowResults()" id="mp-end-round-btn" style="flex-shrink:0;border-radius:12px;padding:11px;display:none;">⏭ إنهاء الجولة</button>
 </div>
@@ -436,7 +437,7 @@
   <div id="mp-result-map" style="flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;"></div>
   <div id="mr-scores" style="flex-shrink:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:32vh;"></div>
   <div id="mr-host-btns" style="display:none;flex-shrink:0;gap:8px;">
-    <button class="btn btn-secondary" style="flex:1;" onclick="mpEndGame()">🏳 إنهاء اللعبة</button>
+    <button class="btn btn-secondary" style="flex:0 0 auto;padding:0 14px;white-space:nowrap;" onclick="mpConfirmEndGame()">🏳 إنهاء</button>
     <button class="btn btn-primary" style="flex:1;" id="mr-next-btn" onclick="mpHostNextRound()">التالي ›</button>
   </div>
   <p id="mr-wait-msg" style="display:none;text-align:center;color:var(--muted);font-size:13px;flex-shrink:0;">⏳ انتظر المضيف...</p>
@@ -446,7 +447,8 @@
 <div id="mp-final-screen" class="screen" style="gap:14px;align-items:center;padding:20px;">
   <h2 style="font-size:22px;font-weight:800;margin-top:8px;">النتيجة النهائية 🏆</h2>
   <div id="mp-final-scores" style="width:100%;display:flex;flex-direction:column;gap:8px;"></div>
-  <button class="btn btn-primary" style="width:100%;" onclick="mpBackHome()">🏠 الرئيسية</button>
+  <button class="btn btn-primary" id="mp-replay-btn" style="width:100%;display:none;" onclick="mpRequestReplay()">🔄 إعادة اللعب</button>
+  <button class="btn btn-secondary" style="width:100%;" onclick="mpBackHome()">🏠 الرئيسية</button>
 </div>
 
 <!-- ADMIN SCREEN -->
@@ -1889,6 +1891,7 @@ function mpMiniPinHtml(p) {
   return `<div class="player-pin-mini" style="background:${p.color};">${mpAvatarHtml(p)}</div>`;
 }
 let mpTimeLimit=30, mpAnswered=false, mpResultsLock=false;
+let mpLastStatus=null; // tracks previous room status to detect a host-initiated replay reset
 let mpSelectedMode='classic'; // 'classic' | 'photo' — chosen by host before creating a room
 
 function mpSetMode(mode) {
@@ -2036,9 +2039,19 @@ async function mpHostAddSelf() {
 function mpSync() {
   if (!mpRoom) return;
   const {status, players, round, answers} = mpRoom;
+  const prevStatus = mpLastStatus;
+  mpLastStatus = status;
   if (status === 'waiting') {
-    if (mpIsHost) mpUpdateLobby(players||[]);
-    else mpRenderWaitPlayers();
+    if (mpIsHost) {
+      showScreen('mp-host-lobby');
+      mpUpdateLobby(players||[]);
+    } else if (prevStatus === 'finished') {
+      // Host reset the room for a replay — prompt the participant to join.
+      mpShowReplayPrompt();
+    } else {
+      showScreen('mp-wait-screen');
+      mpRenderWaitPlayers();
+    }
     return;
   }
   if (status === 'playing') {
@@ -2238,6 +2251,10 @@ function mpShowRoundResult() {
   },300);
 }
 
+function mpConfirmEndGame() {
+  showConfirm('هل تريد إنهاء اللعبة لجميع اللاعبين؟', ok => { if (ok) mpEndGame(); });
+}
+
 async function mpEndGame() {
   if (!mpRoomId) return;
   // Tally current round answers if game is still in 'playing' or 'results'
@@ -2359,6 +2376,7 @@ async function mpJoin() {
     mpPlayerId = mpGenId();
     mpRoomId = code;
     mpIsHost = false;
+    mpLastStatus = null;
     // Pick first color not already used by a current player (avoids
     // duplicate colors when players leave and others join afterwards).
     const usedColors = new Set(room.players.map(p=>p.color));
@@ -2437,6 +2455,28 @@ function mpShowFinal() {
       <span style="flex:1;font-weight:700;font-size:15px;">${p.name}</span>
       <span style="font-size:22px;font-weight:900;color:${p.color};">${p.score||0}</span>
     </div>`).join('');
+  const replayBtn = document.getElementById('mp-replay-btn');
+  if (replayBtn) replayBtn.style.display = mpIsHost ? 'block' : 'none';
+}
+
+// ── Replay flow ──────────────────────────────────────────────────────────────
+// Host asks to play again: room is reset back to 'waiting' (score=0, round=0)
+// so the host returns to the lobby, while every participant is asked whether
+// they want to join the new round.
+async function mpRequestReplay() {
+  if (!mpRoomId || !mpRoom) return;
+  const resetPlayers = (mpRoom.players||[]).map(p=>({...p, score:0}));
+  await db.collection('rooms').doc(mpRoomId).update({
+    status:'waiting', round:0, answers:{}, roundStartAt:null, loc:null,
+    players: resetPlayers
+  }).catch(()=>{});
+}
+
+function mpShowReplayPrompt() {
+  showConfirm('🔄 المضيف يريد إعادة اللعب! هل تريد الانضمام لجولة جديدة؟', ok => {
+    if (ok) { showScreen('mp-wait-screen'); mpRenderWaitPlayers(); }
+    else mpLeave();
+  });
 }
 
 function mpStartTimer(elId, startAt, duration, onExpire) {
@@ -2500,7 +2540,7 @@ function mpReset() {
   if (mpGameMap)   { try{mpGameMap.remove();}catch(e){}   mpGameMap=null; }
   if (mpHostMap)   { try{mpHostMap.remove();}catch(e){}   mpHostMap=null; }
   if (mpResultMap) { try{mpResultMap.remove();}catch(e){} mpResultMap=null; }
-  mpHostMapLayers=[]; mpGameMarker=null; mpAnswerMarkers={};
+  mpHostMapLayers=[]; mpGameMarker=null; mpAnswerMarkers={}; mpLastStatus=null;
   mpRoomId=null; mpPlayerId=null; mpIsHost=false; mpRoom=null;
   mpCurrentRound=0; mpGuess=null; mpAnswered=false; mpLastPlayerCount=0;
   mpMySelfie=null; mpMyEmoji=null;
