@@ -2287,6 +2287,17 @@ function mpInitHostMap() {
 
 async function mpHostStart() {
   if (!mpRoom || (mpRoom.players||[]).length < 1) return;
+  const hostInList = (mpRoom.players||[]).some(p=>p.id===mpPlayerId);
+  if (!hostInList) {
+    showConfirm('لم تنضم كلاعب — ستكون مشاهداً فقط ولن تحصل على نقاط. هل تريد بدء اللعبة؟', ok => {
+      if (ok) mpHostStartConfirmed();
+    });
+    return;
+  }
+  await mpHostStartConfirmed();
+}
+
+async function mpHostStartConfirmed() {
   document.getElementById('mp-start-btn').disabled = true;
   // The time-limit chosen in the lobby (mpSetTime) only updates the local
   // mpTimeLimit variable — the room doc still has whatever value was set when
