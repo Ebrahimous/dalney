@@ -78,9 +78,12 @@
     .answer-check{position:absolute;top:-7px;right:-7px;width:18px;height:18px;border-radius:50%;background:var(--green);border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#000;transform:rotate(45deg);}
     /* Small pin-shaped avatar used next to player names in score lists, so
        players can match a name to its marker shape/color on the map. */
-    .player-pin-mini{width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;margin:0 6px;}
+    .player-pin-mini{position:relative;width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;margin:0 6px;}
     .player-pin-mini span{transform:rotate(45deg);font-size:11px;}
     .player-pin-mini img{width:100%;height:100%;object-fit:cover;transform:rotate(45deg);}
+    .mp-answer-status{display:flex;flex-direction:column;gap:8px;background:rgba(13,17,23,.75);border-radius:12px;padding:8px 6px;margin:10px;}
+    .mp-answer-status .player-pin-mini{margin:0;transition:opacity .2s;}
+    .mp-answer-status .answer-check{width:14px;height:14px;font-size:9px;top:-5px;right:-5px;}
     .selfie-btn{width:40px;height:40px;flex-shrink:0;border-radius:50%;background:var(--card2,rgba(255,255,255,.06));border:1px dashed rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;background-size:cover;background-position:center;color:var(--muted);}
     .emoji-opt{width:48px;height:48px;border-radius:12px;background:var(--card2,rgba(255,255,255,.06));border:1px solid rgba(255,255,255,.12);font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
     .selfie-cam-box{position:relative;width:280px;height:280px;max-width:80vw;max-height:80vw;border-radius:16px;overflow:hidden;background:#000;}
@@ -437,7 +440,7 @@
   <div id="mp-result-map" style="flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;"></div>
   <div id="mr-scores" style="flex-shrink:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:32vh;"></div>
   <div id="mr-host-btns" style="display:none;flex-shrink:0;gap:8px;">
-    <button class="btn btn-secondary" style="flex:0 0 auto;padding:0 14px;white-space:nowrap;" onclick="mpConfirmEndGame()">🏳 إنهاء</button>
+    <button class="btn btn-secondary" style="flex:0 0 auto;width:auto;padding:0 14px;white-space:nowrap;" onclick="mpConfirmEndGame()">🏳 إنهاء</button>
     <button class="btn btn-primary" style="flex:1;" id="mr-next-btn" onclick="mpHostNextRound()">التالي ›</button>
   </div>
   <p id="mr-wait-msg" style="display:none;text-align:center;color:var(--muted);font-size:13px;flex-shrink:0;">⏳ انتظر المضيف...</p>
@@ -1883,7 +1886,7 @@ function checkPlayerJoinSound(players) {
   mpLastPlayerCount = n;
 }
 let mpGameMap=null, mpHostMap=null, mpResultMap=null, mpHostMapLayers=[], mpGameMarker=null;
-let mpAnswerMarkers={}; // live "answered" pins shown on the game map for everyone
+let mpAnswerStatusControl=null; // map overlay control showing who has answered (no positions revealed)
 
 // Small pin-shaped avatar (matches the marker shape/color shown on the map)
 // for use next to a player's name in score lists.
@@ -2110,7 +2113,7 @@ function mpInitGameRound() {
   setTimeout(()=>{
     try {
       if (mpGameMap) { mpGameMap.remove(); mpGameMap=null; mpGameMarker=null; }
-      mpAnswerMarkers = {}; // new round — old "answered" pins no longer apply
+      mpAnswerStatusControl = null; // new round — old "answered" status no longer applies
       mpGameMap = L.map('mp-game-map',{zoomControl:true,minZoom:7,maxZoom:17,tap:true,tapTolerance:25});
       osmTileLayer().addTo(mpGameMap);
       mpGameMap.setView(KW_CENTER,10);
@@ -2152,32 +2155,25 @@ function mpInitGameRound() {
 
 function mpHostRenderPlaying() {} // kept for compat — logic moved to mpSync
 
-// Shows a pin (with a green checkmark badge) on the live game map for every
-// player who has already answered this round — visible to all players, so
-// you can see who's done without revealing anyone's score/distance yet.
+// Shows a small overlay on the live game map listing every player, with a
+// checkmark on those who have already answered this round. This does NOT
+// reveal where anyone guessed — it's just a status indicator, fixed in a
+// map corner, so players can see who's done without giving away locations.
 function mpUpdateLiveAnswerMarkers() {
   if (!mpGameMap || !mpRoom) return;
   const {players, answers} = mpRoom;
-  const seen = new Set();
-  (players||[]).forEach(p=>{
-    const ans = (answers||{})[p.id];
-    if (!ans || ans.lat == null) return; // no pin to show (didn't answer / timed out)
-    seen.add(p.id);
-    const icon = L.divIcon({
-      html:`<div class="player-pin-icon answer-pin" style="background:${p.color};">${mpAvatarHtml(p)}<div class="answer-check">✓</div></div>`,
-      iconSize:[36,36], iconAnchor:[18,36], className:''
-    });
-    if (mpAnswerMarkers[p.id]) {
-      mpAnswerMarkers[p.id].setLatLng([ans.lat,ans.lng]);
-    } else {
-      mpAnswerMarkers[p.id] = L.marker([ans.lat,ans.lng],{icon,zIndexOffset:1000})
-        .bindPopup(`<b>${p.name}</b> ✓`).addTo(mpGameMap);
-    }
-  });
-  // Clean up markers for players who no longer have an answer entry
-  Object.keys(mpAnswerMarkers).forEach(id=>{
-    if (!seen.has(id)) { mpGameMap.removeLayer(mpAnswerMarkers[id]); delete mpAnswerMarkers[id]; }
-  });
+  if (!mpAnswerStatusControl) {
+    mpAnswerStatusControl = L.control({position:'topright'});
+    mpAnswerStatusControl.onAdd = function() {
+      return L.DomUtil.create('div', 'mp-answer-status');
+    };
+    mpAnswerStatusControl.addTo(mpGameMap);
+  }
+  const el = mpAnswerStatusControl.getContainer();
+  el.innerHTML = (players||[]).map(p=>{
+    const answered = !!(answers||{})[p.id];
+    return `<div class="player-pin-mini" title="${p.name}" style="background:${p.color};${answered?'':'opacity:.35;'}">${mpAvatarHtml(p)}${answered?'<div class="answer-check">✓</div>':''}</div>`;
+  }).join('');
 }
 
 function mpShowRoundResult() {
@@ -2551,7 +2547,7 @@ function mpReset() {
   if (mpGameMap)   { try{mpGameMap.remove();}catch(e){}   mpGameMap=null; }
   if (mpHostMap)   { try{mpHostMap.remove();}catch(e){}   mpHostMap=null; }
   if (mpResultMap) { try{mpResultMap.remove();}catch(e){} mpResultMap=null; }
-  mpHostMapLayers=[]; mpGameMarker=null; mpAnswerMarkers={}; mpLastStatus=null;
+  mpHostMapLayers=[]; mpGameMarker=null; mpAnswerStatusControl=null; mpLastStatus=null;
   mpRoomId=null; mpPlayerId=null; mpIsHost=false; mpRoom=null;
   mpCurrentRound=0; mpGuess=null; mpAnswered=false; mpLastPlayerCount=0;
   mpMySelfie=null; mpMyEmoji=null;
