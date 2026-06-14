@@ -911,25 +911,27 @@ async function loadData() {
   // collection so it's covered by the existing security rules.
   const metaDoc = snap.docs.find(d => d.id === 'meta_config');
   const locDocs = snap.docs.filter(d => d.id !== 'meta_config');
-  if (locDocs.length === 0) {
-    // First run — seed defaults
+  const meta = (metaDoc && metaDoc.data()) || {};
+  if (locDocs.length === 0 && !meta.seeded) {
+    // TRUE first run only (no location docs AND we've never seeded before).
+    // Seed defaults once, then permanently flag it via meta_config.seeded so
+    // a transient/incomplete read can never look like "first run" again and
+    // wipe out admin edits or deletions by re-writing the hardcoded DEFAULTS.
     const batch = db.batch();
     DEFAULTS.forEach(loc => batch.set(locsCol.doc(loc.id), locToDb(loc)));
+    batch.set(locsCol.doc('meta_config'), {seeded: true}, {merge: true});
     await batch.commit();
     locations = DEFAULTS.map(l => ({...l, _docId: l.id}));
   } else {
     locations = locDocs.map(d => ({...locFromDb(d.data()), _docId: d.id}));
-    // Don't resurrect DEFAULTS entries the admin intentionally deleted
-    const deletedDefaultIds = (metaDoc && metaDoc.data().deletedDefaultIds) || [];
-    // Sync any new DEFAULTS entries not yet in Firestore
-    const existingIds = new Set(locations.map(l => l._docId));
-    const missing = DEFAULTS.filter(l => !existingIds.has(l.id) && !deletedDefaultIds.includes(l.id));
-    if (missing.length > 0) {
-      const batch = db.batch();
-      missing.forEach(loc => batch.set(locsCol.doc(loc.id), locToDb(loc)));
-      await batch.commit();
-      missing.forEach(l => locations.push({...l, _docId: l.id}));
+    if (!meta.seeded) {
+      // Mark as seeded so the branch above can never run again, even if a
+      // future read momentarily returns zero location docs.
+      await locsCol.doc('meta_config').set({seeded: true}, {merge: true}).catch(()=>{});
     }
+    // NOTE: deleted/missing DEFAULTS entries are no longer auto-recreated —
+    // that "sync missing defaults" logic was what resurrected locations the
+    // admin had deliberately deleted. Deletions and edits are now final.
   }
 }
 
