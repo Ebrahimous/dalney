@@ -2584,4 +2584,23 @@ document.addEventListener('click', e => {
   playSound('tap');
 }, true);
 
-// ── Boot ────────────────────────────────────────────�
+// ── Boot ──────────────────────────────────────────────────────────────────────
+(async () => {
+  try {
+    await loadData();
+  } catch(e) {
+    console.error('Firebase load error:', e);
+    showToast('⚠️ تعذر الاتصال بالخادم');
+  }
+  // Count this page load as a visit (fire-and-forget) — skip devices that have logged into admin
+  if (localStorage.getItem('dalney_owner') !== '1') {
+    locsCol.doc('meta_config').set({visitCount: firebase.firestore.FieldValue.increment(1)}, {merge:true}).catch(()=>{});
+  }
+  updateSoundToggleUI();
+  updateVibrationToggleUI();
+  document.getElementById('loading-overlay').classList.add('hidden');
+  showScreen('home-screen');
+})();
+</script>
+</body>
+</html>
