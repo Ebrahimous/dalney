@@ -918,11 +918,14 @@ async function loadData() {
   const metaDoc = snap.docs.find(d => d.id === 'meta_config');
   const locDocs = snap.docs.filter(d => d.id !== 'meta_config');
   const meta = (metaDoc && metaDoc.data()) || {};
-  if (locDocs.length === 0 && !meta.seeded) {
-    // TRUE first run only (no location docs AND we've never seeded before).
-    // Seed defaults once, then permanently flag it via meta_config.seeded so
-    // a transient/incomplete read can never look like "first run" again and
-    // wipe out admin edits or deletions by re-writing the hardcoded DEFAULTS.
+  const deletedDefaultIds = new Set(meta.deletedDefaultIds || []);
+  // Seed only on a genuine first run: no location docs AND never seeded before
+  // AND no deletedDefaultIds recorded (if any exist, app has run before — don't seed).
+  const neverRun = locDocs.length === 0 && !meta.seeded && deletedDefaultIds.size === 0;
+  if (neverRun) {
+    // TRUE first run only. Seed defaults once, then permanently flag it via
+    // meta_config.seeded so a transient/incomplete read can never look like
+    // "first run" again and wipe out admin edits or deletions.
     const batch = db.batch();
     DEFAULTS.forEach(loc => batch.set(locsCol.doc(loc.id), locToDb(loc)));
     batch.set(locsCol.doc('meta_config'), {seeded: true}, {merge: true});
@@ -935,9 +938,8 @@ async function loadData() {
       // future read momentarily returns zero location docs.
       await locsCol.doc('meta_config').set({seeded: true}, {merge: true}).catch(()=>{});
     }
-    // NOTE: deleted/missing DEFAULTS entries are no longer auto-recreated —
-    // that "sync missing defaults" logic was what resurrected locations the
-    // admin had deliberately deleted. Deletions and edits are now final.
+    // NOTE: deleted/missing DEFAULTS entries are never auto-recreated.
+    // Deletions made via the admin panel are final.
   }
 }
 
@@ -1621,7 +1623,10 @@ async function deleteLocation(i) {
     }
     locations.splice(i, 1);
     renderLocList(); showToast('🗑️ تم الحذف');
-  } catch(e) { showToast('❌ خطأ: '+e.message); }
+  } catch(e) {
+    // Use alert so a Firestore permission error can't be missed (toast is too brief)
+    alert('❌ فشل الحذف من قاعدة البيانات:\n' + e.message + '\n\nتحقق من إعدادات Firestore Rules.');
+  }
   });
 }
 
