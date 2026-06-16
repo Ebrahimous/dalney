@@ -265,16 +265,17 @@
 </div>
 
 <!-- SUMMARY SCREEN -->
-<div id="summary-screen" class="screen" style="gap:14px;align-items:center;">
-  <h2 style="font-size:22px;font-weight:800;margin-top:8px;">انتهت اللعبة!</h2>
-  <div class="final-score-card">
+<div id="summary-screen" class="screen" style="gap:12px;align-items:center;">
+  <h2 style="font-size:22px;font-weight:800;margin-top:8px;flex-shrink:0;">انتهت اللعبة!</h2>
+  <div class="final-score-card" style="flex-shrink:0;">
     <div style="font-size:14px;color:var(--muted);margin-bottom:6px;">مجموع نقاطك</div>
     <div class="big" id="final-score">0</div>
     <div style="font-size:13px;color:var(--muted);margin-top:8px;" id="new-best"></div>
   </div>
-  <div style="width:100%;display:flex;flex-direction:column;gap:8px;" id="round-summary"></div>
-  <button class="btn btn-primary" onclick="startGame(gameMode)">🔄 العب مرة أخرى</button>
-  <button class="btn btn-secondary" onclick="exitGame(true)">🏠 الرئيسية</button>
+  <div id="summary-map" style="width:100%;height:240px;border-radius:var(--radius);overflow:hidden;flex-shrink:0;border:1px solid rgba(255,255,255,.07);"></div>
+  <div style="width:100%;display:flex;flex-direction:column;gap:8px;flex-shrink:0;" id="round-summary"></div>
+  <button class="btn btn-primary" style="flex-shrink:0;" onclick="startGame(gameMode)">🔄 العب مرة أخرى</button>
+  <button class="btn btn-secondary" style="flex-shrink:0;" onclick="exitGame(true)">🏠 الرئيسية</button>
 </div>
 
 <!-- MULTIPLAYER MENU -->
@@ -681,7 +682,7 @@ function setRoundCount(el, n) {
 // whether a device (e.g. your phone) is running stale cached code.
 const BUILD_VERSION = '2026-06-12.1';
 let gameMode = 'classic'; // 'classic' | 'photo'
-let gameMap = null, resultMap = null, adminMap = null, adminMarker = null;
+let gameMap = null, resultMap = null, summaryMap = null, adminMap = null, adminMarker = null;
 let editMap = null, editMarker = null, editDocId = null, editIndex = -1;
 let editExtraPhotos = [];
 
@@ -1294,6 +1295,7 @@ function startGame(mode) {
     showScreen('home-screen');
     return;
   }
+  if (summaryMap) { summaryMap.remove(); summaryMap = null; }
   gameRounds = shuffle([...pool]).slice(0, Math.min(selectedRounds, pool.length));
   currentRound = 0; totalScore = 0; guess = null;
   showScreen('game-screen');
@@ -1366,7 +1368,7 @@ function submitGuess() {
     sc = Math.round(Math.max(0, 100 * Math.exp(-dk / 3.5)));
   }
   totalScore += sc;
-  gameRounds[currentRound]._result = {score:sc, dist:dk, inArea};
+  gameRounds[currentRound]._result = {score:sc, dist:dk, inArea, gLat:guess.lat, gLng:guess.lng};
   document.getElementById('score-flash').textContent = sc;
   document.getElementById('score-flash').style.color = sc>=80?'var(--green)':sc>=40?'var(--gold)':'var(--red)';
   setTimeout(()=>playScoreSound(sc), 150);
@@ -1423,17 +1425,89 @@ function showSummary() {
   const nb = document.getElementById('new-best');
   if (avg > hs) { setHighscore(avg); nb.textContent = `🏆 رقم قياسي جديد! معدل ${avg}/100`; playSound('final'); }
   else { nb.textContent = `معدلك: ${avg}/100 — الأفضل: ${hs}/100`; playSound('round'); }
+
+  // Round breakdown rows
   const rs = document.getElementById('round-summary'); rs.innerHTML = '';
-  gameRounds.forEach(loc => {
-    const res = loc._result || {score:0};
-    const row = document.createElement('div'); row.className = 'round-row';
-    row.innerHTML = `<span style="font-size:13px;">${loc.name}</span><span style="font-weight:700;color:var(--gold);">${res.score}</span>`;
+  const summaryMarkerRefs = []; // filled by initSummaryMap
+  gameRounds.forEach((loc, i) => {
+    const res = loc._result || {score:0, dist:null, inArea:false};
+    const scoreColor = res.score >= 80 ? 'var(--green)' : res.score >= 40 ? 'var(--gold)' : 'var(--red)';
+    const distText = res.inArea ? '✅ داخل المنطقة' :
+      (res.dist != null ? (res.dist < 1 ? (res.dist*1000).toFixed(0)+' م' : res.dist.toFixed(1)+' كم') : '—');
+    const row = document.createElement('div');
+    row.className = 'round-row';
+    row.style.cursor = 'pointer';
+    row.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden;">
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--surface);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${i+1}</div>
+        <span style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${loc.name}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <span style="font-size:12px;color:var(--muted);">${distText}</span>
+        <span style="font-weight:700;color:${scoreColor};min-width:28px;text-align:end;">${res.score}</span>
+      </div>`;
+    row.addEventListener('click', () => {
+      const ref = summaryMarkerRefs[i];
+      if (ref && summaryMap) {
+        summaryMap.setView(ref.center, 12, {animate:true});
+        if (ref.correct) setTimeout(() => ref.correct.openPopup(), 350);
+      }
+    });
     rs.appendChild(row);
+    summaryMarkerRefs.push(null); // slot filled after map init
   });
+
   showScreen('summary-screen');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    try { initSummaryMap(summaryMarkerRefs); } catch(e) { console.warn(e); }
+  }));
+}
+
+function initSummaryMap(markerRefs) {
+  if (summaryMap) { summaryMap.remove(); summaryMap = null; }
+  summaryMap = L.map('summary-map', {zoomControl:false, minZoom:7, maxZoom:15, attributionControl:false});
+  osmTileLayer().addTo(summaryMap);
+  const allBounds = [];
+
+  gameRounds.forEach((loc, i) => {
+    const res = loc._result || {};
+    const num = i + 1;
+
+    const correctIcon = L.divIcon({
+      className:'',
+      html:`<div style="width:26px;height:26px;border-radius:50%;background:#3fb950;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.55);">${num}</div>`,
+      iconSize:[26,26], iconAnchor:[13,13]
+    });
+    const correctMarker = L.marker([loc.lat, loc.lng], {icon:correctIcon})
+      .addTo(summaryMap)
+      .bindPopup(`<b>${loc.name}</b><br>+${res.score||0} نقطة`);
+    allBounds.push([loc.lat, loc.lng]);
+
+    let center = [loc.lat, loc.lng];
+
+    if (!res.inArea && res.gLat != null) {
+      const guessIcon = L.divIcon({
+        className:'',
+        html:`<div style="width:22px;height:22px;border-radius:50%;background:#f85149;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.55);">${num}</div>`,
+        iconSize:[22,22], iconAnchor:[11,11]
+      });
+      L.marker([res.gLat, res.gLng], {icon:guessIcon})
+        .addTo(summaryMap)
+        .bindPopup(`تخمينك — جولة ${num}`);
+      L.polyline([[loc.lat,loc.lng],[res.gLat,res.gLng]], {color:'#f39c12',weight:2,dashArray:'5,5',opacity:.75})
+        .addTo(summaryMap);
+      allBounds.push([res.gLat, res.gLng]);
+      center = [(loc.lat+res.gLat)/2, (loc.lng+res.gLng)/2];
+    }
+
+    markerRefs[i] = {correct:correctMarker, center};
+  });
+
+  if (allBounds.length) summaryMap.fitBounds(L.latLngBounds(allBounds).pad(0.15));
 }
 
 function exitGame(toHome) {
+  if (summaryMap) { summaryMap.remove(); summaryMap = null; }
   if (toHome) { showScreen('home-screen'); return; }
   showConfirm('هل تريد الخروج من اللعبة؟', ok => {
     if (ok) { if (gameMap) { gameMap.remove(); gameMap = null; } showScreen('home-screen'); }
@@ -1772,6 +1846,8 @@ window.addEventListener('resize', () => {
     { fixMapHeight('mp-host-map','mp-host-game-screen'); mpHostMap.invalidateSize(); }
   if (mpResultMap && document.getElementById('mp-result-screen').classList.contains('active'))
     { fixMapHeight('mp-result-map','mp-result-screen'); mpResultMap.invalidateSize(); }
+  if (summaryMap && document.getElementById('summary-screen').classList.contains('active'))
+    { summaryMap.invalidateSize(); }
 });
 
 // ── Multiplayer ───────────────────────────────────────────────────────────────
