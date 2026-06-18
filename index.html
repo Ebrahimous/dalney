@@ -126,6 +126,28 @@
     /* 6. Confetti canvas */
     #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:8000;}
 
+    /* #1 Feedback label */
+    #feedback-label{text-align:center;font-size:20px;font-weight:800;opacity:0;transform:scale(.85);
+      transition:opacity .25s ease,transform .25s cubic-bezier(.34,1.56,.64,1);}
+
+    /* #4 Score ring */
+    .score-ring-wrap{position:relative;width:110px;height:110px;flex-shrink:0;}
+    .score-ring-wrap svg{transform:rotate(-90deg);}
+    .score-ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;}
+
+    /* #5 Tap nudge */
+    #tap-nudge{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+      background:rgba(13,17,23,.88);border:1px solid rgba(88,166,255,.4);border-radius:20px;
+      padding:8px 18px;font-size:13px;font-weight:700;color:var(--blue);pointer-events:none;
+      z-index:500;white-space:nowrap;animation:nudgePulse 1.8s ease-in-out infinite;}
+    @keyframes nudgePulse{0%,100%{opacity:.75;transform:translateX(-50%) scale(1);}50%{opacity:1;transform:translateX(-50%) scale(1.04);}}
+
+    /* #6 Satellite toggle */
+    .sat-toggle-btn{background:rgba(13,17,23,.88);border:1px solid rgba(255,255,255,.15);
+      border-radius:10px;color:#fff;font-size:17px;width:36px;height:36px;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 2px 8px rgba(0,0,0,.45);transition:background .15s ease;padding:0;}
+
     ::-webkit-scrollbar{width:3px;}
     ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
     .player-chip{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:10px;padding:12px;border:1px solid rgba(255,255,255,.07);}
@@ -290,6 +312,7 @@
     <div class="score-flash" id="score-flash" style="margin:0;font-size:38px;">0</div>
     <span style="width:36px;"></span>
   </div>
+  <div id="feedback-label"></div>
   <p class="dist-info" id="dist-info" style="margin-bottom:0;"></p>
   <div id="result-map" style="flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;"></div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -302,9 +325,28 @@
 <div id="summary-screen" class="screen" style="gap:12px;align-items:center;">
   <h2 style="font-size:22px;font-weight:800;margin-top:8px;flex-shrink:0;">انتهت اللعبة!</h2>
   <div class="final-score-card" style="flex-shrink:0;">
-    <div style="font-size:14px;color:var(--muted);margin-bottom:6px;">مجموع نقاطك</div>
-    <div class="big" id="final-score">0</div>
-    <div style="font-size:13px;color:var(--muted);margin-top:8px;" id="new-best"></div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:22px;">
+      <!-- Score ring (avg/100) -->
+      <div class="score-ring-wrap">
+        <svg viewBox="0 0 120 120" width="110" height="110">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="9"/>
+          <circle id="score-ring" cx="60" cy="60" r="50" fill="none" stroke="var(--gold)" stroke-width="9"
+            stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314"
+            style="transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1),stroke .3s ease;"/>
+        </svg>
+        <div class="score-ring-center">
+          <span id="avg-display" style="font-size:24px;font-weight:900;color:var(--gold);">0</span>
+          <span style="font-size:10px;color:var(--muted);">/ 100</span>
+        </div>
+      </div>
+      <!-- Total score -->
+      <div style="text-align:center;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">المجموع</div>
+        <div class="big" id="final-score" style="font-size:44px;">0</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">نقطة</div>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-top:10px;" id="new-best"></div>
   </div>
   <div id="summary-map" style="width:100%;height:240px;border-radius:var(--radius);overflow:hidden;flex-shrink:0;border:1px solid rgba(255,255,255,.07);"></div>
   <div style="width:100%;display:flex;flex-direction:column;gap:8px;flex-shrink:0;" id="round-summary"></div>
@@ -717,6 +759,7 @@ function setRoundCount(el, n) {
 const BUILD_VERSION = '2026-06-12.1';
 let gameMode = 'classic'; // 'classic' | 'photo'
 let gameMap = null, resultMap = null, summaryMap = null, adminMap = null, adminMarker = null;
+let gameTileLayer = null, satelliteMode = false;
 let editMap = null, editMarker = null, editDocId = null, editIndex = -1;
 let editExtraPhotos = [];
 
@@ -1425,11 +1468,47 @@ function loadRound() {
 
 function initGameMap() {
   if (gameMap) { gameMap.remove(); gameMap = null; }
+  satelliteMode = false;
   fixMapHeight('game-map', 'game-screen');
   gameMap = L.map('game-map', {zoomControl:true, minZoom:7, maxZoom:17, tap:true, tapTolerance:25});
-  osmTileLayer().addTo(gameMap);
+  gameTileLayer = osmTileLayer();
+  gameTileLayer.addTo(gameMap);
   gameMap.setView(KW, 9);
+
+  // #6 Satellite toggle control
+  const SatCtrl = L.Control.extend({
+    options:{position:'bottomleft'},
+    onAdd() {
+      const btn = L.DomUtil.create('button','sat-toggle-btn');
+      btn.id = 'sat-toggle'; btn.textContent = '🛰️'; btn.title = 'تبديل الخريطة';
+      L.DomEvent.disableClickPropagation(btn);
+      L.DomEvent.on(btn,'click',() => {
+        satelliteMode = !satelliteMode;
+        if (gameTileLayer) gameMap.removeLayer(gameTileLayer);
+        gameTileLayer = satelliteMode
+          ? L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Esri',maxZoom:19})
+          : osmTileLayer();
+        gameTileLayer.addTo(gameMap);
+        btn.textContent = satelliteMode ? '🗺️' : '🛰️';
+        btn.style.background = satelliteMode ? 'rgba(88,166,255,.9)' : 'rgba(13,17,23,.88)';
+      });
+      return btn;
+    }
+  });
+  new SatCtrl().addTo(gameMap);
+
+  // #5 Tap nudge (round 1 only, dismissed after first tap)
+  if (currentRound === 0 && !localStorage.getItem('tapNudgeSeen')) {
+    const nudge = document.createElement('div');
+    nudge.id = 'tap-nudge';
+    nudge.textContent = '👆 اضغط على الخريطة للتخمين';
+    document.getElementById('game-map').appendChild(nudge);
+  }
+
   gameMap.on('click', e => {
+    // Dismiss nudge on first tap
+    const nudge = document.getElementById('tap-nudge');
+    if (nudge) { nudge.remove(); localStorage.setItem('tapNudgeSeen','1'); }
     guess = e.latlng;
     gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
     const icon = L.divIcon({className:'',html:'<div class="guess-marker-icon"></div>',iconSize:[42,42],iconAnchor:[21,42]});
@@ -1454,12 +1533,18 @@ function submitGuess() {
   }
   totalScore += sc;
   gameRounds[currentRound]._result = {score:sc, dist:dk, inArea, gLat:guess.lat, gLng:guess.lng};
-  // 5. Animated score count-up
+  // Animated score count-up
   const scoreColor = sc>=80?'var(--green)':sc>=40?'var(--gold)':'var(--red)';
   const scoreEl = document.getElementById('score-flash');
   scoreEl.style.color = scoreColor;
   animateCount(scoreEl, sc, 550);
-  // 8. Haptic feedback (uses existing vibrate() which respects vibrationOn setting)
+  // #1 Qualitative feedback label
+  const fbEl = document.getElementById('feedback-label');
+  fbEl.style.opacity = '0'; fbEl.style.transform = 'scale(.85)';
+  fbEl.style.color = scoreColor;
+  fbEl.textContent = sc>=90?'ممتاز! 🎯':sc>=70?'رائع! 👏':sc>=40?'تقريباً! 👀':'بعيد! 😬';
+  setTimeout(() => { fbEl.style.opacity='1'; fbEl.style.transform='scale(1)'; }, 220);
+  // Haptic feedback (uses existing vibrate() which respects vibrationOn setting)
   vibrate(sc>=80?[25,40,25]:sc>=40?[20]:[80]);
   setTimeout(()=>playScoreSound(sc), 150);
   const distText = inArea
@@ -1515,6 +1600,19 @@ function showSummary() {
   const nb = document.getElementById('new-best');
   if (avg > hs) { setHighscore(avg); nb.textContent = `🏆 رقم قياسي جديد! معدل ${avg}/100`; playSound('final'); }
   else { nb.textContent = `معدلك: ${avg}/100 — الأفضل: ${hs}/100`; playSound('round'); }
+  // #4 Animate score ring
+  const ring = document.getElementById('score-ring');
+  const avgEl = document.getElementById('avg-display');
+  const ringColor = avg>=70?'var(--gold)':avg>=40?'var(--blue)':'var(--red)';
+  if (ring) {
+    ring.style.stroke = ringColor;
+    ring.style.strokeDashoffset = '314';
+    if (avgEl) { avgEl.style.color = ringColor; avgEl.textContent = '0'; }
+    setTimeout(() => {
+      ring.style.strokeDashoffset = String(Math.round(314 * (1 - avg / 100)));
+      if (avgEl) animateCount(avgEl, Math.round(avg), 1100);
+    }, 120);
+  }
 
   // Round breakdown rows
   const rs = document.getElementById('round-summary'); rs.innerHTML = '';
