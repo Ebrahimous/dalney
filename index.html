@@ -259,12 +259,15 @@
 </div>
 
 <!-- SINGLE PLAYER MODE SELECT -->
-<div id="sp-mode-screen" class="screen" style="padding:20px;gap:14px;">
+<!-- SOLO: scoring picker -->
+<div id="sp-mode-screen" class="screen" style="padding:20px;gap:16px;">
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
     <button class="back-btn" onclick="showScreen('home-screen')">→</button>
-    <h2 style="font-size:18px;">رجوع</h2>
+    <h2 style="font-size:18px;">لعب فردي</h2>
   </div>
-  <div class="stat-card" style="max-width:160px;margin:0 auto;flex-shrink:0;"><div class="num" id="stat-highscore">0/100</div><div class="lbl">أفضل معدل</div></div>
+  <div class="stat-card" style="max-width:160px;margin:0 auto;flex-shrink:0;">
+    <div class="num" id="stat-highscore">0/100</div><div class="lbl">أفضل معدل</div>
+  </div>
   <div class="settings-card" style="flex-shrink:0;">
     <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات</label>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
@@ -273,48 +276,33 @@
       <button class="time-opt" onclick="setRoundCount(this,20)">20</button>
     </div>
   </div>
-  <!-- Normal modes -->
-  <div style="flex-shrink:0;">
-    <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;letter-spacing:.5px;">عادي</div>
-    <div style="display:flex;flex-direction:column;gap:10px;">
-      <button class="mode-card" onclick="startGame('normal','names')">
-        <div class="mode-icon" style="background:rgba(255,255,255,.2);">🗺️</div>
-        <div class="mode-text"><div class="mode-title">أسماء الأماكن</div><div class="mode-desc">تلميحات نصية — حدد الموقع على الخريطة</div></div>
-        <div class="mode-arrow">‹</div>
-      </button>
-      <button class="mode-card" onclick="startGame('normal','photos')">
-        <div class="mode-icon" style="background:rgba(255,255,255,.2);">📷</div>
-        <div class="mode-text"><div class="mode-title">صور الأماكن</div><div class="mode-desc">صورة فقط — خمّن الموقع بالاعتماد عليها</div></div>
-        <div class="mode-arrow">‹</div>
-      </button>
-      <button class="mode-card" onclick="startGame('normal','mix')">
-        <div class="mode-icon" style="background:rgba(255,255,255,.2);">🎲</div>
-        <div class="mode-text"><div class="mode-title">مزيج</div><div class="mode-desc">كل جولة إما اسم أو صورة — تنويع عشوائي</div></div>
-        <div class="mode-arrow">‹</div>
-      </button>
-    </div>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;">
+    <button class="mode-card" onclick="openScoringContent('normal')">
+      <div class="mode-icon" style="background:rgba(88,166,255,.2);color:var(--blue);">🗺️</div>
+      <div class="mode-text">
+        <div class="mode-title">عادي</div>
+        <div class="mode-desc">اضغط داخل المنطقة للحصول على نقاط كاملة</div>
+      </div>
+      <div class="mode-arrow">‹</div>
+    </button>
+    <button class="mode-card" style="background:rgba(243,156,18,.08);border:1px solid rgba(243,156,18,.35);" onclick="openScoringContent('competitive')">
+      <div class="mode-icon" style="background:rgba(243,156,18,.18);color:var(--gold);">🥇</div>
+      <div class="mode-text" style="color:var(--text);">
+        <div class="mode-title" style="color:var(--text);">تنافسي</div>
+        <div class="mode-desc" style="color:rgba(255,255,255,.5);">بدون مناطق — الدقة وحدها تحسب. نتائجك تُضاف للوحة المتصدرين</div>
+      </div>
+      <div class="mode-arrow" style="color:rgba(255,255,255,.3);">‹</div>
+    </button>
   </div>
-  <!-- Competitive modes -->
-  <div style="flex-shrink:0;">
-    <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px;letter-spacing:.5px;">تنافسي 🥇</div>
-    <div style="display:flex;flex-direction:column;gap:10px;">
-      <button class="mode-card" style="background:rgba(243,156,18,.08);border:1px solid rgba(243,156,18,.35);" onclick="startGame('competitive','names')">
-        <div class="mode-icon" style="background:rgba(243,156,18,.18);color:var(--gold);">🗺️</div>
-        <div class="mode-text" style="color:var(--text);"><div class="mode-title" style="color:var(--text);">أسماء الأماكن</div><div class="mode-desc" style="color:rgba(255,255,255,.5);">بدون مناطق — الدقة وحدها تحسب</div></div>
-        <div class="mode-arrow" style="color:rgba(255,255,255,.3);">‹</div>
-      </button>
-      <button class="mode-card" style="background:rgba(243,156,18,.08);border:1px solid rgba(243,156,18,.35);" onclick="startGame('competitive','photos')">
-        <div class="mode-icon" style="background:rgba(243,156,18,.18);color:var(--gold);">📷</div>
-        <div class="mode-text" style="color:var(--text);"><div class="mode-title" style="color:var(--text);">صور الأماكن</div><div class="mode-desc" style="color:rgba(255,255,255,.5);">بدون مناطق — الدقة وحدها تحسب</div></div>
-        <div class="mode-arrow" style="color:rgba(255,255,255,.3);">‹</div>
-      </button>
-      <button class="mode-card" style="background:rgba(243,156,18,.08);border:1px solid rgba(243,156,18,.35);" onclick="startGame('competitive','mix')">
-        <div class="mode-icon" style="background:rgba(243,156,18,.18);color:var(--gold);">🎲</div>
-        <div class="mode-text" style="color:var(--text);"><div class="mode-title" style="color:var(--text);">مزيج</div><div class="mode-desc" style="color:rgba(255,255,255,.5);">بدون مناطق — مزيج عشوائي للجولات</div></div>
-        <div class="mode-arrow" style="color:rgba(255,255,255,.3);">‹</div>
-      </button>
-    </div>
+</div>
+
+<!-- SOLO: content picker (populated dynamically) -->
+<div id="sp-content-screen" class="screen" style="padding:20px;gap:16px;">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button class="back-btn" onclick="showScreen('sp-mode-screen')">→</button>
+    <h2 id="sp-content-title" style="font-size:18px;"></h2>
   </div>
+  <div id="sp-content-cards" style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;"></div>
 </div>
 
 <!-- GAME SCREEN -->
@@ -1419,6 +1407,31 @@ function polygonCentroid(poly) {
 }
 
 // ── Game ──────────────────────────────────────────────────────────────────────
+function openScoringContent(scoring) {
+  const isComp = scoring === 'competitive';
+  document.getElementById('sp-content-title').textContent = isComp ? 'تنافسي 🥇' : 'عادي';
+  const cs = isComp ? 'background:rgba(243,156,18,.08);border:1px solid rgba(243,156,18,.35);' : '';
+  const ib = isComp ? 'background:rgba(243,156,18,.18);color:var(--gold);' : 'background:rgba(88,166,255,.18);color:var(--blue);';
+  const tc = isComp ? 'color:var(--text);' : '';
+  const dc = isComp ? 'color:rgba(255,255,255,.5);' : '';
+  const ac = isComp ? 'color:rgba(255,255,255,.3);' : '';
+  const modes = [
+    { icon:'🗺️', title:'أسماء الأماكن', desc: isComp ? 'بدون مناطق — الدقة وحدها تحسب' : 'تلميحات نصية — حدد الموقع على الخريطة', content:'names' },
+    { icon:'📷', title:'صور الأماكن',   desc: isComp ? 'بدون مناطق — الدقة وحدها تحسب' : 'صورة فقط — خمّن الموقع بالاعتماد عليها', content:'photos' },
+    { icon:'🔀', title:'مزيج',           desc: isComp ? 'بدون مناطق — مزيج عشوائي من الأسماء والصور' : 'كل جولة إما اسم أو صورة — تنويع عشوائي', content:'mix' },
+  ];
+  document.getElementById('sp-content-cards').innerHTML = modes.map(m => `
+    <button class="mode-card" style="${cs}" onclick="startGame('${scoring}','${m.content}')">
+      <div class="mode-icon" style="${ib}">${m.icon}</div>
+      <div class="mode-text" style="${tc}">
+        <div class="mode-title" style="${tc}">${m.title}</div>
+        <div class="mode-desc" style="${dc}">${m.desc}</div>
+      </div>
+      <div class="mode-arrow" style="${ac}">‹</div>
+    </button>`).join('');
+  showScreen('sp-content-screen');
+}
+
 function startGame(scoring, content) {
   scoringMode = scoring || 'normal';
   contentMode = content || 'names';
