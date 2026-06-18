@@ -265,42 +265,36 @@
     <button class="back-btn" onclick="showScreen('home-screen')">→</button>
     <h2 style="font-size:18px;">لعب فردي</h2>
   </div>
-  <div class="stat-card" style="max-width:160px;margin:0 auto;flex-shrink:0;">
-    <div class="num" id="stat-highscore">0/100</div><div class="lbl">أفضل معدل</div>
-  </div>
-  <div class="settings-card" style="flex-shrink:0;">
-    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات</label>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-      <button class="time-opt active" onclick="setRoundCount(this,5)">5</button>
-      <button class="time-opt" onclick="setRoundCount(this,10)">10</button>
-      <button class="time-opt" onclick="setRoundCount(this,20)">20</button>
-    </div>
-  </div>
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;">
     <button class="mode-card" onclick="openScoringContent('normal')">
-      <div class="mode-icon" style="background:rgba(88,166,255,.2);color:var(--blue);">🗺️</div>
-      <div class="mode-text">
-        <div class="mode-title">عادي</div>
-        <div class="mode-desc">اضغط داخل المنطقة للحصول على نقاط كاملة</div>
-      </div>
+      <div class="mode-icon" style="background:rgba(255,255,255,.2);">🗺️</div>
+      <div class="mode-text"><div class="mode-title">عادي</div></div>
       <div class="mode-arrow">‹</div>
     </button>
-    <button class="mode-card" style="background:rgba(243,156,18,.08);border:1px solid rgba(243,156,18,.35);" onclick="openScoringContent('competitive')">
-      <div class="mode-icon" style="background:rgba(243,156,18,.18);color:var(--gold);">🥇</div>
-      <div class="mode-text" style="color:var(--text);">
-        <div class="mode-title" style="color:var(--text);">تنافسي</div>
-        <div class="mode-desc" style="color:rgba(255,255,255,.5);">بدون مناطق — الدقة وحدها تحسب. نتائجك تُضاف للوحة المتصدرين</div>
-      </div>
-      <div class="mode-arrow" style="color:rgba(255,255,255,.3);">‹</div>
+    <button class="mode-card" onclick="openScoringContent('competitive')">
+      <div class="mode-icon" style="background:rgba(255,255,255,.2);">🥇</div>
+      <div class="mode-text"><div class="mode-title">تنافسي</div></div>
+      <div class="mode-arrow">‹</div>
     </button>
   </div>
 </div>
 
 <!-- SOLO: content picker (populated dynamically) -->
-<div id="sp-content-screen" class="screen" style="padding:20px;gap:16px;">
+<div id="sp-content-screen" class="screen" style="padding:20px;gap:14px;">
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
     <button class="back-btn" onclick="showScreen('sp-mode-screen')">→</button>
     <h2 id="sp-content-title" style="font-size:18px;"></h2>
+  </div>
+  <div class="stat-card" id="sp-hs-card" style="max-width:160px;margin:0 auto;flex-shrink:0;">
+    <div class="num" id="stat-highscore">0/100</div><div class="lbl">أفضل معدل</div>
+  </div>
+  <div class="settings-card" style="flex-shrink:0;">
+    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات</label>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+      <button class="time-opt active" id="rc-5"  onclick="setRoundCount(this,5)">5</button>
+      <button class="time-opt"        id="rc-10" onclick="setRoundCount(this,10)">10</button>
+      <button class="time-opt"        id="rc-20" onclick="setRoundCount(this,20)">20</button>
+    </div>
   </div>
   <div id="sp-content-cards" style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;"></div>
 </div>
@@ -1084,8 +1078,14 @@ async function deleteLocFromDb(docId) {
 }
 
 // ── Stats (local — per player) ────────────────────────────────────────────────
-function getStats() { return {highscore: parseFloat(localStorage.getItem('q8avg')||'0')}; }
-function setHighscore(v) { localStorage.setItem('q8avg', v); }
+function getStats(mode) {
+  const key = mode === 'competitive' ? 'q8avg_comp' : 'q8avg';
+  return { highscore: parseFloat(localStorage.getItem(key) || '0') };
+}
+function setHighscore(v, mode) {
+  const key = mode === 'competitive' ? 'q8avg_comp' : 'q8avg';
+  localStorage.setItem(key, v);
+}
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 // Tracks whether we've pushed a "guard" history entry for being on a non-home
@@ -1142,7 +1142,7 @@ window.addEventListener('popstate', () => {
     }
   }
 });
-function updateHomeStats() { document.getElementById('stat-highscore').textContent = getStats().highscore + '/100'; }
+function updateHomeStats() { /* highscore now shown per mode in sp-content-screen */ }
 
 // OSM tile servers occasionally fail to return a tile (timeouts / rate
 // limiting, especially with several players loading maps at once in
@@ -1408,26 +1408,25 @@ function polygonCentroid(poly) {
 
 // ── Game ──────────────────────────────────────────────────────────────────────
 function openScoringContent(scoring) {
-  const isComp = scoring === 'competitive';
-  document.getElementById('sp-content-title').textContent = isComp ? 'تنافسي 🥇' : 'عادي';
-  const cs = isComp ? 'background:rgba(243,156,18,.08);border:1px solid rgba(243,156,18,.35);' : '';
-  const ib = isComp ? 'background:rgba(243,156,18,.18);color:var(--gold);' : 'background:rgba(88,166,255,.18);color:var(--blue);';
-  const tc = isComp ? 'color:var(--text);' : '';
-  const dc = isComp ? 'color:rgba(255,255,255,.5);' : '';
-  const ac = isComp ? 'color:rgba(255,255,255,.3);' : '';
+  document.getElementById('sp-content-title').textContent = scoring === 'competitive' ? 'تنافسي 🥇' : 'عادي';
+  // Highscore for this mode
+  document.getElementById('stat-highscore').textContent = getStats(scoring).highscore + '/100';
+  // Reset round count buttons to reflect current selectedRounds
+  [5,10,20].forEach(n => {
+    const btn = document.getElementById('rc-' + n);
+    if (btn) btn.classList.toggle('active', n === selectedRounds);
+  });
+  // Content cards (uniform blue styling regardless of scoring mode)
   const modes = [
-    { icon:'🗺️', title:'أسماء الأماكن', desc: isComp ? 'بدون مناطق — الدقة وحدها تحسب' : 'تلميحات نصية — حدد الموقع على الخريطة', content:'names' },
-    { icon:'📷', title:'صور الأماكن',   desc: isComp ? 'بدون مناطق — الدقة وحدها تحسب' : 'صورة فقط — خمّن الموقع بالاعتماد عليها', content:'photos' },
-    { icon:'🔀', title:'مزيج',           desc: isComp ? 'بدون مناطق — مزيج عشوائي من الأسماء والصور' : 'كل جولة إما اسم أو صورة — تنويع عشوائي', content:'mix' },
+    { icon:'🗺️', title:'أسماء الأماكن', content:'names' },
+    { icon:'📷', title:'صور الأماكن',   content:'photos' },
+    { icon:'🔀', title:'مزيج',           content:'mix' },
   ];
   document.getElementById('sp-content-cards').innerHTML = modes.map(m => `
-    <button class="mode-card" style="${cs}" onclick="startGame('${scoring}','${m.content}')">
-      <div class="mode-icon" style="${ib}">${m.icon}</div>
-      <div class="mode-text" style="${tc}">
-        <div class="mode-title" style="${tc}">${m.title}</div>
-        <div class="mode-desc" style="${dc}">${m.desc}</div>
-      </div>
-      <div class="mode-arrow" style="${ac}">‹</div>
+    <button class="mode-card" onclick="startGame('${scoring}','${m.content}')">
+      <div class="mode-icon" style="background:rgba(255,255,255,.2);">${m.icon}</div>
+      <div class="mode-text"><div class="mode-title">${m.title}</div></div>
+      <div class="mode-arrow">‹</div>
     </button>`).join('');
   showScreen('sp-content-screen');
 }
@@ -1687,10 +1686,10 @@ function nextRound() {
 
 function showSummary() {
   document.getElementById('final-score').textContent = totalScore;
-  const hs = getStats().highscore;
+  const hs = getStats(scoringMode).highscore;
   const avg = Math.round((totalScore / gameRounds.length) * 10) / 10;
   const nb = document.getElementById('new-best');
-  if (avg > hs) { setHighscore(avg); nb.textContent = `🏆 رقم قياسي جديد! معدل ${avg}/100`; playSound('final'); }
+  if (avg > hs) { setHighscore(avg, scoringMode); nb.textContent = `🏆 رقم قياسي جديد! معدل ${avg}/100`; playSound('final'); }
   else { nb.textContent = `معدلك: ${avg}/100 — الأفضل: ${hs}/100`; playSound('round'); }
   // #4 Animate score ring
   const ring = document.getElementById('score-ring');
