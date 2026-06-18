@@ -142,6 +142,21 @@
       z-index:500;white-space:nowrap;animation:nudgePulse 1.8s ease-in-out infinite;}
     @keyframes nudgePulse{0%,100%{opacity:.75;transform:translateX(-50%) scale(1);}50%{opacity:1;transform:translateX(-50%) scale(1.04);}}
 
+    /* Leaderboard */
+    .lb-tab{padding:8px 14px;border:none;border-radius:20px;font-size:13px;font-weight:700;
+      cursor:pointer;font-family:inherit;background:var(--surface);color:var(--muted);
+      transition:background .15s ease,color .15s ease;flex:1;}
+    .lb-tab.active{background:var(--blue);color:#000;}
+    .lb-row{background:var(--card);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;border:1px solid rgba(255,255,255,.06);flex-shrink:0;}
+    .lb-row.mine{border-color:rgba(88,166,255,.4);background:rgba(88,166,255,.07);}
+    .lb-rank{font-size:13px;font-weight:800;color:var(--muted);width:26px;text-align:center;flex-shrink:0;}
+    .lb-rank.gold{color:#ffd700;font-size:18px;}
+    .lb-rank.silver{color:#c0c0c0;font-size:18px;}
+    .lb-rank.bronze{color:#cd7f32;font-size:18px;}
+    /* Competitive badge in round header */
+    .competitive-badge{font-size:11px;background:rgba(243,156,18,.18);color:var(--gold);
+      border:1px solid rgba(243,156,18,.35);border-radius:6px;padding:2px 7px;font-weight:700;}
+
     /* #6 Satellite toggle */
     .sat-toggle-btn{background:rgba(13,17,23,.88);border:1px solid rgba(255,255,255,.15);
       border-radius:10px;color:#fff;font-size:17px;width:36px;height:36px;cursor:pointer;
@@ -218,6 +233,7 @@
     <div style="width:100%;display:flex;flex-direction:column;gap:10px;position:relative;z-index:2;">
       <button class="btn btn-primary" onclick="showScreen('sp-mode-screen')">🗺️ لعب فردي</button>
       <button class="btn btn-primary" onclick="showScreen('mp-menu-screen')">👥 لعب جماعي</button>
+      <button class="btn btn-secondary" onclick="openLeaderboard()" style="font-size:14px;padding:12px;">🏆 لوحة المتصدرين</button>
       <button class="btn btn-secondary" onclick="showScreen('how-screen')" style="font-size:12px;padding:8px;">❓ شرح طريقة اللعب</button>
     </div>
   </div>
@@ -280,6 +296,14 @@
           <div class="mode-desc">تُعرض لك صورة فقط — خمّن الموقع بالاعتماد عليها</div>
         </div>
         <div class="mode-arrow">‹</div>
+      </button>
+      <button class="mode-card" style="background:rgba(243,156,18,.08);border:1px solid rgba(243,156,18,.35);" onclick="startGame('competitive')">
+        <div class="mode-icon" style="background:rgba(243,156,18,.18);color:var(--gold);">🥇</div>
+        <div class="mode-text" style="color:var(--text);">
+          <div class="mode-title" style="color:var(--text);">تنافسي</div>
+          <div class="mode-desc" style="color:rgba(255,255,255,.5);">بدون مناطق — الدقة وحدها تحسب. نتائجك تُضاف للوحة المتصدرين</div>
+        </div>
+        <div class="mode-arrow" style="color:rgba(255,255,255,.3);">‹</div>
       </button>
     </div>
   </div>
@@ -350,6 +374,18 @@
   </div>
   <div id="summary-map" style="width:100%;height:240px;border-radius:var(--radius);overflow:hidden;flex-shrink:0;border:1px solid rgba(255,255,255,.07);"></div>
   <div style="width:100%;display:flex;flex-direction:column;gap:8px;flex-shrink:0;" id="round-summary"></div>
+  <!-- Leaderboard submit -->
+  <div id="lb-submit-section" style="width:100%;flex-shrink:0;display:none;">
+    <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:8px;">أضف نتيجتك للوحة المتصدرين</div>
+    <div style="display:flex;gap:8px;">
+      <input id="lb-name-input" type="text" maxlength="20" placeholder="اسمك"
+        style="flex:1;background:var(--card);border:1px solid rgba(255,255,255,.12);color:var(--text);
+        padding:12px;border-radius:12px;font-size:14px;font-family:inherit;text-align:right;">
+      <button id="lb-submit-btn" class="btn btn-primary"
+        style="width:auto;padding:12px 18px;border-radius:12px;flex-shrink:0;"
+        onclick="submitToLeaderboard()">🏆 أضف</button>
+    </div>
+  </div>
   <button class="btn btn-primary" style="flex-shrink:0;" onclick="startGame(gameMode)">🔄 العب مرة أخرى</button>
   <button class="btn btn-secondary" style="flex-shrink:0;" onclick="exitGame(true)">🏠 الرئيسية</button>
 </div>
@@ -529,6 +565,22 @@
   <div id="mp-final-scores" style="width:100%;display:flex;flex-direction:column;gap:8px;"></div>
   <button class="btn btn-primary" id="mp-replay-btn" style="width:100%;display:none;" onclick="mpRequestReplay()">🔄 إعادة اللعب</button>
   <button class="btn btn-secondary" style="width:100%;" onclick="mpBackHome()">🏠 الرئيسية</button>
+</div>
+
+<!-- LEADERBOARD SCREEN -->
+<div id="lb-screen" class="screen" style="gap:12px;padding:16px;">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button class="back-btn" onclick="showScreen('home-screen')">→</button>
+    <h2 style="font-size:18px;font-weight:800;">🏆 لوحة المتصدرين</h2>
+  </div>
+  <!-- Tab bar -->
+  <div style="display:flex;gap:8px;flex-shrink:0;">
+    <button id="lb-tab-competitive" class="lb-tab active" onclick="switchLbTab('competitive')">🥇 تنافسي</button>
+    <button id="lb-tab-classic" class="lb-tab" onclick="switchLbTab('classic')">🗺️ كلاسيكي</button>
+    <button id="lb-tab-photo" class="lb-tab" onclick="switchLbTab('photo')">📷 صور</button>
+  </div>
+  <!-- List -->
+  <div id="lb-list" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1;"></div>
 </div>
 
 <!-- ADMIN SCREEN -->
@@ -743,6 +795,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const locsCol = db.collection('locations');
 const reportsCol = db.collection('reports');
+const lbCol = db.collection('leaderboard');
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const KW = [29.3759, 47.9774];
@@ -1358,7 +1411,7 @@ function polygonCentroid(poly) {
 
 // ── Game ──────────────────────────────────────────────────────────────────────
 function startGame(mode) {
-  gameMode = mode === 'photo' ? 'photo' : 'classic';
+  gameMode = (mode === 'photo') ? 'photo' : (mode === 'competitive') ? 'competitive' : 'classic';
   let pool = locations;
   if (gameMode === 'photo') {
     pool = locations.filter(l => getLocPhotos(l).length > 0);
@@ -1440,7 +1493,8 @@ function loadRound() {
   guess = null;
   document.getElementById('submit-btn').disabled = true;
   const loc = gameRounds[currentRound];
-  document.getElementById('round-badge').textContent = `جولة ${currentRound+1} / ${gameRounds.length}` + (gameMode === 'photo' ? ' 📷' : '');
+  const modeSuffix = gameMode === 'photo' ? ' 📷' : gameMode === 'competitive' ? ' 🥇' : '';
+  document.getElementById('round-badge').textContent = `جولة ${currentRound+1} / ${gameRounds.length}` + modeSuffix;
   document.getElementById('score-badge').textContent = totalScore;
   const pct = ((currentRound + 1) / gameRounds.length) * 100;
   requestAnimationFrame(() => { document.getElementById('round-progress-bar').style.width = pct + '%'; });
@@ -1524,10 +1578,12 @@ function submitGuess() {
   const loc = gameRounds[currentRound];
   const poly = loc.polygon;
   let sc, dk, inArea = false;
-  if (poly && poly.length >= 3 && pointInPolygon(guess.lat, guess.lng, poly)) {
+  if (gameMode !== 'competitive' && poly && poly.length >= 3 && pointInPolygon(guess.lat, guess.lng, poly)) {
     inArea = true; sc = 100; dk = 0;
   } else {
-    const target = poly && poly.length >= 3 ? polygonCentroid(poly) : [loc.lat, loc.lng];
+    // Competitive: always score vs exact pin (no polygon bonus)
+    const target = (gameMode === 'competitive') ? [loc.lat, loc.lng]
+      : (poly && poly.length >= 3 ? polygonCentroid(poly) : [loc.lat, loc.lng]);
     dk = L.latLng(guess).distanceTo(L.latLng(target[0], target[1])) / 1000;
     sc = Math.round(Math.max(0, 100 * Math.exp(-dk / 3.5)));
   }
@@ -1646,6 +1702,21 @@ function showSummary() {
     summaryMarkerRefs.push(null); // slot filled after map init
   });
 
+  // Leaderboard submit section (competitive only)
+  const lbSection = document.getElementById('lb-submit-section');
+  if (lbSection) {
+    if (gameMode === 'competitive') {
+      lbSection.style.display = '';
+      const saved = localStorage.getItem('lb_name') || '';
+      const inp = document.getElementById('lb-name-input');
+      if (inp && saved) inp.value = saved;
+      document.getElementById('lb-submit-btn').disabled = false;
+      document.getElementById('lb-submit-btn').textContent = '🏆 أضف';
+    } else {
+      lbSection.style.display = 'none';
+    }
+  }
+
   showScreen('summary-screen');
   // 6. Confetti for good scores (avg >= 70)
   if (avg >= 70) setTimeout(launchConfetti, 300);
@@ -1703,6 +1774,91 @@ function exitGame(toHome) {
   showConfirm('هل تريد الخروج من اللعبة؟', ok => {
     if (ok) { if (gameMap) { gameMap.remove(); gameMap = null; } showScreen('home-screen'); }
   });
+}
+
+// ── Leaderboard ───────────────────────────────────────────────────────────────
+let _lbCurrentMode = 'competitive';
+
+function openLeaderboard() {
+  showScreen('lb-screen');
+  loadLeaderboard('competitive');
+}
+
+function switchLbTab(mode) {
+  _lbCurrentMode = mode;
+  ['competitive','classic','photo'].forEach(m => {
+    const tab = document.getElementById('lb-tab-' + m);
+    if (tab) tab.classList.toggle('active', m === mode);
+  });
+  loadLeaderboard(mode);
+}
+
+async function loadLeaderboard(mode) {
+  const list = document.getElementById('lb-list');
+  list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;">جاري التحميل…</div>';
+  try {
+    const snap = await lbCol.where('mode','==',mode).orderBy('avg','desc').limit(50).get();
+    if (snap.empty) {
+      list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">لا يوجد إدخالات بعد 🙂</div>';
+      return;
+    }
+    const myId = localStorage.getItem('lb_my_id') || '';
+    list.innerHTML = '';
+    snap.docs.forEach((doc, idx) => {
+      const d = doc.data();
+      const rank = idx + 1;
+      const rankLabel = rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank;
+      const rankClass = rank===1?'gold':rank===2?'silver':rank===3?'bronze':'';
+      const isMine = doc.id === myId;
+      const row = document.createElement('div');
+      row.className = 'lb-row' + (isMine ? ' mine' : '');
+      row.innerHTML = `
+        <div class="lb-rank ${rankClass}">${rankLabel}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(d.name || 'مجهول')}</div>
+          <div style="font-size:11px;color:var(--muted);">${d.rounds || 5} جولات</div>
+        </div>
+        <div style="text-align:end;flex-shrink:0;">
+          <div style="font-weight:800;font-size:20px;color:var(--gold);">${d.avg}</div>
+          <div style="font-size:10px;color:var(--muted);">/ 100</div>
+        </div>`;
+      list.appendChild(row);
+    });
+  } catch(e) {
+    console.error('loadLeaderboard', e);
+    list.innerHTML = '<div style="text-align:center;color:var(--red);padding:24px;font-size:13px;">تعذّر التحميل. تحقق من اتصالك.</div>';
+  }
+}
+
+async function submitToLeaderboard() {
+  const nameInp = document.getElementById('lb-name-input');
+  const btn = document.getElementById('lb-submit-btn');
+  const name = (nameInp ? nameInp.value.trim() : '') || 'مجهول';
+  if (name.length > 20) { showToast('الاسم طويل جداً (20 حرف كحد أقصى)'); return; }
+  const avg = Math.round((totalScore / gameRounds.length) * 10) / 10;
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    localStorage.setItem('lb_name', name);
+    const docRef = await lbCol.add({
+      name,
+      avg,
+      total: totalScore,
+      rounds: gameRounds.length,
+      mode: gameMode,
+      ts: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    localStorage.setItem('lb_my_id', docRef.id);
+    btn.textContent = '✅ تمت الإضافة';
+    showToast('تمت إضافة نتيجتك للوحة المتصدرين! 🏆');
+  } catch(e) {
+    console.error('submitToLeaderboard', e);
+    btn.disabled = false; btn.textContent = '🏆 أضف';
+    showToast('فشل الإرسال — تحقق من الاتصال');
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── Admin map ─────────────────────────────────────────────────────────────────
