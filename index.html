@@ -96,6 +96,36 @@
     #loading-overlay.hidden{display:none;}
     .spinner{width:40px;height:40px;border:3px solid rgba(88,166,255,.2);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;}
     @keyframes spin{to{transform:rotate(360deg);}}
+
+    /* ── UI Polish ──────────────────────────────────────────────────────────── */
+    /* 1. Screen fade-in transition */
+    @keyframes screenFadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+    .screen.active{animation:screenFadeIn .2s ease forwards;}
+
+    /* 4. Button ripple / press glow */
+    .btn{position:relative;overflow:hidden;}
+    .btn::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at center,rgba(255,255,255,.22) 0%,transparent 70%);opacity:0;transition:opacity .15s ease;}
+    .btn:active::before{opacity:1;transition:none;}
+
+    /* 5. Score flash bounce transition */
+    .score-flash{transition:transform .15s cubic-bezier(.34,1.56,.64,1);}
+
+    /* 7. Home screen button polish */
+    #home-screen .btn-primary{
+      background:linear-gradient(135deg,#58a6ff 0%,#3a8edc 100%);
+      box-shadow:0 6px 22px rgba(88,166,255,.38),0 2px 8px rgba(0,0,0,.28);
+      letter-spacing:.3px;
+    }
+    #home-screen .btn-primary:active{filter:brightness(1.1);}
+    #home-screen .btn-secondary{box-shadow:0 2px 10px rgba(0,0,0,.25);}
+
+    /* 2. Round progress bar */
+    #round-progress-wrap{width:100%;height:3px;background:rgba(255,255,255,.08);border-radius:2px;flex-shrink:0;}
+    #round-progress-bar{height:100%;background:linear-gradient(90deg,var(--blue),#8ecaff);border-radius:2px;transition:width .35s cubic-bezier(.4,0,.2,1);width:0%;}
+
+    /* 6. Confetti canvas */
+    #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:8000;}
+
     ::-webkit-scrollbar{width:3px;}
     ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
     .player-chip{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:10px;padding:12px;border:1px solid rgba(255,255,255,.07);}
@@ -118,6 +148,9 @@
   </style>
 </head>
 <body>
+
+<!-- Confetti canvas (fixed overlay, always present, drawn into by JS) -->
+<canvas id="confetti-canvas"></canvas>
 
 <!-- Loading overlay -->
 <div id="loading-overlay">
@@ -238,6 +271,7 @@
     <span id="score-badge" style="font-weight:700;color:var(--gold);">0</span>
     <button class="flag-btn" onclick="reportLocation(gameRounds[currentRound])" title="الإبلاغ عن مشكلة في الموقع" style="width:36px;height:28px;padding:0;font-size:14px;flex-shrink:0;">🚩</button>
   </div>
+  <div id="round-progress-wrap"><div id="round-progress-bar"></div></div>
   <div class="hint-panel">
     <p id="hint-name" style="font-weight:700;font-size:16px;"></p>
     <p id="hint-text" style="color:var(--muted);font-size:13px;margin-top:4px;"></p>
@@ -1312,12 +1346,61 @@ function shuffle(a) {
   return a;
 }
 
+// 5. Animated counter (easeOutCubic, bounces at the end)
+function animateCount(el, target, duration) {
+  const start = performance.now();
+  (function tick(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(eased * target);
+    if (p < 1) { requestAnimationFrame(tick); return; }
+    el.textContent = target;
+    el.style.transform = 'scale(1.18)';
+    setTimeout(() => { el.style.transform = ''; }, 160);
+  })(start);
+}
+
+// 6. Confetti burst
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  const COLORS = ['#58a6ff','#3fb950','#f39c12','#f85149','#bc8cff','#ff79c6','#ffd700'];
+  const pieces = Array.from({length: 90}, () => ({
+    x: Math.random() * canvas.width, y: -10 - Math.random() * 60,
+    r: Math.random() * 6 + 3,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    vx: (Math.random() - 0.5) * 4, vy: Math.random() * 3 + 2,
+    rot: Math.random() * 360, rotV: (Math.random() - 0.5) * 9, alpha: 1
+  }));
+  let raf;
+  (function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    pieces.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.rot += p.rotV; p.vy += 0.06; p.alpha -= 0.007;
+      if (p.alpha <= 0) return;
+      alive = true;
+      ctx.save(); ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color;
+      ctx.translate(p.x, p.y); ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillRect(-p.r, -p.r * 0.4, p.r * 2, p.r * 0.8);
+      ctx.restore();
+    });
+    if (alive) raf = requestAnimationFrame(draw);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  })();
+  setTimeout(() => { cancelAnimationFrame(raf); ctx.clearRect(0,0,canvas.width,canvas.height); }, 5000);
+}
+
 function loadRound() {
   guess = null;
   document.getElementById('submit-btn').disabled = true;
   const loc = gameRounds[currentRound];
   document.getElementById('round-badge').textContent = `جولة ${currentRound+1} / ${gameRounds.length}` + (gameMode === 'photo' ? ' 📷' : '');
   document.getElementById('score-badge').textContent = totalScore;
+  const pct = ((currentRound + 1) / gameRounds.length) * 100;
+  requestAnimationFrame(() => { document.getElementById('round-progress-bar').style.width = pct + '%'; });
   const hintPanel = document.querySelector('#game-screen .hint-panel');
   const nameEl = document.getElementById('hint-name');
   const textEl = document.getElementById('hint-text');
@@ -1371,8 +1454,13 @@ function submitGuess() {
   }
   totalScore += sc;
   gameRounds[currentRound]._result = {score:sc, dist:dk, inArea, gLat:guess.lat, gLng:guess.lng};
-  document.getElementById('score-flash').textContent = sc;
-  document.getElementById('score-flash').style.color = sc>=80?'var(--green)':sc>=40?'var(--gold)':'var(--red)';
+  // 5. Animated score count-up
+  const scoreColor = sc>=80?'var(--green)':sc>=40?'var(--gold)':'var(--red)';
+  const scoreEl = document.getElementById('score-flash');
+  scoreEl.style.color = scoreColor;
+  animateCount(scoreEl, sc, 550);
+  // 8. Haptic feedback (uses existing vibrate() which respects vibrationOn setting)
+  vibrate(sc>=80?[25,40,25]:sc>=40?[20]:[80]);
   setTimeout(()=>playScoreSound(sc), 150);
   const distText = inArea
     ? `✅ داخل المنطقة! 100 نقطة`
@@ -1439,6 +1527,7 @@ function showSummary() {
     const row = document.createElement('div');
     row.className = 'round-row';
     row.style.cursor = 'pointer';
+    row.style.borderInlineStart = `3px solid ${scoreColor}`;
     row.innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden;">
         <div style="width:24px;height:24px;border-radius:50%;background:var(--surface);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${i+1}</div>
@@ -1460,6 +1549,8 @@ function showSummary() {
   });
 
   showScreen('summary-screen');
+  // 6. Confetti for good scores (avg >= 70)
+  if (avg >= 70) setTimeout(launchConfetti, 300);
   requestAnimationFrame(() => requestAnimationFrame(() => {
     try { initSummaryMap(summaryMarkerRefs); } catch(e) { console.warn(e); }
   }));
