@@ -120,8 +120,8 @@
     #home-screen .btn-secondary{box-shadow:0 2px 10px rgba(0,0,0,.25);}
 
     /* 2. Round progress bar */
-    #round-progress-wrap{width:100%;height:3px;background:rgba(255,255,255,.08);border-radius:2px;flex-shrink:0;}
-    #round-progress-bar{height:100%;background:linear-gradient(90deg,var(--blue),#8ecaff);border-radius:2px;transition:width .35s cubic-bezier(.4,0,.2,1);width:0%;}
+    #round-progress-wrap,#mp-round-progress-wrap{width:100%;height:3px;background:rgba(255,255,255,.08);border-radius:2px;flex-shrink:0;}
+    #round-progress-bar,#mp-round-progress-bar{height:100%;background:linear-gradient(90deg,var(--blue),#8ecaff);border-radius:2px;transition:width .35s cubic-bezier(.4,0,.2,1);width:0%;}
 
     /* 6. Confetti canvas */
     #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:8000;}
@@ -503,12 +503,14 @@
     <span id="mp-score-badge" style="background:var(--surface);border-radius:20px;padding:4px 14px;font-size:16px;font-weight:800;color:var(--green);">0</span>
     <button class="flag-btn" onclick="reportLocation(mpRoom && mpRoom.loc)" title="الإبلاغ عن مشكلة في الموقع" style="width:36px;height:28px;padding:0;font-size:14px;flex-shrink:0;">🚩</button>
   </div>
+  <div id="mp-round-progress-wrap"><div id="mp-round-progress-bar"></div></div>
   <div class="hint-panel">
     <p id="mp-hint-name" style="font-weight:700;font-size:16px;"></p>
     <p id="mp-hint-text" style="color:var(--muted);font-size:13px;margin-top:4px;"></p>
     <img id="mp-hint-photo" class="hint-photo" src="" alt="" style="display:none"/>
   </div>
   <div id="mp-game-map"></div>
+  <div id="mp-feedback-label" style="text-align:center;font-size:18px;font-weight:800;opacity:0;transform:scale(.85);transition:opacity .25s ease,transform .25s ease;min-height:24px;flex-shrink:0;"></div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
     <button class="btn btn-primary" onclick="mpSubmitGuess()" id="mp-submit-btn" disabled style="flex:1;border-radius:12px;padding:13px;">تأكيد ✓</button>
   </div>
@@ -2567,6 +2569,11 @@ function mpInitGameRound() {
   const {loc, round, totalRounds, roundStartAt, timeLimit} = mpRoom;
   if (!loc) return;
   document.getElementById('mp-round-badge').textContent = `جولة ${round} / ${totalRounds}` + (mpRoom.mode==='photo' ? ' 📷' : '');
+  const mpPct = (round / totalRounds) * 100;
+  requestAnimationFrame(() => { const b = document.getElementById('mp-round-progress-bar'); if(b) b.style.width = mpPct + '%'; });
+  // Reset feedback label each round
+  const mpFb = document.getElementById('mp-feedback-label');
+  if (mpFb) { mpFb.style.opacity='0'; mpFb.style.transform='scale(.85)'; mpFb.textContent=''; }
   const mpHintPanel = document.querySelector('#mp-game-screen .hint-panel');
   const mpNameEl = document.getElementById('mp-hint-name');
   const mpTextEl = document.getElementById('mp-hint-text');
@@ -2593,13 +2600,45 @@ function mpInitGameRound() {
       if (mpGameMap) { mpGameMap.remove(); mpGameMap=null; mpGameMarker=null; }
       mpAnswerStatusControl = null; // new round — old "answered" status no longer applies
       mpGameMap = L.map('mp-game-map',{zoomControl:true,minZoom:7,maxZoom:17,tap:true,tapTolerance:25});
-      osmTileLayer().addTo(mpGameMap);
+      let mpTileLayer = osmTileLayer(); mpTileLayer.addTo(mpGameMap);
+      let mpSatMode = false;
       mpGameMap.setView(KW_CENTER,10);
       fixMapHeight('mp-game-map','mp-game-screen');
       mpGameMap.invalidateSize();
+      // Satellite toggle
+      const MpSatCtrl = L.Control.extend({
+        options:{position:'bottomleft'},
+        onAdd() {
+          const btn = L.DomUtil.create('button','sat-toggle-btn');
+          btn.textContent='🛰️'; btn.title='تبديل الخريطة';
+          L.DomEvent.disableClickPropagation(btn);
+          L.DomEvent.on(btn,'click',()=>{
+            mpSatMode=!mpSatMode;
+            mpGameMap.removeLayer(mpTileLayer);
+            mpTileLayer = mpSatMode
+              ? L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Esri',maxZoom:19})
+              : osmTileLayer();
+            mpTileLayer.addTo(mpGameMap);
+            btn.textContent=mpSatMode?'🗺️':'🛰️';
+            btn.style.background=mpSatMode?'rgba(88,166,255,.9)':'rgba(13,17,23,.88)';
+          });
+          return btn;
+        }
+      });
+      new MpSatCtrl().addTo(mpGameMap);
+      // Tap nudge (first round only)
+      if (round === 1 && !localStorage.getItem('tapNudgeSeen')) {
+        const nudge = document.createElement('div');
+        nudge.id = 'mp-tap-nudge'; nudge.className = '';
+        nudge.style.cssText = 'position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(13,17,23,.82);color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;pointer-events:none;z-index:1000;white-space:nowrap;';
+        nudge.textContent = '👆 اضغط على الخريطة للتخمين';
+        document.getElementById('mp-game-map').appendChild(nudge);
+      }
       const myColor = me ? me.color : '#58a6ff';
       mpGameMap.on('click',e=>{
         if (mpAnswered) return;
+        const mpNudge = document.getElementById('mp-tap-nudge');
+        if (mpNudge) { mpNudge.remove(); localStorage.setItem('tapNudgeSeen','1'); }
         mpGuess = {lat:e.latlng.lat, lng:e.latlng.lng};
         if (mpGameMarker) mpGameMap.removeLayer(mpGameMarker);
         const icon = L.divIcon({html:`<div style="width:38px;height:38px;background:${myColor};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:4px solid #fff;"></div>`,iconSize:[38,38],iconAnchor:[19,38],className:''});
@@ -2919,6 +2958,16 @@ async function mpSubmitGuess() {
     const speedFactor = Math.max(0, 1 - elapsed/timeLimit); // 1 = instant, 0 = used full time
     sc = Math.round(sc * (0.9 + 0.1*speedFactor));
   }
+  // Feedback label + haptic
+  const mpFb = document.getElementById('mp-feedback-label');
+  if (mpFb) {
+    const scoreColor = sc>=80?'var(--green)':sc>=40?'var(--gold)':'var(--red)';
+    mpFb.style.color = scoreColor;
+    mpFb.textContent = sc>=90?'ممتاز! 🎯':sc>=70?'رائع! 👏':sc>=40?'تقريباً! 👀':'بعيد! 😬';
+    mpFb.style.opacity='0'; mpFb.style.transform='scale(.85)';
+    setTimeout(()=>{ mpFb.style.opacity='1'; mpFb.style.transform='scale(1)'; }, 100);
+  }
+  vibrate(sc>=80?[25,40,25]:sc>=40?[20]:[80]);
   // Remove our own draggable selection pin — the shared "answered" pin
   // (with checkmark) takes its place for everyone once synced.
   if (mpGameMap && mpGameMarker) { mpGameMap.removeLayer(mpGameMarker); mpGameMarker = null; }
