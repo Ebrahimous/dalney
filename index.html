@@ -39,7 +39,7 @@
     .hint-panel{background:var(--card);border-radius:var(--radius);padding:14px;flex-shrink:0;border:1px solid rgba(255,255,255,.07);}
     .hint-photo{width:100%;max-height:160px;object-fit:cover;border-radius:10px;margin-top:10px;}
     .hint-panel.photo-mode{padding:8px;}
-    .hint-panel.photo-mode .hint-photo{height:240px;max-height:240px;margin-top:0;}
+    .hint-panel.photo-mode .hint-photo{height:min(240px,32vh);max-height:min(240px,32vh);margin-top:0;}
     .photo-mode-badge{display:inline-block;background:rgba(248,81,73,.15);color:#ff7b72;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;margin-inline-start:6px;}
     #game-map{flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;}
     .score-flash{font-size:48px;font-weight:900;text-align:center;margin:16px 0;}
@@ -1552,8 +1552,10 @@ function loadRound() {
     textEl.textContent = loc.hint || '';
   }
   const roundPhoto = photoRound ? pickRandomPhoto(loc) : '';
-  if (roundPhoto) { p.src=roundPhoto; p.style.display='block'; p.onerror=()=>{p.style.display='none';}; }
+  if (roundPhoto) { p.src=roundPhoto; p.style.display='block'; p.onerror=()=>{p.style.display='none'; if(gameMap) fixMapHeight('game-map','game-screen');}; }
   else p.style.display = 'none';
+  // Recalculate map height every round (hint panel size may differ between photo/names rounds)
+  if (gameMap) requestAnimationFrame(() => fixMapHeight('game-map', 'game-screen'));
   if (gameMap) gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
 }
 
