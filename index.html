@@ -304,6 +304,7 @@
   <div class="game-header">
     <button class="back-btn" onclick="exitGame()">→</button>
     <span class="round-badge" id="round-badge">جولة 1 / 5</span>
+    <div class="mp-timer" id="solo-timer-badge" style="display:none;">30</div>
     <span id="score-badge" style="font-weight:700;color:var(--gold);">0</span>
     <button class="flag-btn" onclick="reportLocation(gameRounds[currentRound])" title="الإبلاغ عن مشكلة في الموقع" style="width:36px;height:28px;padding:0;font-size:14px;flex-shrink:0;">🚩</button>
   </div>
@@ -806,6 +807,8 @@ let scoringMode = 'normal';  // 'normal' | 'competitive'
 let contentMode = 'names';   // 'names' | 'photos' | 'mix'
 let gameMap = null, resultMap = null, summaryMap = null, adminMap = null, adminMarker = null;
 let gameTileLayer = null, satelliteMode = false;
+let soloTimerIv = null, soloRoundStart = null;
+const COMPETITIVE_TIME = 30; // seconds per round
 let editMap = null, editMarker = null, editDocId = null, editIndex = -1;
 let editExtraPhotos = [];
 
@@ -1557,6 +1560,9 @@ function loadRound() {
   // Recalculate map height every round (hint panel size may differ between photo/names rounds)
   if (gameMap) requestAnimationFrame(() => fixMapHeight('game-map', 'game-screen'));
   if (gameMap) gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
+  // Competitive timer — start after a brief delay so the map has time to init
+  if (scoringMode === 'competitive') setTimeout(startSoloTimer, 400);
+  else stopSoloTimer();
 }
 
 function initGameMap() {
@@ -1613,8 +1619,10 @@ function initGameMap() {
 
 function submitGuess() {
   if (!guess) return;
+  stopSoloTimer();
   playSound('submit');
   const loc = gameRounds[currentRound];
+  const elapsed = soloRoundStart ? (Date.now() - soloRoundStart) / 1000 : null;
   const poly = loc.polygon;
   let sc, dk, inArea = false;
   if (scoringMode !== 'competitive' && poly && poly.length >= 3 && pointInPolygon(guess.lat, guess.lng, poly)) {
@@ -1625,6 +1633,11 @@ function submitGuess() {
       : (poly && poly.length >= 3 ? polygonCentroid(poly) : [loc.lat, loc.lng]);
     dk = L.latLng(guess).distanceTo(L.latLng(target[0], target[1])) / 1000;
     sc = Math.round(Math.max(0, 100 * Math.exp(-dk / 3.5)));
+  }
+  // Speed bonus in competitive: answering faster preserves up to 10% extra score
+  if (scoringMode === 'competitive' && elapsed != null) {
+    const speedFactor = Math.max(0, 1 - elapsed / COMPETITIVE_TIME);
+    sc = Math.round(sc * (0.9 + 0.1 * speedFactor));
   }
   totalScore += sc;
   gameRounds[currentRound]._result = {score:sc, dist:dk, inArea, gLat:guess.lat, gLng:guess.lng};
@@ -1808,6 +1821,7 @@ function initSummaryMap(markerRefs) {
 }
 
 function exitGame(toHome) {
+  stopSoloTimer();
   if (summaryMap) { summaryMap.remove(); summaryMap = null; }
   if (toHome) { showScreen('home-screen'); return; }
   showConfirm('هل تريد الخروج من اللعبة؟', ok => {
@@ -3013,6 +3027,43 @@ function mpShowReplayPrompt() {
     if (ok) { showScreen('mp-wait-screen'); mpRenderWaitPlayers(); }
     else mpLeave();
   });
+}
+
+function startSoloTimer() {
+  stopSoloTimer();
+  soloRoundStart = Date.now();
+  const el = document.getElementById('solo-timer-badge');
+  if (!el) return;
+  el.style.display = '';
+  let lastSec = -1;
+  function tick() {
+    const elapsed = (Date.now() - soloRoundStart) / 1000;
+    const rem = Math.max(0, COMPETITIVE_TIME - elapsed);
+    const sec = Math.ceil(rem);
+    el.textContent = sec;
+    el.style.color = rem <= 5 ? 'var(--red)' : 'var(--gold)';
+    if (rem <= 5 && rem > 0 && sec !== lastSec) { lastSec = sec; playSound('tick'); }
+    if (rem <= 0) {
+      stopSoloTimer();
+      // Auto-submit if guess placed, otherwise skip round with 0 score
+      if (guess) { submitGuess(); }
+      else {
+        const loc = gameRounds[currentRound];
+        gameRounds[currentRound]._result = { score:0, dist:null, inArea:false, gLat:null, gLng:null };
+        totalScore += 0;
+        showToast('⏰ انتهى الوقت!');
+        setTimeout(() => nextRound(), 800);
+      }
+    }
+  }
+  tick();
+  soloTimerIv = setInterval(tick, 250);
+}
+
+function stopSoloTimer() {
+  if (soloTimerIv) { clearInterval(soloTimerIv); soloTimerIv = null; }
+  const el = document.getElementById('solo-timer-badge');
+  if (el) el.style.display = 'none';
 }
 
 function mpStartTimer(elId, startAt, duration, onExpire) {
