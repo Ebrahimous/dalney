@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>دلني - العالم</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{touch-action:pan-x pan-y;height:100%;overflow:hidden;}
+    :root{
+      --bg:#0d1117;--surface:#161b22;--card:#21262d;
+      --blue:#58a6ff;--green:#3fb950;--red:#f85149;--gold:#f39c12;
+      --text:#eaeaea;--muted:#8892b0;--radius:16px;
+    }
+    body{font-family:'Cairo','Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100dvh;overflow:hidden;}
+    .screen{display:none;flex-direction:column;height:100dvh;overflow-y:auto;padding:16px;}
+    .screen.active{display:flex;}
+
+    /* ── Buttons ── */
+    .btn{width:100%;padding:15px;border:none;border-radius:var(--radius);font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;transition:filter .15s;}
+    .btn:active{filter:brightness(.88);}
+    .btn-primary{background:var(--blue);color:#000;}
+    .btn-secondary{background:var(--surface);color:var(--text);border:1px solid rgba(255,255,255,.1);}
+    .back-btn{background:var(--surface);border:1px solid rgba(255,255,255,.1);color:var(--text);width:36px;height:36px;border-radius:10px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+    /* ── Home screen ── */
+    .home-logo{font-size:64px;text-align:center;margin:8px 0;}
+    .home-title{font-size:32px;font-weight:900;text-align:center;color:var(--blue);}
+    .home-sub{font-size:14px;color:var(--muted);text-align:center;margin-bottom:4px;}
+
+    /* ── Round count ── */
+    .time-opt{background:var(--surface);border:1px solid rgba(255,255,255,.1);color:var(--muted);padding:10px;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;}
+    .time-opt.active{background:var(--blue);color:#000;border-color:var(--blue);}
+    .settings-card{background:var(--card);border-radius:var(--radius);padding:14px;border:1px solid rgba(255,255,255,.07);}
+
+    /* ── Game screen ── */
+    .game-header{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+    .round-badge{background:var(--surface);border-radius:20px;padding:4px 14px;font-size:14px;font-weight:700;border:1px solid rgba(255,255,255,.08);}
+    #progress-wrap{width:100%;height:3px;background:rgba(255,255,255,.08);border-radius:2px;flex-shrink:0;}
+    #progress-bar{height:100%;background:linear-gradient(90deg,var(--blue),#8ecaff);border-radius:2px;transition:width .35s cubic-bezier(.4,0,.2,1);width:0%;}
+    .country-card{background:var(--card);border-radius:var(--radius);padding:20px;text-align:center;border:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+    .country-name{font-size:26px;font-weight:900;color:var(--text);}
+    #game-map{flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;}
+    #submit-btn{flex-shrink:0;}
+
+    /* ── Result screen ── */
+    #result-map{flex:1;min-height:140px;border-radius:var(--radius);overflow:hidden;}
+
+    /* ── Summary screen ── */
+    .summary-ring-wrap{position:relative;width:110px;height:110px;flex-shrink:0;margin:0 auto;}
+    .summary-ring-wrap svg{transform:rotate(-90deg);}
+    .ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+    .round-row{background:var(--card);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border:1px solid rgba(255,255,255,.06);flex-shrink:0;border-inline-start-width:3px;}
+    .new-best{font-size:13px;font-weight:700;color:var(--gold);text-align:center;min-height:20px;flex-shrink:0;}
+
+    /* ── Sat toggle ── */
+    .sat-btn{background:rgba(13,17,23,.88);border:1px solid rgba(255,255,255,.15);color:#fff;width:36px;height:36px;border-radius:8px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+
+    /* ── Leaflet tweaks ── */
+    .leaflet-container{font-family:'Cairo',sans-serif;}
+
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .screen.active{animation:fadeIn .22s ease;}
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ HOME ══════════════ -->
+<div id="home-screen" class="screen active" style="justify-content:center;gap:12px;">
+  <div style="display:flex;align-items:center;justify-content:flex-start;flex-shrink:0;">
+    <button class="back-btn" onclick="window.location.href='index.html'">→</button>
+  </div>
+  <div class="home-logo">🌍</div>
+  <div class="home-title">دلني</div>
+  <div class="home-sub">جغرافيا العالم</div>
+
+  <div class="settings-card" style="margin-bottom:4px;">
+    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:10px;">مستوى الصعوبة</label>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+      <button class="time-opt"        id="diff-easy"   onclick="setDiff(this,'easy')">سهل</button>
+      <button class="time-opt active" id="diff-medium" onclick="setDiff(this,'medium')">متوسط</button>
+      <button class="time-opt"        id="diff-hard"   onclick="setDiff(this,'hard')">صعب</button>
+    </div>
+  </div>
+
+  <div class="settings-card" style="margin-bottom:8px;">
+    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:10px;">عدد الجولات</label>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+      <button class="time-opt" onclick="setRounds(this,5)">5</button>
+      <button class="time-opt active" onclick="setRounds(this,10)">10</button>
+      <button class="time-opt" onclick="setRounds(this,15)">15</button>
+      <button class="time-opt" onclick="setRounds(this,0)">كل</button>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="start-btn" onclick="startGame()">ابدأ اللعبة 🗺️</button>
+  <div id="boundary-status" style="font-size:12px;color:var(--muted);text-align:center;margin-top:4px;">⏳ جاري تحميل خرائط الدول…</div>
+</div>
+
+<!-- ══════════════ GAME ══════════════ -->
+<div id="game-screen" class="screen" style="padding:12px;gap:10px;">
+  <div class="game-header">
+    <button class="back-btn" onclick="confirmExit()">→</button>
+    <span class="round-badge" id="round-badge">جولة 1 / 10</span>
+    <span style="flex:1;"></span>
+  </div>
+  <div id="progress-wrap"><div id="progress-bar"></div></div>
+  <div id="round-tracker" style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center;flex-shrink:0;min-height:14px;"></div>
+  <div class="country-card">
+    <img id="country-flag-img" src="" alt="" style="height:52px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.4);object-fit:cover;">
+    <div class="country-name" id="country-name">—</div>
+  </div>
+  <div id="game-map"></div>
+  <button class="btn btn-primary" id="submit-btn" disabled onclick="submitGuess()">تأكيد ✓</button>
+</div>
+
+<!-- ══════════════ RESULT ══════════════ -->
+<div id="result-screen" class="screen" style="padding:12px;gap:8px;">
+  <div class="game-header">
+    <button class="back-btn" onclick="confirmExit()">→</button>
+    <span style="flex:1;"></span>
+  </div>
+  <div id="result-map"></div>
+  <button class="btn btn-primary" id="next-btn" onclick="nextRound()">التالي ›</button>
+</div>
+
+<!-- ══════════════ SUMMARY ══════════════ -->
+<div id="summary-screen" class="screen" style="padding:16px;gap:12px;align-items:center;">
+  <h2 style="font-size:22px;font-weight:900;flex-shrink:0;">انتهت اللعبة! 🏁</h2>
+
+  <!-- Score ring -->
+  <div class="summary-ring-wrap">
+    <svg viewBox="0 0 120 120" width="110" height="110">
+      <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="9"/>
+      <circle id="score-ring" cx="60" cy="60" r="50" fill="none" stroke="var(--gold)" stroke-width="9"
+        stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314"
+        style="transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1),stroke .3s;"/>
+    </svg>
+    <div class="ring-center">
+      <span id="avg-display" style="font-size:24px;font-weight:900;color:var(--gold);">0</span>
+      <span style="font-size:11px;color:var(--muted);">/ 100</span>
+    </div>
+  </div>
+
+  <div class="new-best" id="new-best"></div>
+
+  <div id="round-summary" style="width:100%;display:flex;flex-direction:column;gap:8px;flex-shrink:0;"></div>
+
+  <button class="btn btn-primary" style="flex-shrink:0;width:100%;" onclick="restartGame()">🔄 العب مرة أخرى</button>
+  <button class="btn btn-secondary" style="flex-shrink:0;width:100%;" onclick="window.location.href='index.html'">🏠 الرئيسية</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// ARABIC COUNTRY NAMES (ISO2 → Arabic)
+// ═══════════════════════════════════════════════════════
+const AR = {
+  EG:'مصر',SA:'السعودية',AE:'الإمارات',KW:'الكويت',QA:'قطر',BH:'البحرين',
+  OM:'عُمان',YE:'اليمن',IQ:'العراق',SY:'سوريا',LB:'لبنان',JO:'الأردن',
+  PS:'فلسطين',LY:'ليبيا',TN:'تونس',DZ:'الجزائر',MA:'المغرب',MR:'موريتانيا',
+  SD:'السودان',SO:'الصومال',DJ:'جيبوتي',KM:'جزر القمر',
+  AF:'أفغانستان',AL:'ألبانيا',AD:'أندورا',AO:'أنغولا',AG:'أنتيغوا وباربودا',
+  AR:'الأرجنتين',AM:'أرمينيا',AU:'أستراليا',AT:'النمسا',AZ:'أذربيجان',
+  BS:'جزر البهاما',BD:'بنغلاديش',BB:'باربادوس',BY:'بيلاروسيا',BE:'بلجيكا',
+  BZ:'بليز',BJ:'بنين',BT:'بوتان',BO:'بوليفيا',BA:'البوسنة والهرسك',
+  BW:'بوتسوانا',BR:'البرازيل',BN:'بروناي',BG:'بلغاريا',BF:'بوركينا فاسو',
+  BI:'بوروندي',CV:'الرأس الأخضر',KH:'كمبوديا',CM:'الكاميرون',CA:'كندا',
+  CF:'جمهورية أفريقيا الوسطى',TD:'تشاد',CL:'تشيلي',CN:'الصين',CO:'كولومبيا',
+  CG:'الكونغو',CD:'الكونغو الديمقراطية',CR:'كوستاريكا',CI:'كوت ديفوار',
+  HR:'كرواتيا',CU:'كوبا',CY:'قبرص',CZ:'التشيك',DK:'الدنمارك',DM:'دومينيكا',
+  DO:'جمهورية الدومينيكان',EC:'الإكوادور',SV:'السلفادور',GQ:'غينيا الاستوائية',
+  ER:'إريتريا',EE:'إستونيا',SZ:'إسواتيني',ET:'إثيوبيا',FJ:'فيجي',
+  FI:'فنلندا',FR:'فرنسا',GA:'الغابون',GM:'غامبيا',GE:'جورجيا',DE:'ألمانيا',
+  GH:'غانا',GR:'اليونان',GD:'غرينادا',GT:'غواتيمالا',GN:'غينيا',
+  GW:'غينيا بيساو',GY:'غيانا',HT:'هايتي',HN:'هندوراس',HU:'المجر',
+  IS:'آيسلندا',IN:'الهند',ID:'إندونيسيا',IR:'إيران',
+  IT:'إيطاليا',JM:'جامايكا',JP:'اليابان',KZ:'كازاخستان',KE:'كينيا',
+  KI:'كيريباتي',KP:'كوريا الشمالية',KR:'كوريا الجنوبية',KG:'قيرغيزستان',
+  LA:'لاوس',LV:'لاتفيا',LS:'ليسوتو',LR:'ليبيريا',LI:'ليختنشتاين',
+  LT:'ليتوانيا',LU:'لوكسمبورغ',MG:'مدغشقر',MW:'مالاوي',MY:'ماليزيا',
+  MV:'المالديف',ML:'مالي',MT:'مالطا',MH:'جزر مارشال',MX:'المكسيك',
+  FM:'ميكرونيسيا',MD:'مولدوفا',MC:'موناكو',MN:'منغوليا',ME:'الجبل الأسود',
+  MK:'مقدونيا الشمالية',MZ:'موزمبيق',MM:'ميانمار',NA:'ناميبيا',NR:'ناورو',
+  NP:'نيبال',NL:'هولندا',NZ:'نيوزيلندا',NI:'نيكاراغوا',NE:'النيجر',
+  NG:'نيجيريا',NO:'النرويج',PK:'باكستان',PW:'بالاو',PA:'بنما',
+  PG:'بابوا غينيا الجديدة',PY:'باراغواي',PE:'بيرو',PH:'الفلبين',
+  PL:'بولندا',PT:'البرتغال',RO:'رومانيا',RU:'روسيا',RW:'رواندا',
+  KN:'سانت كيتس ونيفيس',LC:'سانت لوسيا',VC:'سانت فنسنت والغرينادين',
+  WS:'ساموا',SM:'سان مارينو',ST:'ساو تومي وبرينسيبي',SN:'السنغال',
+  RS:'صربيا',SC:'سيشل',SL:'سيراليون',SG:'سنغافورة',SK:'سلوفاكيا',
+  SI:'سلوفينيا',SB:'جزر سليمان',ZA:'جنوب أفريقيا',SS:'جنوب السودان',
+  ES:'إسبانيا',LK:'سريلانكا',SR:'سورينام',SE:'السويد',CH:'سويسرا',
+  TW:'تايوان',TJ:'طاجيكستان',TZ:'تنزانيا',TH:'تايلاند',TL:'تيمور الشرقية',
+  TG:'توغو',TO:'تونغا',TT:'ترينيداد وتوباغو',TR:'تركيا',TM:'تركمانستان',
+  TV:'توفالو',UG:'أوغندا',UA:'أوكرانيا',GB:'المملكة المتحدة',
+  US:'الولايات المتحدة',UY:'أوروغواي',UZ:'أوزبكستان',VU:'فانواتو',
+  VE:'فنزويلا',VN:'فيتنام',ZM:'زامبيا',ZW:'زيمبابوي',
+  XK:'كوسوفو',VA:'الفاتيكان',MU:'موريشيوس',
+};
+
+// ═══════════════════════════════════════════════════════
+// FALLBACK — 22 Arab countries (used if all fetches fail)
+// ═══════════════════════════════════════════════════════
+const FALLBACK = [
+  {iso2:'EG',name:'مصر',lat:26.8,lng:30.8},{iso2:'SA',name:'السعودية',lat:23.9,lng:45.1},
+  {iso2:'AE',name:'الإمارات',lat:23.4,lng:53.8},{iso2:'KW',name:'الكويت',lat:29.3,lng:47.5},
+  {iso2:'QA',name:'قطر',lat:25.3,lng:51.2},{iso2:'BH',name:'البحرين',lat:26.0,lng:50.6},
+  {iso2:'OM',name:'عُمان',lat:21.5,lng:55.9},{iso2:'YE',name:'اليمن',lat:15.5,lng:48.5},
+  {iso2:'IQ',name:'العراق',lat:33.2,lng:43.7},{iso2:'SY',name:'سوريا',lat:34.8,lng:38.9},
+  {iso2:'LB',name:'لبنان',lat:33.9,lng:35.5},{iso2:'JO',name:'الأردن',lat:30.6,lng:36.2},
+  {iso2:'PS',name:'فلسطين',lat:31.9,lng:35.2},{iso2:'LY',name:'ليبيا',lat:26.3,lng:17.2},
+  {iso2:'TN',name:'تونس',lat:33.9,lng:9.6},{iso2:'DZ',name:'الجزائر',lat:28.0,lng:2.6},
+  {iso2:'MA',name:'المغرب',lat:31.8,lng:-7.1},{iso2:'MR',name:'موريتانيا',lat:20.3,lng:-10.9},
+  {iso2:'SD',name:'السودان',lat:15.6,lng:32.5},{iso2:'SO',name:'الصومال',lat:6.0,lng:46.2},
+  {iso2:'DJ',name:'جيبوتي',lat:11.8,lng:42.6},{iso2:'KM',name:'جزر القمر',lat:-11.7,lng:43.3},
+].map(c => ({...c, flagUrl:`https://flagcdn.com/w160/${c.iso2.toLowerCase()}.png`, geometry:null}));
+
+// ═══════════════════════════════════════════════════════
+// DIFFICULTY TIERS
+// ═══════════════════════════════════════════════════════
+const TIER_EASY = new Set([
+  'EG','SA','AE','KW','QA','BH','OM','YE','IQ','SY','LB','JO','PS','LY','TN','DZ','MA','MR','SD','SO','DJ','KM',
+  'US','CA','MX','BR','AR','GB','FR','DE','IT','RU','CN','JP','KR','IN','AU','ZA','TR','ID',
+  'ES','PT','GR','PL','UA','IR','PK','AF','TH','VN','MY','NG','KE','ET','GH','TZ','CD',
+  'MZ','ZW','ZM','AO','CM','CI','SN','MG','NL','NO','SE','CH','NZ','CU','VE','CO','PE',
+]);
+const TIER_MEDIUM = new Set([
+  ...TIER_EASY,
+  'CZ','HU','RO','BG','RS','HR','SK','SI','FI','DK','BE','AT','IE','LU','CY','IS',
+  'AL','BA','ME','MK','MD','BY','LV','LT','EE','GE','AM','AZ',
+  'KZ','UZ','TM','TJ','KG','MN','BD','NP','LK','MM','KH','LA','PH','TW','SG','BN',
+  'BI','RW','UG','MW','LS','SZ','BW','NA','GA','CG','CF','TD','NE','ML','BF','BJ',
+  'TG','GN','GW','SL','LR','GM','CV','ST','SC','MU','ER','SS',
+  'BO','PY','UY','EC','CL','GT','HN','NI','SV','PA','DO','JM','HT','TT','SR','GY','BB','BS',
+  'PG','FJ',
+]);
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let COUNTRIES = [];
+let selectedRounds = 10;
+let difficulty = 'medium';
+let gameRounds = [];
+let currentRound = 0;
+let totalScore = 0;
+let guess = null;
+let guessedCountry = null;
+let gameMap = null, resultMap = null;
+let gameTileLayer = null, satMode = false;
+let guessHighlight = null;
+
+const WORLD_CENTER = [20, 15];
+const WORLD_ZOOM   = 2;
+const SCORE_DECAY  = 1500;
+
+// ═══════════════════════════════════════════════════════
+// DATA LOADING
+// Tries: 1) world-data.json (same origin — fast, deployed on Cloudflare Pages)
+//         2) NE 50m from GitHub (works from browser with internet)
+//         3) 22-country fallback (offline last resort)
+// ═══════════════════════════════════════════════════════
+function mergeGeom(g1, g2) {
+  const rings = g => g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+  return { type:'MultiPolygon', coordinates:[...rings(g1), ...rings(g2)] };
+}
+
+function processGeoJSON(gj) {
+  let ilGeom = null, ilLat = 31.5, ilLng = 35.0;
+  gj.features.forEach(f => {
+    const iso = (f.properties?.ISO_A2 || f.properties?.iso_a2 || '').toUpperCase();
+    if (iso === 'IL' && f.geometry) {
+      ilGeom = f.geometry;
+      ilLat = parseFloat(f.properties.LABEL_Y || f.properties.lat || 31.5);
+      ilLng = parseFloat(f.properties.LABEL_X || f.properties.lng || 35.0);
+    }
+  });
+
+  const seen = new Set();
+  const list = [];
+  gj.features.forEach(f => {
+    const p   = f.properties || {};
+    const iso = (p.ISO_A2 || p.iso_a2 || '').toUpperCase().trim();
+    if (!iso || iso === '-1' || iso === '-99' || seen.has(iso) || !f.geometry) return;
+    if (iso === 'IL') return; // merged into Palestine
+    seen.add(iso);
+
+    let geom = f.geometry;
+    let lat   = parseFloat(p.LABEL_Y || p.lat || p.LAT_D || 0);
+    let lng   = parseFloat(p.LABEL_X || p.lng || p.LON_D || 0);
+
+    if (iso === 'PS' && ilGeom) {
+      geom = mergeGeom(geom, ilGeom);
+      lat  = (lat + ilLat) / 2;
+      lng  = (lng + ilLng) / 2;
+    }
+
+    list.push({
+      iso2: iso,
+      name: AR[iso] || p.NAME || p.ADMIN || p.name || iso,
+      flagUrl: `https://flagcdn.com/w160/${iso.toLowerCase()}.png`,
+      lat, lng, geometry: geom
+    });
+  });
+  return list;
+}
+
+async function loadData() {
+  const statusEl = document.getElementById('boundary-status');
+  const setStatus = msg => { if (statusEl) statusEl.textContent = msg; };
+
+  // Start with fallback immediately so the button always works
+  COUNTRIES = FALLBACK;
+  setStatus('⏳ جاري تحميل خرائط الدول الكاملة…');
+
+  const urls = [
+    'world-data.json',  // hosted on Cloudflare Pages (fast, same origin)
+    'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson'
+  ];
+
+  for (const url of urls) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) continue;
+      const gj = await r.json();
+      const list = processGeoJSON(gj);
+      if (list.length > 20) {
+        COUNTRIES = list;
+        console.log(`✅ Loaded ${COUNTRIES.length} countries from ${url}`);
+        setStatus('ضع علامتك على موقع الدولة في الخريطة');
+        return;
+      }
+    } catch(e) {
+      console.warn(`Failed to load from ${url}:`, e.message);
+    }
+  }
+
+  // Full data unavailable — stay on fallback
+  console.warn('Using 22-country fallback');
+  setStatus('ضع علامتك على موقع الدولة في الخريطة');
+}
+
+// ═══════════════════════════════════════════════════════
+// POINT-IN-POLYGON (ray casting)
+// ═══════════════════════════════════════════════════════
+function pointInGeometry(lat, lng, geometry) {
+  if (!geometry) return false;
+  const rings = geometry.type === 'Polygon'
+    ? geometry.coordinates
+    : geometry.type === 'MultiPolygon'
+      ? geometry.coordinates.flat(1)
+      : [];
+  return rings.some(ring => {
+    let inside = false;
+    for (let i=0, j=ring.length-1; i<ring.length; j=i++) {
+      const [xi,yi] = ring[i], [xj,yj] = ring[j];
+      if (((yi>lat)!==(yj>lat)) && (lng < (xj-xi)*(lat-yi)/(yj-yi)+xi)) inside=!inside;
+    }
+    return inside;
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  setTimeout(() => {
+    if (gameMap && id === 'game-screen')     { gameMap.invalidateSize(); fixMapH('game-map','game-screen'); }
+    if (resultMap && id === 'result-screen') { resultMap.invalidateSize(); }
+  }, 50);
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i=a.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+function haversineKm(lat1,lng1,lat2,lng2) {
+  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function scoreForDist(dk) {
+  return Math.round(Math.max(0, 100 * Math.exp(-dk / SCORE_DECAY)));
+}
+
+function osmLayer() {
+  return L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{
+    attribution:'© OpenStreetMap contributors © CARTO',
+    subdomains:'abcd', maxZoom:19
+  });
+}
+function satLayer() {
+  return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Esri',maxZoom:18});
+}
+
+function fixMapH(mapId, screenId) {
+  const scr = document.getElementById(screenId);
+  const el  = document.getElementById(mapId);
+  if (!scr || !el) return;
+  const ss = window.getComputedStyle(scr);
+  const gapPx = parseFloat(ss.rowGap||ss.gap||0);
+  const padV  = parseFloat(ss.paddingTop)+parseFloat(ss.paddingBottom);
+  let used = 0;
+  Array.from(scr.children).forEach(c=>{
+    if (c.id !== mapId) {
+      const cs=window.getComputedStyle(c);
+      used += c.offsetHeight+parseFloat(cs.marginTop)+parseFloat(cs.marginBottom);
+    }
+  });
+  const gaps=(Array.from(scr.children).length-1)*gapPx;
+  const h=Math.max(160, scr.offsetHeight-used-gaps-padV);
+  el.style.height=h+'px'; el.style.flex='none';
+}
+
+function animateCount(el, target, dur) {
+  const start=performance.now();
+  (function tick(now){
+    const p=Math.min((now-start)/dur,1), eased=1-Math.pow(1-p,3);
+    el.textContent=Math.round(eased*target);
+    if(p<1){requestAnimationFrame(tick);return;}
+    el.textContent=target;
+    el.style.transform='scale(1.15)';
+    setTimeout(()=>{el.style.transform='';},160);
+  })(start);
+}
+
+function updateRoundTracker() {
+  const el = document.getElementById('round-tracker');
+  if (!el) return;
+  el.innerHTML = gameRounds.map((r, i) => {
+    if (i >= currentRound) return '';
+    const ok = r._result?.inBounds;
+    return `<span style="width:12px;height:12px;border-radius:50%;background:${ok?'var(--green)':'var(--red)'};display:inline-block;flex-shrink:0;"></span>`;
+  }).join('');
+}
+
+function setRounds(btn, n) {
+  selectedRounds = n;
+  btn.closest('.settings-card').querySelectorAll('.time-opt').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function setDiff(btn, d) {
+  difficulty = d;
+  btn.closest('.settings-card').querySelectorAll('.time-opt').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════
+// GAME FLOW
+// ═══════════════════════════════════════════════════════
+function startGame() {
+  const pool = difficulty === 'easy'   ? COUNTRIES.filter(c => TIER_EASY.has(c.iso2))
+             : difficulty === 'medium' ? COUNTRIES.filter(c => TIER_MEDIUM.has(c.iso2))
+             : COUNTRIES;
+  const n = selectedRounds === 0 ? pool.length : Math.min(selectedRounds, pool.length);
+  gameRounds = shuffle(pool).slice(0, n);
+  currentRound = 0; totalScore = 0; guess = null;
+  showScreen('game-screen');
+  loadRound();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ try{initGameMap();}catch(e){console.warn(e);} }));
+}
+
+// Alias used by the "play again" button on the summary screen
+function restartGame() { startGame(); }
+
+function loadRound() {
+  guess = null; guessedCountry = null;
+  document.getElementById('submit-btn').disabled = true;
+  const c = gameRounds[currentRound];
+  document.getElementById('round-badge').textContent = `جولة ${currentRound+1} / ${gameRounds.length}`;
+  document.getElementById('country-flag-img').src = c.flagUrl;
+  document.getElementById('country-name').textContent = c.name;
+  const pct = ((currentRound+1)/gameRounds.length)*100;
+  requestAnimationFrame(()=>{ document.getElementById('progress-bar').style.width=pct+'%'; });
+  updateRoundTracker();
+  if (gameMap) {
+    if (guessHighlight) { gameMap.removeLayer(guessHighlight); guessHighlight=null; }
+    gameMap.setView(WORLD_CENTER, WORLD_ZOOM);
+    requestAnimationFrame(()=>fixMapH('game-map','game-screen'));
+  }
+}
+
+function initGameMap() {
+  if (gameMap) { gameMap.remove(); gameMap=null; }
+  satMode=false;
+  fixMapH('game-map','game-screen');
+  gameMap=L.map('game-map',{zoomControl:true,minZoom:2,maxZoom:10,tap:true,tapTolerance:25,worldCopyJump:true});
+  gameTileLayer=osmLayer(); gameTileLayer.addTo(gameMap);
+  gameMap.setView(WORLD_CENTER, WORLD_ZOOM);
+
+  // Satellite toggle
+  const SatCtrl=L.Control.extend({
+    options:{position:'bottomleft'},
+    onAdd(){
+      const btn=L.DomUtil.create('button','sat-btn');
+      btn.textContent='🛰️'; btn.title='تبديل الخريطة';
+      L.DomEvent.disableClickPropagation(btn);
+      L.DomEvent.on(btn,'click',()=>{
+        satMode=!satMode;
+        gameMap.removeLayer(gameTileLayer);
+        gameTileLayer=(satMode?satLayer():osmLayer()); gameTileLayer.addTo(gameMap);
+        btn.textContent=satMode?'🗺️':'🛰️';
+        btn.style.background=satMode?'rgba(88,166,255,.9)':'rgba(13,17,23,.88)';
+      });
+      return btn;
+    }
+  });
+  new SatCtrl().addTo(gameMap);
+
+  gameMap.on('click',e=>{
+    if (guessHighlight) { gameMap.removeLayer(guessHighlight); guessHighlight=null; }
+    const hit = COUNTRIES.find(c => c.geometry && pointInGeometry(e.latlng.lat, e.latlng.lng, c.geometry));
+    if (!hit) return;
+    guess = e.latlng;
+    guessedCountry = hit;
+    guessHighlight = L.geoJSON({type:'Feature',geometry:hit.geometry},{
+      style:{color:'#8892b0',weight:1.5,fillColor:'#8892b0',fillOpacity:.35}
+    }).addTo(gameMap);
+    document.getElementById('submit-btn').disabled=false;
+  });
+}
+
+function submitGuess() {
+  if (!guessedCountry) return;
+  const c = gameRounds[currentRound];
+  const inBounds = guessedCountry.iso2 === c.iso2;
+
+  let sc, dk;
+  if (inBounds) { sc = 100; dk = 0; }
+  else {
+    dk = haversineKm(guessedCountry.lat, guessedCountry.lng, c.lat, c.lng);
+    sc = scoreForDist(dk);
+  }
+  totalScore += sc;
+  c._result = { score:sc, dist:dk, inBounds, guessedIso:guessedCountry.iso2 };
+
+  document.getElementById('next-btn').textContent = currentRound+1>=gameRounds.length ? 'النتائج ›' : 'التالي ›';
+
+  showScreen('result-screen');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ try{initResultMap(c,guessedCountry,inBounds);}catch(e){console.warn(e);} }));
+}
+
+function initResultMap(c, gc, inBounds) {
+  if (resultMap) { resultMap.remove(); resultMap=null; }
+  const el = document.getElementById('result-map');
+  el.style.height=''; el.style.flex='1';
+  resultMap = L.map('result-map',{zoomControl:true,minZoom:2,maxZoom:8});
+  osmLayer().addTo(resultMap);
+
+  let boundsTarget = [];
+
+  if (!inBounds && gc && gc.geometry && gc.iso2 !== c.iso2) {
+    L.geoJSON({type:'Feature',geometry:gc.geometry},{
+      style:{color:'#f85149',weight:2,fillColor:'#f85149',fillOpacity:.25}
+    }).addTo(resultMap);
+    boundsTarget.push([gc.lat, gc.lng]);
+  }
+
+  let correctLayer = null;
+  if (c.geometry) {
+    correctLayer = L.geoJSON({type:'Feature',geometry:c.geometry},{
+      style:{color:'#3fb950',weight:2.5,fillColor:'#3fb950',fillOpacity:.25}
+    }).addTo(resultMap);
+  }
+
+  const flagHtml = `<div style="width:38px;height:26px;border-radius:4px;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5);"><img src="${c.flagUrl}" style="width:100%;height:100%;object-fit:cover;"></div>`;
+  const ci = L.divIcon({className:'',html:flagHtml,iconSize:[38,26],iconAnchor:[19,13]});
+  L.marker([c.lat,c.lng],{icon:ci}).addTo(resultMap);
+  boundsTarget.push([c.lat, c.lng]);
+
+  const fitOpts = {maxZoom:6, padding:[30,30]};
+  if (correctLayer) {
+    const b = correctLayer.getBounds();
+    boundsTarget.forEach(pt => b.extend(pt));
+    resultMap.fitBounds(b, fitOpts);
+  } else if (boundsTarget.length >= 2) {
+    resultMap.fitBounds(boundsTarget, fitOpts);
+  } else {
+    resultMap.setView([c.lat, c.lng], 4);
+  }
+}
+
+function nextRound() {
+  currentRound++;
+  if (currentRound>=gameRounds.length) { showSummary(); return; }
+  showScreen('game-screen');
+  loadRound();
+}
+
+function showSummary() {
+  const correct = gameRounds.filter(c => c._result?.inBounds).length;
+  const total   = gameRounds.length;
+  const pct     = Math.round(correct / total * 100);
+  const hsKey   = 'world_hs_correct';
+  const hs      = parseInt(localStorage.getItem(hsKey) || '0');
+
+  const ring   = document.getElementById('score-ring');
+  const avgEl  = document.getElementById('avg-display');
+  const ringColor = pct>=70?'var(--gold)':pct>=40?'var(--blue)':'var(--red)';
+  if (ring) {
+    ring.style.stroke = ringColor;
+    ring.style.strokeDashoffset = '314';
+    if (avgEl) { avgEl.style.color = ringColor; avgEl.textContent = '0'; }
+    setTimeout(()=>{
+      ring.style.strokeDashoffset = String(Math.round(314*(1-pct/100)));
+      if (avgEl) animateCount(avgEl, correct, 900);
+    }, 150);
+  }
+  const lbl = avgEl?.nextElementSibling;
+  if (lbl) lbl.textContent = `/ ${total}`;
+
+  const nb = document.getElementById('new-best');
+  if (correct > hs) {
+    localStorage.setItem(hsKey, correct);
+    nb.textContent = `🏆 رقم قياسي! ${correct}/${total} صحيح`;
+  } else {
+    nb.textContent = `${correct}/${total} صحيح — الأفضل: ${hs}`;
+  }
+
+  const rs = document.getElementById('round-summary'); rs.innerHTML = '';
+  gameRounds.forEach((c)=>{
+    const res = c._result || {inBounds:false};
+    const scoreColor = res.inBounds ? 'var(--green)' : 'var(--red)';
+    const row=document.createElement('div');
+    row.className='round-row';
+    row.style.borderInlineStartColor=scoreColor;
+    row.innerHTML=`
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img src="${c.flagUrl}" style="height:18px;border-radius:3px;flex-shrink:0;">
+        <span style="font-size:14px;font-weight:700;">${c.name}</span>
+      </div>
+      <div style="font-size:20px;">${res.inBounds ? '✅' : '❌'}</div>`;
+    rs.appendChild(row);
+  });
+
+  showScreen('summary-screen');
+}
+
+function confirmExit() {
+  if (confirm('هل تريد الخروج من اللعبة؟')) showScreen('home-screen');
+}
+
+window.addEventListener('resize',()=>{
+  if(gameMap&&document.getElementById('game-screen').classList.contains('active'))
+    { fixMapH('game-map','game-screen'); gameMap.invalidateSize(); }
+  if(resultMap&&document.getElementById('result-screen').classList.contains('active'))
+    { resultMap.invalidateSize(); }
+});
+
+loadData();
+</script>
+</body>
+</html>
