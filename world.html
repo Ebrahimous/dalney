@@ -549,19 +549,7 @@ function loadRound() {
   if (hint) hint.classList.remove('hidden');
   if (gameMap) {
     if (guessHighlight) { gameMap.removeLayer(guessHighlight); guessHighlight=null; }
-    // Zoom assist: small countries get a regional view so they're actually tappable
-    const c = gameRounds[currentRound];
-    if (c.geometry) {
-      const b = getGeomBounds(c.geometry);
-      if (b.w < 10 && b.h < 10) {
-        const pad = Math.max(4, (10 - Math.max(b.w, b.h)) / 2);
-        gameMap.fitBounds([[b.sw[0]-pad, b.sw[1]-pad],[b.ne[0]+pad, b.ne[1]+pad]], {animate:false});
-      } else {
-        gameMap.setView(WORLD_CENTER, WORLD_ZOOM);
-      }
-    } else {
-      gameMap.setView(WORLD_CENTER, WORLD_ZOOM);
-    }
+    gameMap.setView(WORLD_CENTER, WORLD_ZOOM);
     requestAnimationFrame(()=>fixMapH('game-map','game-screen'));
   }
 }
