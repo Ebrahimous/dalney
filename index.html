@@ -163,6 +163,10 @@
       display:flex;align-items:center;justify-content:center;
       box-shadow:0 2px 8px rgba(0,0,0,.45);transition:background .15s ease;padding:0;}
 
+    /* Home screen logo grid pulse */
+    @keyframes gridPulse{0%,100%{opacity:.18;}50%{opacity:.38;}}
+    #logo-grid{animation:gridPulse 3s ease-in-out infinite;}
+
     ::-webkit-scrollbar{width:3px;}
     ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
     .player-chip{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:10px;padding:12px;border:1px solid rgba(255,255,255,.07);}
@@ -210,7 +214,7 @@
             </radialGradient>
           </defs>
           <circle cx="56" cy="54" r="35" fill="url(#lf)"/>
-          <g clip-path="url(#lc)" opacity="0.18" stroke="#58a6ff" stroke-width="0.8">
+          <g id="logo-grid" clip-path="url(#lc)" opacity="0.18" stroke="#58a6ff" stroke-width="0.8">
             <line x1="21" y1="36" x2="91" y2="36"/><line x1="21" y1="45" x2="91" y2="45"/>
             <line x1="21" y1="54" x2="91" y2="54"/><line x1="21" y1="63" x2="91" y2="63"/>
             <line x1="21" y1="72" x2="91" y2="72"/>

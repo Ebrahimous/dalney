@@ -613,6 +613,9 @@ function submitGuess() {
 
   document.getElementById('next-btn').textContent = currentRound+1>=gameRounds.length ? 'النتائج ›' : 'التالي ›';
 
+  // Sound
+  playWorldSound(inBounds ? 'correct' : 'wrong');
+
   // #1 — splash ✅ / ❌
   const splashEl = document.getElementById('result-splash');
   const splashIcon = document.getElementById('result-splash-icon');
@@ -754,7 +757,51 @@ window.addEventListener('resize',()=>{
     { resultMap.invalidateSize(); }
 });
 
+// ═══════════════════════════════════════════════════════
+// SOUND (Web Audio — synthesized, no external files)
+// ═══════════════════════════════════════════════════════
+let _audioCtx = null;
+function _ensureCtx() {
+  if (!_audioCtx) try { _audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e) { return null; }
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+function _tone(freq, start, dur, type='sine', vol=0.15) {
+  const ctx = _ensureCtx(); if (!ctx) return;
+  const osc = ctx.createOscillator(), gain = ctx.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  const t0 = ctx.currentTime + start;
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(t0); osc.stop(t0 + dur + 0.02);
+}
+function playWorldSound(type) {
+  try {
+    if (type === 'correct') {
+      // ascending chime — same as index.html 'good'
+      [523, 659].forEach((f, i) => _tone(f, i * 0.09, 0.18, 'sine', 0.15));
+    } else {
+      // low descending thud — same as index.html 'poor'
+      _tone(220, 0, 0.22, 'sawtooth', 0.12);
+      _tone(160, 0.12, 0.28, 'sawtooth', 0.10);
+    }
+  } catch(e) {}
+}
+
 loadData();
+
+// Globe emoji rotation — cycles 🌍 🌎 🌏 to simulate spinning
+(function() {
+  const globes = ['🌍','🌎','🌏'];
+  let idx = 0;
+  setInterval(() => {
+    idx = (idx + 1) % globes.length;
+    const el = document.querySelector('.home-logo');
+    if (el) el.textContent = globes[idx];
+  }, 1600);
+})();
 </script>
 </body>
 </html>
