@@ -64,9 +64,48 @@
 
     @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
     .screen.active{animation:fadeIn .22s ease;}
+
+    /* ── #1 Correct/wrong splash ── */
+    #result-splash{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;}
+    #result-splash.show{animation:splashAnim .85s ease forwards;}
+    @keyframes splashAnim{
+      0%  {opacity:0;transform:scale(.4);}
+      35% {opacity:1;transform:scale(1.15);}
+      60% {opacity:1;transform:scale(1);}
+      100%{opacity:0;transform:scale(1);}
+    }
+    #result-splash-icon{font-size:96px;line-height:1;}
+
+    /* ── #2 Result tint ── */
+    #result-screen{transition:background .3s ease;}
+
+    /* ── #3 Tracker dots ── */
+    .tracker-dot{width:16px;height:16px;border-radius:50%;display:inline-block;flex-shrink:0;transition:box-shadow .3s;}
+    .tracker-dot.glow-green{box-shadow:0 0 8px 2px rgba(63,185,80,.7);}
+    .tracker-dot.glow-red{box-shadow:0 0 8px 2px rgba(248,81,73,.7);}
+
+    /* ── #4 Flag card slide-in ── */
+    @keyframes cardSlide{from{opacity:0;transform:translateY(-14px);}to{opacity:1;transform:translateY(0);}}
+    .card-animate{animation:cardSlide .3s cubic-bezier(.34,1.56,.64,1);}
+
+    /* ── #5 Map tap hint ── */
+    #tap-hint{position:fixed;bottom:76px;left:50%;transform:translateX(-50%);
+      background:rgba(13,17,23,.9);border:1px solid rgba(88,166,255,.45);
+      border-radius:20px;padding:8px 18px;font-size:13px;font-weight:700;
+      color:var(--blue);pointer-events:none;z-index:500;white-space:nowrap;
+      transition:opacity .4s ease;
+      animation:nudgePulse 1.8s ease-in-out infinite;}
+    #tap-hint.hidden{opacity:0;animation:none;}
+    @keyframes nudgePulse{0%,100%{opacity:.8;transform:translateX(-50%) scale(1);}50%{opacity:1;transform:translateX(-50%) scale(1.04);}}
   </style>
 </head>
 <body>
+
+<!-- Splash overlay (correct / wrong) -->
+<div id="result-splash"><span id="result-splash-icon"></span></div>
+
+<!-- Map tap hint -->
+<div id="tap-hint" class="hidden">اضغط على الدولة</div>
 
 <!-- ══════════════ HOME ══════════════ -->
 <div id="home-screen" class="screen active" style="justify-content:center;gap:12px;">
@@ -124,6 +163,7 @@
     <span style="flex:1;"></span>
   </div>
   <div id="result-map"></div>
+  <div id="guess-label" style="text-align:center;font-size:14px;font-weight:700;flex-shrink:0;padding:4px 0;min-height:28px;"></div>
   <button class="btn btn-primary" id="next-btn" onclick="nextRound()">التالي ›</button>
 </div>
 
@@ -364,6 +404,21 @@ function pointInGeometry(lat, lng, geometry) {
 }
 
 // ═══════════════════════════════════════════════════════
+// GEOMETRY BOUNDS (for small-country zoom assist)
+// ═══════════════════════════════════════════════════════
+function getGeomBounds(geometry) {
+  let minLat=90, maxLat=-90, minLng=180, maxLng=-180;
+  const scan = ring => ring.forEach(([lng,lat]) => {
+    if (lat<minLat) minLat=lat; if (lat>maxLat) maxLat=lat;
+    if (lng<minLng) minLng=lng; if (lng>maxLng) maxLng=lng;
+  });
+  if (geometry.type==='Polygon') geometry.coordinates.forEach(scan);
+  else if (geometry.type==='MultiPolygon') geometry.coordinates.forEach(p=>p.forEach(scan));
+  return { sw:[minLat,minLng], ne:[maxLat,maxLng],
+           w:maxLng-minLng, h:maxLat-minLat };
+}
+
+// ═══════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════
 function showScreen(id) {
@@ -438,7 +493,9 @@ function updateRoundTracker() {
   el.innerHTML = gameRounds.map((r, i) => {
     if (i >= currentRound) return '';
     const ok = r._result?.inBounds;
-    return `<span style="width:12px;height:12px;border-radius:50%;background:${ok?'var(--green)':'var(--red)'};display:inline-block;flex-shrink:0;"></span>`;
+    const isLatest = i === currentRound - 1;
+    const glow = isLatest ? (ok ? ' glow-green' : ' glow-red') : '';
+    return `<span class="tracker-dot${glow}" style="background:${ok?'var(--green)':'var(--red)'}"></span>`;
   }).join('');
 }
 
@@ -482,9 +539,29 @@ function loadRound() {
   const pct = ((currentRound+1)/gameRounds.length)*100;
   requestAnimationFrame(()=>{ document.getElementById('progress-bar').style.width=pct+'%'; });
   updateRoundTracker();
+
+  // #4 — slide the flag card in
+  const card = document.querySelector('.country-card');
+  if (card) { card.classList.remove('card-animate'); void card.offsetWidth; card.classList.add('card-animate'); }
+
+  // #5 — show tap hint
+  const hint = document.getElementById('tap-hint');
+  if (hint) hint.classList.remove('hidden');
   if (gameMap) {
     if (guessHighlight) { gameMap.removeLayer(guessHighlight); guessHighlight=null; }
-    gameMap.setView(WORLD_CENTER, WORLD_ZOOM);
+    // Zoom assist: small countries get a regional view so they're actually tappable
+    const c = gameRounds[currentRound];
+    if (c.geometry) {
+      const b = getGeomBounds(c.geometry);
+      if (b.w < 10 && b.h < 10) {
+        const pad = Math.max(4, (10 - Math.max(b.w, b.h)) / 2);
+        gameMap.fitBounds([[b.sw[0]-pad, b.sw[1]-pad],[b.ne[0]+pad, b.ne[1]+pad]], {animate:false});
+      } else {
+        gameMap.setView(WORLD_CENTER, WORLD_ZOOM);
+      }
+    } else {
+      gameMap.setView(WORLD_CENTER, WORLD_ZOOM);
+    }
     requestAnimationFrame(()=>fixMapH('game-map','game-screen'));
   }
 }
@@ -518,6 +595,9 @@ function initGameMap() {
 
   gameMap.on('click',e=>{
     if (guessHighlight) { gameMap.removeLayer(guessHighlight); guessHighlight=null; }
+    // #5 — hide tap hint on first interaction
+    const hint = document.getElementById('tap-hint');
+    if (hint) hint.classList.add('hidden');
     const hit = COUNTRIES.find(c => c.geometry && pointInGeometry(e.latlng.lat, e.latlng.lng, c.geometry));
     if (!hit) return;
     guess = e.latlng;
@@ -544,6 +624,36 @@ function submitGuess() {
   c._result = { score:sc, dist:dk, inBounds, guessedIso:guessedCountry.iso2 };
 
   document.getElementById('next-btn').textContent = currentRound+1>=gameRounds.length ? 'النتائج ›' : 'التالي ›';
+
+  // #1 — splash ✅ / ❌
+  const splashEl = document.getElementById('result-splash');
+  const splashIcon = document.getElementById('result-splash-icon');
+  if (splashEl && splashIcon) {
+    splashIcon.textContent = inBounds ? '✅' : '❌';
+    splashEl.classList.remove('show');
+    void splashEl.offsetWidth;
+    splashEl.classList.add('show');
+  }
+
+  // #2 — result screen tint
+  const rs = document.getElementById('result-screen');
+  if (rs) rs.style.background = inBounds
+    ? 'linear-gradient(180deg,rgba(63,185,80,.09) 0%,var(--bg) 55%)'
+    : 'linear-gradient(180deg,rgba(248,81,73,.09) 0%,var(--bg) 55%)';
+
+  // Result label
+  const lbl = document.getElementById('guess-label');
+  if (lbl) {
+    if (inBounds) {
+      lbl.innerHTML = `<span style="color:var(--green);">✓ &nbsp;<img src="${c.flagUrl}" style="height:16px;border-radius:3px;vertical-align:middle;"> ${c.name}</span>`;
+    } else {
+      const gc = guessedCountry;
+      lbl.innerHTML =
+        `<span style="color:var(--red);"><img src="${gc.flagUrl}" style="height:16px;border-radius:3px;vertical-align:middle;"> ${gc.name}</span>` +
+        `<span style="color:var(--muted);margin:0 8px;">←</span>` +
+        `<span style="color:var(--green);"><img src="${c.flagUrl}" style="height:16px;border-radius:3px;vertical-align:middle;"> ${c.name}</span>`;
+    }
+  }
 
   showScreen('result-screen');
   requestAnimationFrame(()=>requestAnimationFrame(()=>{ try{initResultMap(c,guessedCountry,inBounds);}catch(e){console.warn(e);} }));
