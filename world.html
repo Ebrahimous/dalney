@@ -7,6 +7,9 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+  <!-- Firebase (world multiplayer) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{touch-action:pan-x pan-y;height:100%;overflow:hidden;}
@@ -97,6 +100,19 @@
       animation:nudgePulse 1.8s ease-in-out infinite;}
     #tap-hint.hidden{opacity:0;animation:none;}
     @keyframes nudgePulse{0%,100%{opacity:.8;transform:translateX(-50%) scale(1);}50%{opacity:1;transform:translateX(-50%) scale(1.04);}}
+
+    /* ── World Multiplayer ── */
+    .wmp-mode-card{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);padding:14px 16px;cursor:pointer;width:100%;color:var(--text);font-family:inherit;transition:border-color .15s;}
+    .wmp-mode-card:active{opacity:.85;}
+    .wmp-mode-card .mc-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+    .wmp-mode-card .mc-title{font-size:15px;font-weight:800;text-align:start;}
+    .wmp-mode-card .mc-desc{font-size:12px;color:var(--muted);text-align:start;line-height:1.4;}
+    .wmp-mode-card .mc-arrow{font-size:20px;color:var(--muted);flex-shrink:0;}
+    .wmp-player-chip{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:10px;padding:11px 12px;border:1px solid rgba(255,255,255,.07);}
+    .wmp-color-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;}
+    .wmp-timer{background:var(--surface);border-radius:20px;padding:4px 14px;font-size:16px;font-weight:800;color:var(--gold);border:1px solid rgba(243,156,18,.2);}
+    .wmp-room-row{background:var(--card);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,.07);}
+    .wmp-score-row{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:10px;padding:10px 12px;border:1px solid rgba(255,255,255,.06);}
   </style>
 </head>
 <body>
@@ -136,6 +152,7 @@
   </div>
 
   <button class="btn btn-primary" id="start-btn" onclick="startGame()">ابدأ اللعبة 🗺️</button>
+  <button class="btn btn-secondary" onclick="wmpShowMenu()" style="border-color:rgba(63,185,80,.25);color:#3fb950;">👥 لعب جماعي</button>
   <div id="boundary-status" style="font-size:12px;color:var(--muted);text-align:center;margin-top:4px;">⏳ جاري تحميل خرائط الدول…</div>
 </div>
 
@@ -191,6 +208,153 @@
 
   <button class="btn btn-primary" style="flex-shrink:0;width:100%;" onclick="restartGame()">🔄 العب مرة أخرى</button>
   <button class="btn btn-secondary" style="flex-shrink:0;width:100%;" onclick="window.location.href='index.html'">🏠 الرئيسية</button>
+</div>
+
+<!-- ══════════════ WMP: MENU ══════════════ -->
+<div id="wmp-menu-screen" class="screen" style="padding:20px;gap:16px;">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button class="back-btn" onclick="showScreen('home-screen')">→</button>
+    <h2 style="font-size:18px;">لعب جماعي — دول العالم</h2>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;">
+    <button class="wmp-mode-card" style="border-color:rgba(63,185,80,.3);" onclick="wmpHostCreate()">
+      <div class="mc-icon" style="background:rgba(63,185,80,.15);color:var(--green);">👑</div>
+      <div style="flex:1;"><div class="mc-title">استضف لعبة</div><div class="mc-desc">أنشئ غرفة وادعُ أصدقاءك</div></div>
+      <div class="mc-arrow">‹</div>
+    </button>
+    <button class="wmp-mode-card" onclick="wmpShowBrowse()">
+      <div class="mc-icon" style="background:rgba(88,166,255,.15);color:var(--blue);">🎮</div>
+      <div style="flex:1;"><div class="mc-title">انضم للعبة</div><div class="mc-desc">ابحث عن غرف مفتوحة أو أدخل رمزاً</div></div>
+      <div class="mc-arrow">‹</div>
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════ WMP: HOST LOBBY ══════════════ -->
+<div id="wmp-host-lobby" class="screen" style="padding:20px;gap:14px;">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button class="back-btn" onclick="wmpHostCancel()">→</button>
+    <h2 style="font-size:18px;">انتظار اللاعبين</h2>
+  </div>
+  <div style="text-align:center;background:var(--card);border-radius:var(--radius);padding:18px;border:1px solid rgba(255,255,255,.07);flex-shrink:0;">
+    <p style="color:var(--muted);font-size:13px;margin-bottom:4px;">رمز الغرفة — شاركه مع اللاعبين</p>
+    <div id="wmp-room-code" style="font-size:52px;font-weight:900;color:var(--blue);letter-spacing:10px;font-family:monospace;">----</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:10px;flex-shrink:0;">
+    <div class="form-group"><label>اسمك</label>
+      <div style="display:flex;gap:8px;">
+        <input id="wmp-host-name" type="text" maxlength="14" placeholder="اسمك (اختياري)" style="flex:1;min-width:0;">
+        <button class="btn btn-secondary" id="wmp-host-join-btn" onclick="wmpHostAddSelf()" style="width:auto;flex-shrink:0;padding:0 16px;border-radius:12px;">➕ أضف</button>
+      </div>
+    </div>
+    <div>
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">المستوى</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <button class="time-opt" id="wdiff-easy" onclick="wmpSetDiff(this,'easy')">سهل</button>
+        <button class="time-opt active" id="wdiff-medium" onclick="wmpSetDiff(this,'medium')">متوسط</button>
+        <button class="time-opt" id="wdiff-hard" onclick="wmpSetDiff(this,'hard')">صعب</button>
+      </div>
+    </div>
+    <div>
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <button class="time-opt" id="wmp-r5" onclick="wmpSetRounds(this,5)">5</button>
+        <button class="time-opt active" id="wmp-r10" onclick="wmpSetRounds(this,10)">10</button>
+        <button class="time-opt" id="wmp-r20" onclick="wmpSetRounds(this,20)">20</button>
+      </div>
+    </div>
+    <div>
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">مدة الجولة</label>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+        <button class="time-opt" style="font-size:12px;" onclick="wmpSetTime(this,20)">20 ث</button>
+        <button class="time-opt active" style="font-size:12px;" onclick="wmpSetTime(this,30)">30 ث</button>
+        <button class="time-opt" style="font-size:12px;" onclick="wmpSetTime(this,60)">60 ث</button>
+        <button class="time-opt" style="font-size:12px;" onclick="wmpSetTime(this,0)">∞</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:13px;color:var(--muted);">مرئية للجميع</span>
+      <button id="wmp-public-toggle" onclick="wmpTogglePublic()" style="background:rgba(63,185,80,.15);border:1px solid rgba(63,185,80,.3);color:var(--green);border-radius:10px;padding:5px 14px;font-size:13px;font-weight:700;cursor:pointer;">عامة ✓</button>
+    </div>
+  </div>
+  <div id="wmp-lobby-players" style="display:flex;flex-direction:column;gap:8px;flex:1;"></div>
+  <button class="btn btn-primary" id="wmp-start-btn" onclick="wmpHostStart()" disabled>▶ ابدأ اللعبة</button>
+</div>
+
+<!-- ══════════════ WMP: BROWSE / JOIN ══════════════ -->
+<div id="wmp-browse-screen" class="screen" style="padding:20px;gap:12px;">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button class="back-btn" onclick="wmpStopBrowsing();showScreen('wmp-menu-screen')">→</button>
+    <h2 style="font-size:18px;">انضم للعبة</h2>
+  </div>
+  <div class="form-group" style="flex-shrink:0;"><label>اسمك</label>
+    <input id="wmp-join-name" type="text" maxlength="14" placeholder="اسمك (اختياري)">
+  </div>
+  <p style="font-size:13px;font-weight:700;color:var(--muted);flex-shrink:0;">الغرف المفتوحة</p>
+  <div id="wmp-room-list" style="flex:1;display:flex;flex-direction:column;gap:8px;overflow-y:auto;">
+    <div style="text-align:center;color:var(--muted);padding:24px;">⏳ جاري البحث…</div>
+  </div>
+  <details style="flex-shrink:0;">
+    <summary style="font-size:13px;color:var(--muted);cursor:pointer;padding:6px 0;list-style:none;display:flex;align-items:center;gap:6px;">
+      <span>🔒</span><span>انضم بالرمز (غرفة خاصة)</span>
+    </summary>
+    <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;">
+      <input id="wmp-code-input" type="text" maxlength="4" placeholder="ABCD" style="text-align:center;font-size:32px;letter-spacing:8px;text-transform:uppercase;font-family:monospace;padding:12px;background:var(--card);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:12px;width:100%;">
+      <button class="btn btn-primary" onclick="wmpJoin()">انضم ›</button>
+    </div>
+  </details>
+</div>
+
+<!-- ══════════════ WMP: WAIT (guest) ══════════════ -->
+<div id="wmp-wait-screen" class="screen" style="padding:20px;gap:16px;">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button class="back-btn" onclick="wmpLeave()">→</button>
+    <h2 style="font-size:18px;">في انتظار المضيف…</h2>
+  </div>
+  <div style="text-align:center;flex-shrink:0;margin-top:12px;">
+    <div style="font-size:48px;margin-bottom:8px;">⏳</div>
+    <p style="color:var(--muted);font-size:14px;">سيبدأ المضيف اللعبة قريباً</p>
+  </div>
+  <div id="wmp-wait-players" style="display:flex;flex-direction:column;gap:8px;"></div>
+</div>
+
+<!-- ══════════════ WMP: GAME ══════════════ -->
+<div id="wmp-game-screen" class="screen" style="padding:12px;gap:10px;overflow:hidden;">
+  <div class="game-header">
+    <div class="wmp-timer" id="wmp-timer">30</div>
+    <span class="round-badge" id="wmp-round-badge">جولة 1 / 10</span>
+    <span id="wmp-score-badge" style="background:rgba(63,185,80,.14);border:1px solid rgba(63,185,80,.3);border-radius:20px;padding:3px 12px;font-size:14px;font-weight:800;color:var(--green);">0</span>
+  </div>
+  <div style="background:var(--card);border-radius:var(--radius);padding:14px;text-align:center;border:1px solid rgba(255,255,255,.07);flex-shrink:0;">
+    <img id="wmp-country-flag" src="" alt="" style="height:44px;border-radius:5px;box-shadow:0 2px 8px rgba(0,0,0,.4);object-fit:cover;">
+    <div id="wmp-country-name" style="font-size:22px;font-weight:900;margin-top:6px;">—</div>
+  </div>
+  <div id="wmp-game-map" style="flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;"></div>
+  <div id="wmp-answered-status" style="text-align:center;font-size:13px;color:var(--muted);flex-shrink:0;min-height:18px;"></div>
+  <button class="btn btn-primary" id="wmp-submit-btn" disabled onclick="wmpSubmitGuess()">تأكيد ✓</button>
+</div>
+
+<!-- ══════════════ WMP: ROUND RESULT ══════════════ -->
+<div id="wmp-result-screen" class="screen" style="padding:12px;gap:8px;overflow:hidden;">
+  <div class="game-header" style="flex-shrink:0;">
+    <span class="round-badge" id="wmp-result-round">جولة 1 / 10</span>
+    <span id="wmp-result-country-name" style="font-weight:700;font-size:15px;flex:1;text-align:center;color:var(--green);"></span>
+  </div>
+  <div id="wmp-result-map" style="flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;"></div>
+  <div id="wmp-round-scores" style="flex-shrink:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:35vh;"></div>
+  <div id="wmp-result-host-btns" style="display:none;flex-shrink:0;gap:8px;">
+    <button class="btn btn-secondary" style="flex:0 0 auto;width:auto;padding:0 14px;white-space:nowrap;" onclick="wmpConfirmEnd()">🏳 إنهاء</button>
+    <button class="btn btn-primary" style="flex:1;" id="wmp-next-round-btn" onclick="wmpHostNextRound()">التالي ›</button>
+  </div>
+  <p id="wmp-result-wait-msg" style="display:none;text-align:center;color:var(--muted);font-size:13px;flex-shrink:0;">⏳ انتظر المضيف…</p>
+</div>
+
+<!-- ══════════════ WMP: FINAL ══════════════ -->
+<div id="wmp-final-screen" class="screen" style="padding:20px;gap:12px;align-items:center;">
+  <h2 style="font-size:22px;font-weight:900;flex-shrink:0;">انتهت اللعبة! 🏁</h2>
+  <div id="wmp-final-scores" style="width:100%;display:flex;flex-direction:column;gap:8px;flex-shrink:0;"></div>
+  <button class="btn btn-primary" id="wmp-replay-btn" style="display:none;width:100%;flex-shrink:0;" onclick="wmpHostReplay()">🔄 إعادة اللعب</button>
+  <button class="btn btn-secondary" style="width:100%;flex-shrink:0;" onclick="wmpLeave()">🏠 الرئيسية</button>
 </div>
 
 <script>
@@ -788,6 +952,515 @@ function playWorldSound(type) {
       _tone(160, 0.12, 0.28, 'sawtooth', 0.10);
     }
   } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════
+// WORLD MULTIPLAYER
+// ═══════════════════════════════════════════════════════
+const WMP_COLORS = ['#58a6ff','#3fb950','#f39c12','#f85149','#bd93f9','#ff79c6','#50fa7b','#8be9fd'];
+
+let wmpDb = null;
+function wmpInitDb() {
+  if (wmpDb) return wmpDb;
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp({
+        apiKey:'AIzaSyAO3joLL-aEJWYvKPHZ3lEhB1-hHq-Yj6w',
+        authDomain:'dalney.firebaseapp.com', projectId:'dalney',
+        storageBucket:'dalney.firebasestorage.app',
+        messagingSenderId:'495698377887',
+        appId:'1:495698377887:web:75072ccc065dfacd11b6aa'
+      });
+    }
+  } catch(e) {}
+  wmpDb = firebase.firestore();
+  return wmpDb;
+}
+
+let wmpRoomId=null, wmpPlayerId=null, wmpIsHost=false, wmpRoom=null;
+let wmpListener=null, wmpBrowseListener=null;
+let wmpGuess=null, wmpAnswered=false, wmpCurrentRound=0, wmpLastStatus=null;
+let wmpGameMap=null, wmpGameMarker=null, wmpResultMap=null;
+let wmpTimerIv=null, wmpRoomPublic=true;
+let wmpSelectedDiff='medium', wmpSelectedRounds=10, wmpTimeLimit=30;
+
+function wmpGenId() { return Math.random().toString(36).slice(2,10); }
+function wmpGenCode() {
+  const ch='ABCDEFGHJKLMNPQRSTUVWXYZ';
+  return Array.from({length:4},()=>ch[Math.floor(Math.random()*ch.length)]).join('');
+}
+function wmpEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function wmpGetPool(d) {
+  return d==='easy' ? COUNTRIES.filter(c=>TIER_EASY.has(c.iso2))
+       : d==='medium' ? COUNTRIES.filter(c=>TIER_MEDIUM.has(c.iso2))
+       : COUNTRIES;
+}
+
+function wmpGetCountryMeta(iso2) {
+  const c = COUNTRIES.find(x=>x.iso2===iso2);
+  if (!c) return {iso2, name:AR[iso2]||iso2, lat:0, lng:0, flagUrl:`https://flagcdn.com/w160/${iso2.toLowerCase()}.png`};
+  return {iso2:c.iso2, name:c.name, lat:c.lat, lng:c.lng, flagUrl:c.flagUrl};
+}
+
+// ── Navigation helpers ────────────────────────────────
+function wmpShowMenu() { showScreen('wmp-menu-screen'); }
+
+function wmpShowBrowse() {
+  showScreen('wmp-browse-screen');
+  wmpStartBrowsing();
+}
+
+function wmpStopBrowsing() {
+  if (wmpBrowseListener) { wmpBrowseListener(); wmpBrowseListener=null; }
+}
+
+function wmpStartBrowsing() {
+  const db = wmpInitDb();
+  const el = document.getElementById('wmp-room-list');
+  if (!el) return;
+  el.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px;">⏳ جاري البحث…</div>';
+  wmpStopBrowsing();
+  wmpBrowseListener = db.collection('rooms')
+    .where('status','==','waiting')
+    .where('game','==','world')
+    .where('public','==',true)
+    .limit(15)
+    .onSnapshot(snap=>{
+      if (!el) return;
+      if (snap.empty) {
+        el.innerHTML='<div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">لا توجد غرف مفتوحة الآن<br><span style="font-size:12px;display:block;margin-top:4px;">أنشئ غرفة وادعُ أصدقاءك!</span></div>';
+        return;
+      }
+      el.innerHTML='';
+      snap.docs.forEach(doc=>{
+        const r=doc.data(), players=r.players||[];
+        const row=document.createElement('div');
+        row.className='wmp-room-row';
+        row.innerHTML=`
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:14px;">👑 ${wmpEsc(r.hostName||'مضيف')}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px;">${players.length} لاعبين · ${r.totalRounds||10} جولات · ${r.difficulty==='easy'?'سهل':r.difficulty==='hard'?'صعب':'متوسط'}</div>
+          </div>
+          <button class="btn btn-primary" style="width:auto;padding:8px 18px;font-size:13px;border-radius:10px;flex-shrink:0;" onclick="wmpJoinFromBrowse('${wmpEsc(doc.id)}')">انضم</button>`;
+        el.appendChild(row);
+      });
+    }, ()=>{
+      if (el) el.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">تعذّر التحميل</div>';
+    });
+}
+
+// ── Lobby settings ────────────────────────────────────
+function wmpSetDiff(btn, d) {
+  wmpSelectedDiff = d;
+  btn.closest('div').querySelectorAll('.time-opt').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if (wmpRoomId && wmpIsHost) wmpRefreshLocs();
+}
+
+function wmpSetRounds(btn, n) {
+  wmpSelectedRounds = n;
+  btn.closest('div').querySelectorAll('.time-opt').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if (wmpRoomId && wmpIsHost) wmpRefreshLocs();
+}
+
+function wmpSetTime(btn, t) {
+  wmpTimeLimit = t;
+  btn.closest('div').querySelectorAll('.time-opt').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if (wmpRoomId) wmpInitDb().collection('rooms').doc(wmpRoomId).update({timeLimit:t}).catch(()=>{});
+}
+
+function wmpTogglePublic() {
+  wmpRoomPublic = !wmpRoomPublic;
+  const btn = document.getElementById('wmp-public-toggle');
+  if (btn) {
+    btn.textContent = wmpRoomPublic?'عامة ✓':'خاصة 🔒';
+    btn.style.color = wmpRoomPublic?'var(--green)':'var(--muted)';
+    btn.style.borderColor = wmpRoomPublic?'rgba(63,185,80,.3)':'rgba(255,255,255,.12)';
+    btn.style.background = wmpRoomPublic?'rgba(63,185,80,.15)':'rgba(255,255,255,.06)';
+  }
+  if (wmpRoomId) wmpInitDb().collection('rooms').doc(wmpRoomId).update({public:wmpRoomPublic}).catch(()=>{});
+}
+
+async function wmpRefreshLocs() {
+  if (!wmpRoomId) return;
+  const pool = wmpGetPool(wmpSelectedDiff);
+  const n = Math.min(wmpSelectedRounds, pool.length);
+  const isoOrder = shuffle(pool.map(c=>c.iso2)).slice(0,n);
+  await wmpInitDb().collection('rooms').doc(wmpRoomId).update({isoOrder, totalRounds:isoOrder.length, difficulty:wmpSelectedDiff}).catch(()=>{});
+}
+
+// ── Host create ───────────────────────────────────────
+async function wmpHostCreate() {
+  const db = wmpInitDb();
+  const pool = wmpGetPool(wmpSelectedDiff);
+  const n = Math.min(wmpSelectedRounds, pool.length);
+  const isoOrder = shuffle(pool.map(c=>c.iso2)).slice(0,n);
+
+  wmpIsHost=true; wmpPlayerId=wmpGenId(); wmpRoomPublic=true;
+  const code = wmpGenCode(); wmpRoomId=code;
+
+  showScreen('wmp-host-lobby');
+  document.getElementById('wmp-room-code').textContent='----';
+  document.getElementById('wmp-lobby-players').innerHTML='<p style="text-align:center;color:var(--muted);font-size:14px;">في انتظار انضمام اللاعبين…</p>';
+  document.getElementById('wmp-start-btn').disabled=true;
+
+  try {
+    await db.collection('rooms').doc(code).set({
+      status:'waiting', round:0, totalRounds:n,
+      game:'world', public:true, hostId:wmpPlayerId, hostName:'', code,
+      players:[], answers:{}, isoOrder, currentCountry:null,
+      difficulty:wmpSelectedDiff, timeLimit:wmpTimeLimit,
+      roundStartAt:null,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById('wmp-room-code').textContent=code;
+    wmpListener = db.collection('rooms').doc(code).onSnapshot(snap=>{
+      if (!snap.exists) return;
+      wmpRoom=snap.data(); wmpSync();
+    });
+  } catch(e) {
+    alert('فشل إنشاء الغرفة: '+e.message);
+    showScreen('wmp-menu-screen');
+  }
+}
+
+async function wmpHostAddSelf() {
+  const name=(document.getElementById('wmp-host-name')||{}).value?.trim()||'';
+  const players=wmpRoom?(wmpRoom.players||[]):[];
+  if (players.find(p=>p.id===wmpPlayerId)) return;
+  const usedColors=new Set(players.map(p=>p.color));
+  const color=WMP_COLORS.find(c=>!usedColors.has(c))||WMP_COLORS[0];
+  const finalName=name||`لاعب ${players.length+1}`;
+  const updated=[...players,{id:wmpPlayerId,name:finalName,color,score:0}];
+  await wmpInitDb().collection('rooms').doc(wmpRoomId).update({players:updated,hostName:finalName}).catch(console.error);
+  const btn=document.getElementById('wmp-host-join-btn');
+  const inp=document.getElementById('wmp-host-name');
+  if (btn) btn.disabled=true; if (inp) inp.disabled=true;
+}
+
+async function wmpHostStart() {
+  if (!wmpIsHost||!wmpRoomId||!wmpRoom) return;
+  const players=wmpRoom.players||[];
+  if (players.length<1) return;
+  const cc=wmpGetCountryMeta(wmpRoom.isoOrder[0]);
+  await wmpInitDb().collection('rooms').doc(wmpRoomId).update({
+    status:'playing', round:1,
+    roundStartAt:firebase.firestore.Timestamp.fromMillis(Date.now()+3000),
+    currentCountry:cc, answers:{}
+  }).catch(console.error);
+}
+
+async function wmpHostCancel() {
+  if (wmpRoomId) await wmpInitDb().collection('rooms').doc(wmpRoomId).delete().catch(()=>{});
+  wmpReset(); showScreen('wmp-menu-screen');
+}
+
+// ── Guest join ────────────────────────────────────────
+async function wmpJoinFromBrowse(roomId) {
+  const ci=document.getElementById('wmp-code-input');
+  if (ci) ci.value=roomId;
+  await wmpJoin();
+}
+
+async function wmpJoin() {
+  wmpStopBrowsing();
+  const db=wmpInitDb();
+  const raw=(document.getElementById('wmp-code-input')||{}).value||'';
+  const code=raw.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if (code.length<1) { alert('أدخل رمز الغرفة'); return; }
+  const nameRaw=(document.getElementById('wmp-join-name')||{}).value||'';
+  const name=nameRaw.trim();
+
+  try {
+    const snap=await db.collection('rooms').doc(code).get();
+    if (!snap.exists) { alert('لم يتم العثور على الغرفة'); return; }
+    const r=snap.data();
+    if (r.status!=='waiting') { alert('اللعبة بدأت بالفعل'); return; }
+    if (r.game!=='world') { alert('هذه الغرفة ليست للعبة دول العالم'); return; }
+
+    wmpPlayerId=wmpGenId(); wmpRoomId=code; wmpIsHost=false;
+    const players=r.players||[];
+    const usedColors=new Set(players.map(p=>p.color));
+    const color=WMP_COLORS.find(c=>!usedColors.has(c))||WMP_COLORS[0];
+    const finalName=name||`لاعب ${players.length+1}`;
+    const updated=[...players,{id:wmpPlayerId,name:finalName,color,score:0}];
+    await db.collection('rooms').doc(code).update({players:updated}).catch(console.error);
+
+    showScreen('wmp-wait-screen');
+    wmpListener=db.collection('rooms').doc(code).onSnapshot(snap2=>{
+      if (!snap2.exists) { wmpLeave(); return; }
+      wmpRoom=snap2.data(); wmpSync();
+    });
+  } catch(e) { alert('فشل الانضمام: '+e.message); }
+}
+
+// ── State sync ────────────────────────────────────────
+function wmpUpdateLobby() {
+  const players=wmpRoom?.players||[];
+  const el=document.getElementById('wmp-lobby-players');
+  if (el) el.innerHTML=players.length
+    ? players.map(p=>`<div class="wmp-player-chip"><div class="wmp-color-dot" style="background:${p.color}"></div><span style="font-weight:600;font-size:15px;">${wmpEsc(p.name)}</span>${p.id===wmpPlayerId?'<span style="margin-right:auto;font-size:11px;color:var(--gold);">👑 مضيف</span>':''}</div>`).join('')
+    : '<p style="text-align:center;color:var(--muted);font-size:14px;">في انتظار انضمام اللاعبين…</p>';
+  const startBtn=document.getElementById('wmp-start-btn');
+  if (startBtn) startBtn.disabled=players.length<1;
+}
+
+function wmpRenderWaitPlayers() {
+  const players=wmpRoom?.players||[];
+  const el=document.getElementById('wmp-wait-players');
+  if (el) el.innerHTML=players.map(p=>`<div class="wmp-player-chip"><div class="wmp-color-dot" style="background:${p.color}"></div><span style="font-weight:600;">${wmpEsc(p.name)}</span></div>`).join('');
+}
+
+function wmpSync() {
+  if (!wmpRoom) return;
+  const {status,round,players}=wmpRoom;
+  const prev=wmpLastStatus; wmpLastStatus=status;
+  if (status==='waiting') {
+    if (wmpIsHost) { showScreen('wmp-host-lobby'); wmpUpdateLobby(); }
+    else { showScreen('wmp-wait-screen'); wmpRenderWaitPlayers(); }
+    return;
+  }
+  if (status==='playing') {
+    if (round!==wmpCurrentRound) {
+      wmpCurrentRound=round; wmpAnswered=false; wmpGuess=null;
+      playWorldSound('round');
+      showScreen('wmp-game-screen');
+      wmpInitGameRound();
+    }
+    wmpUpdateAnsweredStatus();
+    return;
+  }
+  if (status==='results') {
+    clearInterval(wmpTimerIv);
+    if (!document.getElementById('wmp-result-screen').classList.contains('active')) wmpShowRoundResult();
+    return;
+  }
+  if (status==='finished') wmpShowFinal();
+}
+
+// ── Game round ────────────────────────────────────────
+function wmpInitGameRound() {
+  const {currentCountry,round,totalRounds,roundStartAt,timeLimit,players}=wmpRoom;
+  if (!currentCountry) return;
+  document.getElementById('wmp-round-badge').textContent=`جولة ${round} / ${totalRounds}`;
+  document.getElementById('wmp-country-flag').src=currentCountry.flagUrl;
+  document.getElementById('wmp-country-name').textContent=currentCountry.name;
+  const me=(players||[]).find(p=>p.id===wmpPlayerId);
+  document.getElementById('wmp-score-badge').textContent=me?me.score:0;
+  const sb=document.getElementById('wmp-submit-btn');
+  sb.disabled=true; sb.textContent='تأكيد ✓';
+
+  setTimeout(()=>{
+    try {
+      if (wmpGameMap) { wmpGameMap.remove(); wmpGameMap=null; wmpGameMarker=null; }
+      wmpGameMap=L.map('wmp-game-map',{zoomControl:true,minZoom:2,maxZoom:10,tap:true,tapTolerance:25,worldCopyJump:true});
+      osmLayer().addTo(wmpGameMap);
+      wmpGameMap.setView(WORLD_CENTER,WORLD_ZOOM);
+      fixMapH('wmp-game-map','wmp-game-screen');
+      wmpGameMap.invalidateSize();
+      const myColor=me?me.color:'#58a6ff';
+      wmpGameMap.on('click',e=>{
+        if (wmpAnswered) return;
+        const hit=COUNTRIES.find(c=>c.geometry&&pointInGeometry(e.latlng.lat,e.latlng.lng,c.geometry));
+        if (!hit) return;
+        wmpGuess={lat:e.latlng.lat,lng:e.latlng.lng,iso2:hit.iso2};
+        if (wmpGameMarker) wmpGameMap.removeLayer(wmpGameMarker);
+        L.geoJSON({type:'Feature',geometry:hit.geometry},{style:{color:myColor,weight:1.5,fillColor:myColor,fillOpacity:.3}}).addTo(wmpGameMap);
+        wmpGameMarker=L.circleMarker([hit.lat,hit.lng],{radius:7,color:'#fff',fillColor:myColor,fillOpacity:1,weight:2}).addTo(wmpGameMap);
+        document.getElementById('wmp-submit-btn').disabled=false;
+      });
+    } catch(e){console.warn(e);}
+  },300);
+
+  wmpStartTimer(roundStartAt, timeLimit||0);
+}
+
+function wmpUpdateAnsweredStatus() {
+  const answers=wmpRoom?.answers||{};
+  const total=(wmpRoom?.players||[]).length;
+  const done=Object.keys(answers).length;
+  const el=document.getElementById('wmp-answered-status');
+  if (el) el.textContent=total>0?`${done} / ${total} أجابوا`:'';
+}
+
+function wmpStartTimer(roundStartAt, timeLimit) {
+  clearInterval(wmpTimerIv);
+  const el=document.getElementById('wmp-timer');
+  const tick=()=>{
+    const now=Date.now();
+    const startMs=roundStartAt?.toMillis?roundStartAt.toMillis():Number(roundStartAt);
+    const elapsed=(now-startMs)/1000;
+    if (elapsed<0) { if(el){el.textContent=Math.ceil(-elapsed);el.style.color='var(--blue)';} return; }
+    if (timeLimit===0) { if(el){el.textContent='∞';el.style.color='var(--gold)';} return; }
+    const rem=Math.max(0,timeLimit-elapsed);
+    if (el) { el.textContent=Math.ceil(rem); el.style.color=rem<10?'var(--red)':'var(--gold)'; }
+    if (rem<=0) {
+      clearInterval(wmpTimerIv);
+      if (!wmpAnswered) {
+        if (wmpGuess) { wmpSubmitGuess(); }
+        else {
+          wmpAnswered=true;
+          const upd={[`answers.${wmpPlayerId}`]:{lat:null,lng:null,score:0,inBounds:false,iso2:''}};
+          wmpInitDb().collection('rooms').doc(wmpRoomId).update(upd).catch(()=>{});
+          if (wmpIsHost) wmpHostShowResults();
+        }
+      } else if (wmpIsHost) { wmpHostShowResults(); }
+    }
+  };
+  tick(); wmpTimerIv=setInterval(tick,250);
+}
+
+async function wmpSubmitGuess() {
+  if (!wmpGuess||wmpAnswered||!wmpRoomId) return;
+  wmpAnswered=true;
+  const cc=wmpRoom.currentCountry;
+  const hit=COUNTRIES.find(c=>c.iso2===wmpGuess.iso2);
+  const correct=hit&&hit.iso2===cc.iso2;
+  let sc;
+  if (correct) { sc=100; }
+  else {
+    const dk=haversineKm(hit?hit.lat:wmpGuess.lat, hit?hit.lng:wmpGuess.lng, cc.lat, cc.lng);
+    sc=scoreForDist(dk);
+  }
+  playWorldSound(correct?'correct':'wrong');
+  const sb=document.getElementById('wmp-submit-btn');
+  if(sb){sb.disabled=true;sb.textContent='✓ تم';}
+
+  const players=[...(wmpRoom.players||[])];
+  const me=players.find(p=>p.id===wmpPlayerId);
+  if(me) me.score=(me.score||0)+sc;
+  const upd={players,[`answers.${wmpPlayerId}`]:{lat:wmpGuess.lat,lng:wmpGuess.lng,score:sc,inBounds:correct,iso2:wmpGuess.iso2}};
+  await wmpInitDb().collection('rooms').doc(wmpRoomId).update(upd).catch(console.error);
+
+  // Check if all answered (host auto-advances)
+  if (wmpIsHost) {
+    const allAnswered=Object.keys(wmpRoom.answers||{}).length+1>=(wmpRoom.players||[]).length;
+    if (allAnswered) setTimeout(()=>wmpHostShowResults(),800);
+  }
+}
+
+async function wmpHostShowResults() {
+  if (!wmpIsHost||!wmpRoomId) return;
+  clearInterval(wmpTimerIv);
+  await wmpInitDb().collection('rooms').doc(wmpRoomId).update({status:'results'}).catch(console.error);
+}
+
+async function wmpHostNextRound() {
+  const next=wmpRoom.round+1;
+  if (next>wmpRoom.totalRounds) {
+    await wmpInitDb().collection('rooms').doc(wmpRoomId).update({status:'finished'}).catch(console.error);
+    return;
+  }
+  const cc=wmpGetCountryMeta(wmpRoom.isoOrder[next-1]);
+  await wmpInitDb().collection('rooms').doc(wmpRoomId).update({
+    status:'playing', round:next, answers:{}, currentCountry:cc,
+    roundStartAt:firebase.firestore.Timestamp.fromMillis(Date.now()+3000)
+  }).catch(console.error);
+}
+
+// ── Round result ──────────────────────────────────────
+function wmpShowRoundResult() {
+  showScreen('wmp-result-screen');
+  const {currentCountry,answers,players,round,totalRounds}=wmpRoom;
+  document.getElementById('wmp-result-round').textContent=`جولة ${round} / ${totalRounds}`;
+  document.getElementById('wmp-result-country-name').textContent=currentCountry?.name||'';
+
+  setTimeout(()=>{
+    try {
+      if (wmpResultMap){wmpResultMap.remove();wmpResultMap=null;}
+      wmpResultMap=L.map('wmp-result-map',{zoomControl:true,minZoom:2,maxZoom:8});
+      osmLayer().addTo(wmpResultMap);
+      wmpResultMap.setView(WORLD_CENTER,WORLD_ZOOM);
+      // Highlight correct country
+      const target=COUNTRIES.find(c=>c.iso2===currentCountry?.iso2);
+      if(target?.geometry) L.geoJSON({type:'Feature',geometry:target.geometry},{style:{color:'#3fb950',weight:2.5,fillColor:'#3fb950',fillOpacity:.25}}).addTo(wmpResultMap);
+      // All players' pins
+      Object.entries(answers||{}).forEach(([pid,ans])=>{
+        if(!ans.lat) return;
+        const p=(players||[]).find(x=>x.id===pid);
+        const color=p?.color||'#888';
+        L.circleMarker([ans.lat,ans.lng],{radius:8,color:'#fff',fillColor:color,fillOpacity:1,weight:2})
+          .bindPopup(`${wmpEsc(p?.name||'لاعب')}: ${ans.score} نقطة`).addTo(wmpResultMap);
+      });
+      if(target) wmpResultMap.setView([target.lat,target.lng],4);
+      wmpResultMap.invalidateSize();
+    }catch(e){console.warn(e);}
+  },300);
+
+  // Sort players by total score
+  const sorted=[...(players||[])].sort((a,b)=>(b.score||0)-(a.score||0));
+  const roundSc=Object.fromEntries(Object.entries(answers||{}).map(([pid,a])=>[pid,a.score||0]));
+  document.getElementById('wmp-round-scores').innerHTML=sorted.map((p,i)=>`
+    <div class="wmp-score-row">
+      <div style="width:20px;font-size:13px;font-weight:800;color:var(--muted);text-align:center;">${i+1}</div>
+      <div class="wmp-color-dot" style="background:${p.color}"></div>
+      <div style="flex:1;font-weight:700;font-size:14px;">${wmpEsc(p.name)}</div>
+      <div style="color:var(--green);font-weight:700;">+${roundSc[p.id]||0}</div>
+      <div style="color:var(--gold);font-weight:800;font-size:18px;min-width:36px;text-align:end;">${p.score||0}</div>
+    </div>`).join('');
+
+  const hostBtns=document.getElementById('wmp-result-host-btns');
+  const waitMsg=document.getElementById('wmp-result-wait-msg');
+  if(hostBtns) hostBtns.style.display=wmpIsHost?'flex':'none';
+  if(waitMsg) waitMsg.style.display=wmpIsHost?'none':'block';
+  const nextBtn=document.getElementById('wmp-next-round-btn');
+  if(nextBtn) nextBtn.textContent=wmpRoom.round>=wmpRoom.totalRounds?'🏁 النتائج النهائية':'التالي ›';
+}
+
+// ── Final screen ──────────────────────────────────────
+function wmpShowFinal() {
+  if(document.getElementById('wmp-final-screen').classList.contains('active')) return;
+  clearInterval(wmpTimerIv);
+  showScreen('wmp-final-screen');
+  const sorted=[...(wmpRoom?.players||[])].sort((a,b)=>(b.score||0)-(a.score||0));
+  document.getElementById('wmp-final-scores').innerHTML=sorted.map((p,i)=>`
+    <div class="wmp-score-row" style="border-radius:12px;padding:12px 14px;">
+      <div style="font-size:${i<3?'22':'14'}px;font-weight:800;width:28px;text-align:center;">${['🥇','🥈','🥉'][i]||i+1}</div>
+      <div class="wmp-color-dot" style="background:${p.color}"></div>
+      <div style="flex:1;font-weight:700;font-size:15px;">${wmpEsc(p.name)}</div>
+      <div style="font-size:26px;font-weight:900;color:var(--gold);">${p.score||0}</div>
+    </div>`).join('');
+  const rb=document.getElementById('wmp-replay-btn');
+  if(rb) rb.style.display=wmpIsHost?'block':'none';
+}
+
+async function wmpHostReplay() {
+  if (!wmpIsHost||!wmpRoomId) return;
+  const pool=wmpGetPool(wmpRoom.difficulty||'medium');
+  const n=wmpRoom.totalRounds||10;
+  const isoOrder=shuffle(pool.map(c=>c.iso2)).slice(0,n);
+  const players=(wmpRoom.players||[]).map(p=>({...p,score:0}));
+  await wmpInitDb().collection('rooms').doc(wmpRoomId).update({
+    status:'waiting', round:0, answers:{}, currentCountry:null, isoOrder, players, roundStartAt:null
+  }).catch(console.error);
+}
+
+function wmpConfirmEnd() {
+  if(confirm('إنهاء اللعبة؟')) wmpInitDb().collection('rooms').doc(wmpRoomId).update({status:'finished'}).catch(()=>{});
+}
+
+function wmpLeave() {
+  if (wmpListener){wmpListener();wmpListener=null;}
+  wmpStopBrowsing();
+  clearInterval(wmpTimerIv);
+  // Remove self from players list
+  if (wmpRoomId && wmpPlayerId && !wmpIsHost) {
+    const players=(wmpRoom?.players||[]).filter(p=>p.id!==wmpPlayerId);
+    wmpInitDb().collection('rooms').doc(wmpRoomId).update({players}).catch(()=>{});
+  }
+  wmpReset();
+  showScreen('home-screen');
+}
+
+function wmpReset() {
+  if(wmpGameMap){wmpGameMap.remove();wmpGameMap=null;}
+  if(wmpResultMap){wmpResultMap.remove();wmpResultMap=null;}
+  wmpRoomId=null;wmpPlayerId=null;wmpIsHost=false;wmpRoom=null;
+  wmpGuess=null;wmpAnswered=false;wmpCurrentRound=0;wmpLastStatus=null;
+  clearInterval(wmpTimerIv);
 }
 
 loadData();

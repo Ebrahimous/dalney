@@ -98,26 +98,67 @@
     @keyframes spin{to{transform:rotate(360deg);}}
 
     /* ── UI Polish ──────────────────────────────────────────────────────────── */
-    /* 1. Screen fade-in transition */
-    @keyframes screenFadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
-    .screen.active{animation:screenFadeIn .2s ease forwards;}
 
-    /* 4. Button ripple / press glow */
-    .btn{position:relative;overflow:hidden;}
-    .btn::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at center,rgba(255,255,255,.22) 0%,transparent 70%);opacity:0;transition:opacity .15s ease;}
+    /* #1 — Home screen radial glow behind the logo */
+    #home-screen{overflow:hidden;}
+    #home-screen::before{
+      content:'';position:absolute;top:-80px;left:50%;transform:translateX(-50%);
+      width:420px;height:420px;
+      background:radial-gradient(circle,rgba(88,166,255,.13) 0%,transparent 70%);
+      pointer-events:none;z-index:0;
+    }
+
+    /* #2 — Mode card glow + press */
+    .mode-card{transition:transform .12s ease,box-shadow .12s ease;}
+    .mode-card:active{transform:scale(0.97);box-shadow:0 0 0 3px rgba(88,166,255,.4),0 10px 28px rgba(88,166,255,.18);}
+
+    /* #3 — Visual hierarchy on home screen */
+    #home-screen .btn-primary{font-size:17px;padding:17px;}
+    #home-screen .btn-secondary:last-child{font-size:12px !important;padding:9px !important;opacity:.75;}
+
+    /* #4 — Screen slide-in transition */
+    @keyframes screenSlideIn{
+      from{opacity:0;transform:translateY(12px) scale(.985);}
+      to{opacity:1;transform:translateY(0) scale(1);}
+    }
+    .screen.active{animation:screenSlideIn .25s cubic-bezier(.22,1,.36,1) forwards;}
+
+    /* #5 — Button press scale on all buttons */
+    .btn{position:relative;overflow:hidden;transition:transform .1s ease,filter .1s ease;}
+    .btn:active{transform:scale(0.96);}
+    .btn::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at center,rgba(255,255,255,.18) 0%,transparent 70%);opacity:0;transition:opacity .15s ease;}
     .btn:active::before{opacity:1;transition:none;}
 
-    /* 5. Score flash bounce transition */
+    /* #5 — Score flash bounce transition */
     .score-flash{transition:transform .15s cubic-bezier(.34,1.56,.64,1);}
 
-    /* 7. Home screen button polish */
+    /* #6 — Mascot slide-up entrance */
+    @keyframes mascotEnter{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+    #mascot-img{animation:mascotEnter .55s .08s cubic-bezier(.22,1,.36,1) both;}
+    #mascot-img.re-enter{animation:none;}
+    #mascot-img.re-enter.go{animation:mascotEnter .55s .08s cubic-bezier(.22,1,.36,1) both;}
+
+    /* #7 — Distinct button identities */
     #home-screen .btn-primary{
       background:linear-gradient(135deg,#58a6ff 0%,#3a8edc 100%);
       box-shadow:0 6px 22px rgba(88,166,255,.38),0 2px 8px rgba(0,0,0,.28);
-      letter-spacing:.3px;
+      letter-spacing:.3px;color:#000;
     }
-    #home-screen .btn-primary:active{filter:brightness(1.1);}
-    #home-screen .btn-secondary{box-shadow:0 2px 10px rgba(0,0,0,.25);}
+    #home-screen .btn-primary:active{filter:brightness(1.12);}
+    .btn-world{
+      background:linear-gradient(135deg,#3fb950 0%,#2ea043 100%) !important;
+      color:#000 !important;border-color:transparent !important;
+      box-shadow:0 6px 22px rgba(63,185,80,.32),0 2px 8px rgba(0,0,0,.28) !important;
+    }
+    .btn-world:active{filter:brightness(1.12);}
+
+    /* #8 — In-game score badge pill */
+    #score-badge{
+      background:rgba(243,156,18,.14);
+      border:1px solid rgba(243,156,18,.32);
+      border-radius:20px;padding:3px 12px;
+      font-size:15px;font-weight:800;
+    }
 
     /* 2. Round progress bar */
     #round-progress-wrap,#mp-round-progress-wrap{width:100%;height:3px;background:rgba(255,255,255,.08);border-radius:2px;flex-shrink:0;}
@@ -232,11 +273,11 @@
         <h1 style="font-family:'Lalezar',sans-serif;font-size:42px;color:var(--blue);line-height:1.1;letter-spacing:-1px;">دلني</h1>
         <p style="font-family:'Cairo',sans-serif;font-size:14px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-top:-4px;">ورنا شطارتك</p>
       </div>
-      <img src="mascot-clear.png" alt="" style="position:absolute;top:0;left:0;width:66%;max-width:280px;object-fit:contain;z-index:1;pointer-events:none;">
+      <img id="mascot-img" src="mascot-clear.png" alt="" style="position:absolute;top:0;left:0;width:66%;max-width:280px;object-fit:contain;z-index:1;pointer-events:none;">
     </div>
     <div style="width:100%;display:flex;flex-direction:column;gap:10px;position:relative;z-index:2;">
       <button class="btn btn-primary" onclick="showScreen('kw-menu-screen')">📍 دلني بالكويت</button>
-      <button class="btn btn-secondary" onclick="window.location.href='world.html'" style="font-size:15px;padding:13px;border-color:rgba(63,185,80,.25);color:#3fb950;">🌍 دلني دول العالم</button>
+      <button class="btn btn-secondary btn-world" onclick="window.location.href='world.html'" style="font-size:15px;padding:13px;">🌍 دلني دول العالم</button>
       <button class="btn btn-secondary" onclick="openLeaderboard()" style="font-size:14px;padding:12px;">🏆 لوحة المتصدرين</button>
       <button class="btn btn-secondary" onclick="showScreen('how-screen')" style="font-size:12px;padding:8px;">❓ شرح طريقة اللعب</button>
     </div>
@@ -347,7 +388,7 @@
 <div id="result-screen" class="screen" style="padding:12px;gap:8px;overflow:hidden;">
   <div class="game-header">
     <button class="back-btn" onclick="exitGame(true)">→</button>
-    <div class="score-flash" id="score-flash" style="margin:0;font-size:38px;">0</div>
+    <div class="score-flash" id="score-flash" style="margin:0;font-size:68px;line-height:1;">0</div>
     <span style="width:36px;"></span>
   </div>
   <div id="feedback-label"></div>
@@ -483,21 +524,23 @@
       </div>
     </div>
   </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;flex-shrink:0;">
+    <span style="font-size:13px;color:var(--muted);">مرئية للجميع</span>
+    <button id="mp-public-toggle" onclick="mpTogglePublic()" style="background:rgba(63,185,80,.15);border:1px solid rgba(63,185,80,.3);color:var(--green);border-radius:10px;padding:5px 14px;font-size:13px;font-weight:700;cursor:pointer;">عامة ✓</button>
+  </div>
   <div id="mp-lobby-players" style="display:flex;flex-direction:column;gap:8px;flex:1;"></div>
   <button class="btn btn-primary" id="mp-start-btn" onclick="mpHostStart()" disabled>▶ ابدأ اللعبة</button>
 </div>
 
-<!-- MP: JOIN SCREEN -->
-<div id="mp-join-screen" class="screen" style="gap:16px;padding:20px;justify-content:center;">
+<!-- MP: JOIN SCREEN (room browser + code fallback) -->
+<div id="mp-join-screen" class="screen" style="gap:12px;padding:20px;">
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-    <button class="back-btn" onclick="showScreen('mp-menu-screen')">→</button>
+    <button class="back-btn" onclick="mpStopBrowsing();showScreen('mp-menu-screen')">→</button>
     <h2 style="font-size:18px;">انضم للعبة</h2>
   </div>
-  <div class="form-group">
-    <label>رمز الغرفة (4 أحرف)</label>
-    <input id="mp-code-input" type="text" maxlength="4" placeholder="ABCD" style="text-align:center;font-size:36px;letter-spacing:10px;text-transform:uppercase;font-family:monospace;padding:14px;">
-  </div>
-  <div class="form-group">
+
+  <!-- Name row (used for both browse-join and code-join) -->
+  <div class="form-group" style="flex-shrink:0;">
     <label>اسمك</label>
     <div style="display:flex;gap:8px;">
       <button type="button" class="selfie-btn" id="mp-join-selfie-preview" title="إضافة صورة شخصية" onclick="mpOpenCamera('mp-join-selfie-preview')">📷</button>
@@ -506,7 +549,23 @@
       <input id="mp-name-input" type="text" maxlength="14" placeholder="أدخل اسمك (اختياري)" style="flex:1;min-width:0;">
     </div>
   </div>
-  <button class="btn btn-primary" id="mp-join-btn" onclick="mpJoin()">انضم ›</button>
+
+  <!-- Live room list -->
+  <p style="font-size:13px;font-weight:700;color:var(--muted);flex-shrink:0;">الغرف المفتوحة</p>
+  <div id="mp-room-list" style="flex:1;display:flex;flex-direction:column;gap:8px;overflow-y:auto;">
+    <div style="text-align:center;color:var(--muted);padding:24px;font-size:14px;">⏳ جاري البحث…</div>
+  </div>
+
+  <!-- Code input for private rooms -->
+  <details style="flex-shrink:0;">
+    <summary style="font-size:13px;color:var(--muted);cursor:pointer;padding:6px 0;list-style:none;display:flex;align-items:center;gap:6px;">
+      <span>🔒</span><span>انضم بالرمز (غرفة خاصة)</span>
+    </summary>
+    <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;">
+      <input id="mp-code-input" type="text" maxlength="4" placeholder="ABCD" style="text-align:center;font-size:32px;letter-spacing:8px;text-transform:uppercase;font-family:monospace;padding:12px;background:var(--card);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:12px;width:100%;">
+      <button class="btn btn-primary" id="mp-join-btn" onclick="mpJoin()">انضم ›</button>
+    </div>
+  </details>
 </div>
 
 <!-- MP: PARTICIPANT WAITING -->
@@ -588,6 +647,7 @@
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
     <button class="back-btn" onclick="showScreen('home-screen')">→</button>
     <h2 style="font-size:18px;font-weight:800;">🏆 لوحة المتصدرين</h2>
+    <button id="lb-clear-btn" onclick="clearLeaderboard()" style="display:none;margin-right:auto;background:rgba(248,81,73,.15);border:1px solid rgba(248,81,73,.35);color:var(--red);border-radius:10px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;">🗑️ مسح الكل</button>
   </div>
   <!-- Competitive only — no tabs needed -->
   <div style="font-size:13px;color:var(--muted);font-weight:700;flex-shrink:0;">🥇 تنافسي</div>
@@ -1123,7 +1183,14 @@ let suppressPopstate = false;
 function showScreen(id, fromPop) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  if (id === 'home-screen') updateHomeStats();
+  if (id === 'home-screen') {
+    updateHomeStats();
+    // Re-trigger mascot entrance animation
+    const m = document.getElementById('mascot-img');
+    if (m) { m.classList.add('re-enter'); void m.offsetWidth; m.classList.remove('re-enter'); m.classList.add('go'); setTimeout(()=>m.classList.remove('go'),700); }
+  }
+  if (id === 'mp-join-screen') mpStartBrowsing();
+  else if (id !== 'mp-join-screen') mpStopBrowsing();
   if (id === 'admin-screen') {
     renderLocList();
     loadReports();
@@ -1855,6 +1922,7 @@ let _lbCurrentMode = 'competitive';
 
 function openLeaderboard() {
   showScreen('lb-screen');
+  openLeaderboardWithAdminCheck();
   loadLeaderboard('competitive');
 }
 
@@ -1867,6 +1935,34 @@ function lbContentLabel(content) {
   if (content === 'photos') return '📷 صور';
   if (content === 'mix')    return '🔀 مزيج';
   return '🗺️ أسماء';
+}
+
+function openLeaderboardWithAdminCheck() {
+  const clearBtn = document.getElementById('lb-clear-btn');
+  if (clearBtn) clearBtn.style.display = localStorage.getItem('dalney_owner') === '1' ? 'block' : 'none';
+}
+
+async function clearLeaderboard() {
+  if (!confirm('هل أنت متأكد من مسح جميع الأسماء من لوحة المتصدرين؟ لا يمكن التراجع.')) return;
+  const list = document.getElementById('lb-list');
+  list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;">جاري المسح…</div>';
+  try {
+    let deleted = 0;
+    // Firestore doesn't support collection delete directly — batch in rounds of 500
+    let snap = await lbCol.limit(500).get();
+    while (!snap.empty) {
+      const batch = db.batch();
+      snap.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      deleted += snap.docs.length;
+      snap = await lbCol.limit(500).get();
+    }
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">لا يوجد إدخالات بعد 🙂</div>';
+    showToast(`تم مسح ${deleted} إدخال`);
+  } catch(e) {
+    console.error('clearLeaderboard', e);
+    showToast('فشل المسح: ' + e.message);
+  }
 }
 
 async function loadLeaderboard(mode) {
@@ -2396,6 +2492,7 @@ const KW_CENTER = [29.3697, 47.9783];
 let mpRoomId=null, mpPlayerId=null, mpIsHost=false, mpRoom=null;
 let mpListener=null, mpTimerIv=null, mpGuess=null, mpCurrentRound=0;
 let mpLastPlayerCount=0;
+let mpBrowseListener=null, mpRoomPublic=true, mpAnswered=false, mpLastStatus=null;
 
 // Plays a join chime when the player list grows (skips the initial render so
 // joining your own lobby doesn't trigger it).
@@ -2471,6 +2568,65 @@ function mpBuildLocs(mode, rounds) {
   }));
 }
 
+// ── Room browse (guest-side) ──────────────────────────────────────────────────
+function mpStopBrowsing() {
+  if (mpBrowseListener) { mpBrowseListener(); mpBrowseListener = null; }
+}
+
+function mpStartBrowsing() {
+  const listEl = document.getElementById('mp-room-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;font-size:14px;">⏳ جاري البحث…</div>';
+  mpStopBrowsing();
+  mpBrowseListener = db.collection('rooms')
+    .where('status','==','waiting')
+    .where('game','==','kuwait')
+    .where('public','==',true)
+    .limit(15)
+    .onSnapshot(snap => {
+      if (!listEl) return;
+      if (snap.empty) {
+        listEl.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">لا توجد غرف مفتوحة الآن<br><span style="font-size:12px;margin-top:6px;display:block;">أنشئ غرفة وادعُ أصدقاءك!</span></div>';
+        return;
+      }
+      listEl.innerHTML = '';
+      snap.docs.forEach(doc => {
+        const r = doc.data();
+        const players = r.players || [];
+        const row = document.createElement('div');
+        row.className = 'lb-row';
+        row.style.cssText += 'gap:10px;cursor:default;';
+        row.innerHTML = `
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:14px;">👑 ${escapeHtml(r.hostName||'مضيف')}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px;">${players.length} لاعبين · ${r.totalRounds||5} جولات · ${r.mode==='photo'?'📷 صور':'🗺️ أسماء'}</div>
+          </div>
+          <button class="btn btn-primary" style="width:auto;padding:8px 18px;font-size:13px;border-radius:10px;flex-shrink:0;" onclick="mpJoinFromBrowse('${escapeHtml(doc.id)}')">انضم</button>`;
+        listEl.appendChild(row);
+      });
+    }, () => {
+      if (listEl) listEl.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">تعذّر التحميل</div>';
+    });
+}
+
+async function mpJoinFromBrowse(roomId) {
+  const ci = document.getElementById('mp-code-input');
+  if (ci) ci.value = roomId;
+  await mpJoin();
+}
+
+function mpTogglePublic() {
+  mpRoomPublic = !mpRoomPublic;
+  const btn = document.getElementById('mp-public-toggle');
+  if (btn) {
+    btn.textContent = mpRoomPublic ? 'عامة ✓' : 'خاصة 🔒';
+    btn.style.color = mpRoomPublic ? 'var(--green)' : 'var(--muted)';
+    btn.style.borderColor = mpRoomPublic ? 'rgba(63,185,80,.3)' : 'rgba(255,255,255,.12)';
+    btn.style.background = mpRoomPublic ? 'rgba(63,185,80,.15)' : 'rgba(255,255,255,.06)';
+  }
+  if (mpRoomId) db.collection('rooms').doc(mpRoomId).update({public:mpRoomPublic}).catch(()=>{});
+}
+
 async function mpHostCreate() {
   if (!locations.length) { showToast('⚠️ لا توجد مواقع'); return; }
   let locs = mpBuildLocs(mpSelectedMode, mpSelectedRounds);
@@ -2496,12 +2652,18 @@ async function mpHostCreate() {
 
   try {
     // Host starts with empty players — name is read in mpHostAddSelf after lobby
+    mpRoomPublic = true;
     await db.collection('rooms').doc(code).set({
       status:'waiting', round:0, totalRounds:locs.length,
       loc:null, roundStartAt:null,
       players:[], answers:{}, locs, mode,
-      timeLimit:mpTimeLimit, hostId:mpPlayerId
+      timeLimit:mpTimeLimit, hostId:mpPlayerId,
+      public:true, game:'kuwait', hostName:'',
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
+    // Sync toggle button state
+    const ptBtn = document.getElementById('mp-public-toggle');
+    if (ptBtn) { ptBtn.textContent='عامة ✓'; ptBtn.style.color='var(--green)'; }
     document.getElementById('mp-room-code').textContent = code;
     mpListener = db.collection('rooms').doc(code).onSnapshot(snap=>{
       if (!snap.exists) return;
@@ -2553,7 +2715,7 @@ async function mpHostAddSelf() {
   const finalName = name || `لاعب ${currentPlayers.length+1}`;
   const hostPlayer = {id:mpPlayerId, name:finalName, color, score:0, selfie:mpMySelfie||null, emoji:mpMyEmoji||null};
   const updatedPlayers = [...currentPlayers, hostPlayer];
-  await db.collection('rooms').doc(mpRoomId).update({players:updatedPlayers});
+  await db.collection('rooms').doc(mpRoomId).update({players:updatedPlayers, hostName:finalName});
   // mpUpdateLobby will be called via onSnapshot
 }
 
@@ -2921,6 +3083,7 @@ async function mpHostCancel() {
 
 // ── Participant join ───────────────────────────────────────────────────────────
 async function mpJoin() {
+  mpStopBrowsing();
   const btn = document.getElementById('mp-join-btn');
   if (!btn || btn.disabled) return; // already submitting — ignore repeat taps
   const code = document.getElementById('mp-code-input').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
