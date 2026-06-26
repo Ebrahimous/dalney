@@ -101,6 +101,12 @@
     #tap-hint.hidden{opacity:0;animation:none;}
     @keyframes nudgePulse{0%,100%{opacity:.8;transform:translateX(-50%) scale(1);}50%{opacity:1;transform:translateX(-50%) scale(1.04);}}
 
+    /* ── Forms ── */
+    .form-group{display:flex;flex-direction:column;gap:8px;}
+    .form-group label{font-size:15px;font-weight:700;color:var(--muted);}
+    input[type=text]{width:100%;padding:14px 16px;background:var(--card);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:12px;font-size:16px;font-family:inherit;outline:none;}
+    input[type=text]:focus{border-color:var(--blue);}
+
     /* ── World Multiplayer ── */
     .wmp-mode-card{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);padding:14px 16px;cursor:pointer;width:100%;color:var(--text);font-family:inherit;transition:border-color .15s;}
     .wmp-mode-card:active{opacity:.85;}
@@ -310,12 +316,12 @@
   <div class="form-group" style="flex-shrink:0;"><label>اسمك</label>
     <input id="wmp-join-name" type="text" maxlength="14" placeholder="اسمك (اختياري)">
   </div>
-  <p style="font-size:13px;font-weight:700;color:var(--muted);flex-shrink:0;">الغرف المفتوحة</p>
+  <p style="font-size:16px;font-weight:700;color:var(--muted);flex-shrink:0;">الغرف المفتوحة</p>
   <div id="wmp-room-list" style="flex:1;display:flex;flex-direction:column;gap:8px;overflow-y:auto;">
     <div style="text-align:center;color:var(--muted);padding:24px;">⏳ جاري البحث…</div>
   </div>
   <details style="flex-shrink:0;">
-    <summary style="font-size:13px;color:var(--muted);cursor:pointer;padding:6px 0;list-style:none;display:flex;align-items:center;gap:6px;">
+    <summary style="font-size:16px;color:var(--muted);cursor:pointer;padding:6px 0;list-style:none;display:flex;align-items:center;gap:6px;">
       <span>🔒</span><span>انضم بالرمز (غرفة خاصة)</span>
     </summary>
     <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;">
@@ -1003,7 +1009,7 @@ function wmpInitDb() {
 let wmpRoomId=null, wmpPlayerId=null, wmpIsHost=false, wmpRoom=null;
 let wmpListener=null, wmpBrowseListener=null;
 let wmpGuess=null, wmpAnswered=false, wmpCurrentRound=0, wmpLastStatus=null;
-let wmpGameMap=null, wmpGameMarker=null, wmpResultMap=null;
+let wmpGameMap=null, wmpGameMarker=null, wmpGameHighlight=null, wmpResultMap=null;
 let wmpTimerIv=null, wmpRoomPublic=true;
 let wmpSelectedDiff='medium', wmpSelectedRounds=10, wmpTimeLimit=30;
 
@@ -1052,7 +1058,7 @@ function wmpStartBrowsing() {
     .onSnapshot(snap=>{
       if (!el) return;
       if (snap.empty) {
-        el.innerHTML='<div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">لا توجد غرف مفتوحة الآن<br><span style="font-size:12px;display:block;margin-top:4px;">أنشئ غرفة وادعُ أصدقاءك!</span></div>';
+        el.innerHTML='<div style="text-align:center;color:var(--muted);padding:32px;font-size:16px;">لا توجد غرف مفتوحة الآن<br><span style="font-size:14px;display:block;margin-top:4px;">أنشئ غرفة وادعُ أصدقاءك!</span></div>';
         return;
       }
       el.innerHTML='';
@@ -1062,10 +1068,10 @@ function wmpStartBrowsing() {
         row.className='wmp-room-row';
         row.innerHTML=`
           <div style="flex:1;min-width:0;">
-            <div style="font-weight:700;font-size:14px;">👑 ${wmpEsc(r.hostName||'مضيف')}</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:3px;">${players.length} لاعبين · ${r.totalRounds||10} جولات · ${r.difficulty==='easy'?'سهل':r.difficulty==='hard'?'صعب':'متوسط'}</div>
+            <div style="font-weight:700;font-size:16px;">👑 ${wmpEsc(r.hostName||'مضيف')}</div>
+            <div style="font-size:14px;color:var(--muted);margin-top:3px;">${players.length} لاعبين · ${r.totalRounds||10} جولات · ${r.difficulty==='easy'?'سهل':r.difficulty==='hard'?'صعب':'متوسط'}</div>
           </div>
-          <button class="btn btn-primary" style="width:auto;padding:8px 18px;font-size:13px;border-radius:10px;flex-shrink:0;" onclick="wmpJoinFromBrowse('${wmpEsc(doc.id)}')">انضم</button>`;
+          <button class="btn btn-primary" style="width:auto;padding:10px 20px;font-size:15px;border-radius:10px;flex-shrink:0;" onclick="wmpJoinFromBrowse('${wmpEsc(doc.id)}')">انضم</button>`;
         el.appendChild(row);
       });
     }, ()=>{
@@ -1278,7 +1284,7 @@ function wmpInitGameRound() {
 
   setTimeout(()=>{
     try {
-      if (wmpGameMap) { wmpGameMap.remove(); wmpGameMap=null; wmpGameMarker=null; }
+      if (wmpGameMap) { wmpGameMap.remove(); wmpGameMap=null; wmpGameMarker=null; wmpGameHighlight=null; }
       wmpGameMap=L.map('wmp-game-map',{zoomControl:true,minZoom:2,maxZoom:10,tap:true,tapTolerance:25,worldCopyJump:true});
       osmLayer().addTo(wmpGameMap);
       wmpGameMap.setView(WORLD_CENTER,WORLD_ZOOM);
@@ -1291,7 +1297,8 @@ function wmpInitGameRound() {
         if (!hit) return;
         wmpGuess={lat:e.latlng.lat,lng:e.latlng.lng,iso2:hit.iso2};
         if (wmpGameMarker) wmpGameMap.removeLayer(wmpGameMarker);
-        L.geoJSON({type:'Feature',geometry:hit.geometry},{style:{color:myColor,weight:1.5,fillColor:myColor,fillOpacity:.3}}).addTo(wmpGameMap);
+        if (wmpGameHighlight) wmpGameMap.removeLayer(wmpGameHighlight);
+        wmpGameHighlight=L.geoJSON({type:'Feature',geometry:hit.geometry},{style:{color:myColor,weight:1.5,fillColor:myColor,fillOpacity:.3}}).addTo(wmpGameMap);
         wmpGameMarker=L.circleMarker([hit.lat,hit.lng],{radius:7,color:'#fff',fillColor:myColor,fillOpacity:1,weight:2}).addTo(wmpGameMap);
         document.getElementById('wmp-submit-btn').disabled=false;
       });
