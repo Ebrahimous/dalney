@@ -124,36 +124,56 @@
 <div id="tap-hint" class="hidden">اضغط على الدولة</div>
 
 <!-- ══════════════ HOME ══════════════ -->
-<div id="home-screen" class="screen active" style="justify-content:center;gap:12px;">
-  <div style="display:flex;align-items:center;justify-content:flex-start;flex-shrink:0;">
+<div id="home-screen" class="screen active" style="padding:20px;gap:16px;">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
     <button class="back-btn" onclick="window.location.href='index.html'">→</button>
   </div>
-  <div class="home-logo">🌍</div>
-  <div class="home-title">دلني</div>
-  <div class="home-sub">جغرافيا العالم</div>
-
-  <div class="settings-card" style="margin-bottom:4px;">
-    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:10px;">مستوى الصعوبة</label>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-      <button class="time-opt"        id="diff-easy"   onclick="setDiff(this,'easy')">سهل</button>
-      <button class="time-opt active" id="diff-medium" onclick="setDiff(this,'medium')">متوسط</button>
-      <button class="time-opt"        id="diff-hard"   onclick="setDiff(this,'hard')">صعب</button>
-    </div>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;">
+    <div class="home-logo">🌍</div>
+    <div class="home-title">دلني</div>
+    <div class="home-sub">دول العالم</div>
+    <div id="boundary-status" style="font-size:12px;color:var(--muted);margin-top:2px;">⏳ جاري تحميل الخرائط…</div>
   </div>
-
-  <div class="settings-card" style="margin-bottom:8px;">
-    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:10px;">عدد الجولات</label>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-      <button class="time-opt" onclick="setRounds(this,5)">5</button>
-      <button class="time-opt active" onclick="setRounds(this,10)">10</button>
-      <button class="time-opt" onclick="setRounds(this,15)">15</button>
-      <button class="time-opt" onclick="setRounds(this,0)">كل</button>
-    </div>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <button class="wmp-mode-card" style="border-color:rgba(88,166,255,.3);" onclick="showScreen('solo-setup-screen')">
+      <div class="mc-icon" style="background:rgba(88,166,255,.15);color:var(--blue);">🗺️</div>
+      <div style="flex:1;"><div class="mc-title">لعب فردي</div><div class="mc-desc">اختبر معرفتك بدول العالم</div></div>
+      <div class="mc-arrow">‹</div>
+    </button>
+    <button class="wmp-mode-card" style="border-color:rgba(63,185,80,.3);" onclick="wmpShowMenu()">
+      <div class="mc-icon" style="background:rgba(63,185,80,.15);color:var(--green);">👥</div>
+      <div style="flex:1;"><div class="mc-title">لعب جماعي</div><div class="mc-desc">العب مع الأصدقاء في نفس الوقت</div></div>
+      <div class="mc-arrow">‹</div>
+    </button>
   </div>
+</div>
 
-  <button class="btn btn-primary" id="start-btn" onclick="startGame()">ابدأ اللعبة 🗺️</button>
-  <button class="btn btn-secondary" onclick="wmpShowMenu()" style="border-color:rgba(63,185,80,.25);color:#3fb950;">👥 لعب جماعي</button>
-  <div id="boundary-status" style="font-size:12px;color:var(--muted);text-align:center;margin-top:4px;">⏳ جاري تحميل خرائط الدول…</div>
+<!-- ══════════════ SOLO SETUP ══════════════ -->
+<div id="solo-setup-screen" class="screen" style="padding:20px;gap:14px;">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button class="back-btn" onclick="showScreen('home-screen')">→</button>
+    <h2 style="font-size:18px;">لعب فردي</h2>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;">
+    <div class="settings-card">
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:10px;">مستوى الصعوبة</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <button class="time-opt"        id="diff-easy"   onclick="setDiff(this,'easy')">سهل</button>
+        <button class="time-opt active" id="diff-medium" onclick="setDiff(this,'medium')">متوسط</button>
+        <button class="time-opt"        id="diff-hard"   onclick="setDiff(this,'hard')">صعب</button>
+      </div>
+    </div>
+    <div class="settings-card">
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:10px;">عدد الجولات</label>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+        <button class="time-opt" onclick="setRounds(this,5)">5</button>
+        <button class="time-opt active" onclick="setRounds(this,10)">10</button>
+        <button class="time-opt" onclick="setRounds(this,15)">15</button>
+        <button class="time-opt" onclick="setRounds(this,0)">كل</button>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="start-btn" onclick="startGame()">ابدأ اللعبة 🗺️</button>
+  </div>
 </div>
 
 <!-- ══════════════ GAME ══════════════ -->
