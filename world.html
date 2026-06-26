@@ -128,7 +128,7 @@
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
     <button class="back-btn" onclick="window.location.href='index.html'">→</button>
   </div>
-  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:16px;margin-bottom:32px;">
     <div class="home-logo">🌍</div>
     <div class="home-title">دلني</div>
     <div class="home-sub">دول العالم</div>
@@ -446,10 +446,13 @@ const FALLBACK = [
 // DIFFICULTY TIERS
 // ═══════════════════════════════════════════════════════
 const TIER_EASY = new Set([
-  'EG','SA','AE','KW','QA','BH','OM','YE','IQ','SY','LB','JO','PS','LY','TN','DZ','MA','MR','SD','SO','DJ','KM',
-  'US','CA','MX','BR','AR','GB','FR','DE','IT','RU','CN','JP','KR','IN','AU','ZA','TR','ID',
-  'ES','PT','GR','PL','UA','IR','PK','AF','TH','VN','MY','NG','KE','ET','GH','TZ','CD',
-  'MZ','ZW','ZM','AO','CM','CI','SN','MG','NL','NO','SE','CH','NZ','CU','VE','CO','PE',
+  // Arab world — audience knows these well
+  'EG','SA','AE','KW','QA','BH','OM','YE','IQ','SY','LB','JO','PS','LY','TN','DZ','MA','SD',
+  // World-famous countries anyone can locate
+  'US','CA','BR','AR','MX',          // Americas
+  'GB','FR','DE','IT','ES','RU',     // Europe
+  'CN','JP','IN','TR','IR','PK',     // Asia
+  'AU','ZA','NG','KR','ID',          // Rest of world
 ]);
 const TIER_MEDIUM = new Set([
   ...TIER_EASY,
