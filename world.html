@@ -375,6 +375,17 @@
   <p id="wmp-result-wait-msg" style="display:none;text-align:center;color:var(--muted);font-size:13px;flex-shrink:0;">⏳ انتظر المضيف…</p>
 </div>
 
+<!-- ══════════════ WMP: CONFIRM MODAL ══════════════ -->
+<div id="wmp-confirm-modal" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.65);align-items:flex-end;justify-content:center;padding:16px;">
+  <div style="background:var(--surface);border-radius:20px;padding:24px;width:100%;max-width:440px;border:1px solid rgba(255,255,255,.12);">
+    <p id="wmp-confirm-msg" style="font-size:17px;font-weight:700;text-align:center;margin-bottom:20px;line-height:1.6;"></p>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button class="btn btn-primary" id="wmp-confirm-yes"></button>
+      <button class="btn btn-secondary" id="wmp-confirm-no"></button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ WMP: FINAL ══════════════ -->
 <div id="wmp-final-screen" class="screen" style="padding:20px;gap:12px;align-items:center;">
   <h2 style="font-size:22px;font-weight:900;flex-shrink:0;">انتهت اللعبة! 🏁</h2>
@@ -1121,6 +1132,17 @@ async function wmpRefreshLocs() {
   await wmpInitDb().collection('rooms').doc(wmpRoomId).update({isoOrder, totalRounds:isoOrder.length, difficulty:wmpSelectedDiff}).catch(()=>{});
 }
 
+// ── Confirm modal ─────────────────────────────────────
+function wmpConfirm(msg, yesLabel, noLabel, onYes, onNo) {
+  const modal=document.getElementById('wmp-confirm-modal');
+  document.getElementById('wmp-confirm-msg').textContent=msg;
+  document.getElementById('wmp-confirm-yes').textContent=yesLabel;
+  document.getElementById('wmp-confirm-no').textContent=noLabel;
+  modal.style.display='flex';
+  document.getElementById('wmp-confirm-yes').onclick=()=>{modal.style.display='none'; onYes();};
+  document.getElementById('wmp-confirm-no').onclick=()=>{modal.style.display='none'; if(onNo)onNo();};
+}
+
 // ── Host create ───────────────────────────────────────
 async function wmpHostCreate() {
   const db = wmpInitDb();
@@ -1160,26 +1182,42 @@ async function wmpHostAddSelf() {
   const name=(document.getElementById('wmp-host-name')||{}).value?.trim()||'';
   const players=wmpRoom?(wmpRoom.players||[]):[];
   if (players.find(p=>p.id===wmpPlayerId)) return;
-  const usedColors=new Set(players.map(p=>p.color));
-  const color=WMP_COLORS.find(c=>!usedColors.has(c))||WMP_COLORS[0];
   const finalName=name||`لاعب ${players.length+1}`;
-  const updated=[...players,{id:wmpPlayerId,name:finalName,color,score:0}];
-  await wmpInitDb().collection('rooms').doc(wmpRoomId).update({players:updated,hostName:finalName}).catch(console.error);
-  const btn=document.getElementById('wmp-host-join-btn');
-  const inp=document.getElementById('wmp-host-name');
-  if (btn) btn.disabled=true; if (inp) inp.disabled=true;
+  const doAdd=async()=>{
+    const cur=wmpRoom?.players||[];
+    const usedColors=new Set(cur.map(p=>p.color));
+    const color=WMP_COLORS.find(c=>!usedColors.has(c))||WMP_COLORS[0];
+    const updated=[...cur,{id:wmpPlayerId,name:finalName,color,score:0}];
+    await wmpInitDb().collection('rooms').doc(wmpRoomId).update({players:updated,hostName:finalName}).catch(console.error);
+    const btn=document.getElementById('wmp-host-join-btn');
+    const inp=document.getElementById('wmp-host-name');
+    if(btn)btn.disabled=true; if(inp)inp.disabled=true;
+  };
+  if(!name){
+    wmpConfirm(`ستدخل اللعبة باسم "${finalName}"، هل أنت متأكد؟`,'نعم، ادخل بهذا الاسم','لا، أريد تغيير الاسم',doAdd);
+    return;
+  }
+  await doAdd();
 }
 
 async function wmpHostStart() {
   if (!wmpIsHost||!wmpRoomId||!wmpRoom) return;
   const players=wmpRoom.players||[];
   if (players.length<1) return;
-  const cc=wmpGetCountryMeta(wmpRoom.isoOrder[0]);
-  await wmpInitDb().collection('rooms').doc(wmpRoomId).update({
-    status:'playing', round:1,
-    roundStartAt:firebase.firestore.Timestamp.fromMillis(Date.now()+3000),
-    currentCountry:cc, answers:{}
-  }).catch(console.error);
+  const doStart=async()=>{
+    const cc=wmpGetCountryMeta(wmpRoom.isoOrder[0]);
+    await wmpInitDb().collection('rooms').doc(wmpRoomId).update({
+      status:'playing', round:1,
+      roundStartAt:firebase.firestore.Timestamp.fromMillis(Date.now()+3000),
+      currentCountry:cc, answers:{}
+    }).catch(console.error);
+  };
+  const hostInGame=players.find(p=>p.id===wmpPlayerId);
+  if(!hostInGame){
+    wmpConfirm('لم تضف نفسك كلاعب. هل تريد بدء اللعبة بدونك؟','ابدأ بدوني','أضف نفسي أولاً',doStart);
+    return;
+  }
+  await doStart();
 }
 
 async function wmpHostCancel() {
@@ -1203,27 +1241,37 @@ async function wmpJoin() {
   const nameRaw=(document.getElementById('wmp-join-name')||{}).value||'';
   const name=nameRaw.trim();
 
-  try {
-    const snap=await db.collection('rooms').doc(code).get();
-    if (!snap.exists) { alert('لم يتم العثور على الغرفة'); return; }
-    const r=snap.data();
-    if (r.status!=='waiting') { alert('اللعبة بدأت بالفعل'); return; }
-    if (r.game!=='world') { alert('هذه الغرفة ليست للعبة دول العالم'); return; }
+  const doJoin=async(finalName)=>{
+    try {
+      const snap=await db.collection('rooms').doc(code).get();
+      if (!snap.exists) { alert('لم يتم العثور على الغرفة'); return; }
+      const r=snap.data();
+      if (r.status!=='waiting') { alert('اللعبة بدأت بالفعل'); return; }
+      if (r.game!=='world') { alert('هذه الغرفة ليست للعبة دول العالم'); return; }
+      wmpPlayerId=wmpGenId(); wmpRoomId=code; wmpIsHost=false;
+      const players=r.players||[];
+      const usedColors=new Set(players.map(p=>p.color));
+      const color=WMP_COLORS.find(c=>!usedColors.has(c))||WMP_COLORS[0];
+      const updated=[...players,{id:wmpPlayerId,name:finalName,color,score:0}];
+      await db.collection('rooms').doc(code).update({players:updated}).catch(console.error);
+      showScreen('wmp-wait-screen');
+      wmpListener=db.collection('rooms').doc(code).onSnapshot(snap2=>{
+        if (!snap2.exists) { wmpLeave(); return; }
+        wmpRoom=snap2.data(); wmpSync();
+      });
+    } catch(e) { alert('فشل الانضمام: '+e.message); }
+  };
 
-    wmpPlayerId=wmpGenId(); wmpRoomId=code; wmpIsHost=false;
-    const players=r.players||[];
-    const usedColors=new Set(players.map(p=>p.color));
-    const color=WMP_COLORS.find(c=>!usedColors.has(c))||WMP_COLORS[0];
-    const finalName=name||`لاعب ${players.length+1}`;
-    const updated=[...players,{id:wmpPlayerId,name:finalName,color,score:0}];
-    await db.collection('rooms').doc(code).update({players:updated}).catch(console.error);
-
-    showScreen('wmp-wait-screen');
-    wmpListener=db.collection('rooms').doc(code).onSnapshot(snap2=>{
-      if (!snap2.exists) { wmpLeave(); return; }
-      wmpRoom=snap2.data(); wmpSync();
-    });
-  } catch(e) { alert('فشل الانضمام: '+e.message); }
+  if(!name){
+    try {
+      const snap=await db.collection('rooms').doc(code).get();
+      if (!snap.exists) { alert('لم يتم العثور على الغرفة'); return; }
+      const defaultName=`لاعب ${(snap.data().players||[]).length+1}`;
+      wmpConfirm(`ستدخل اللعبة باسم "${defaultName}"، هل أنت متأكد؟`,'نعم، ادخل بهذا الاسم','لا، أريد تغيير الاسم',()=>doJoin(defaultName));
+    } catch(e) { alert('فشل الانضمام: '+e.message); }
+    return;
+  }
+  await doJoin(name);
 }
 
 // ── State sync ────────────────────────────────────────
@@ -1349,9 +1397,18 @@ async function wmpSubmitGuess() {
   const cc=wmpRoom.currentCountry;
   const hit=COUNTRIES.find(c=>c.iso2===wmpGuess.iso2);
   const correct=hit&&hit.iso2===cc.iso2;
-  let sc;
-  if (correct) { sc=100; }
-  else {
+  let sc, speedBonus=0;
+  if (correct) {
+    sc=100;
+    const tl=wmpRoom.timeLimit||0;
+    if(tl>0 && wmpRoom.roundStartAt){
+      const startMs=wmpRoom.roundStartAt?.toMillis?.()??Number(wmpRoom.roundStartAt);
+      const elapsed=(Date.now()-startMs)/1000;
+      const remaining=Math.max(0, tl-elapsed);
+      speedBonus=Math.round(50*(remaining/tl));
+    }
+    sc+=speedBonus;
+  } else {
     const dk=haversineKm(hit?hit.lat:wmpGuess.lat, hit?hit.lng:wmpGuess.lng, cc.lat, cc.lng);
     sc=scoreForDist(dk);
   }
@@ -1362,7 +1419,7 @@ async function wmpSubmitGuess() {
   const players=[...(wmpRoom.players||[])];
   const me=players.find(p=>p.id===wmpPlayerId);
   if(me) me.score=(me.score||0)+sc;
-  const upd={players,[`answers.${wmpPlayerId}`]:{lat:wmpGuess.lat,lng:wmpGuess.lng,score:sc,inBounds:correct,iso2:wmpGuess.iso2}};
+  const upd={players,[`answers.${wmpPlayerId}`]:{lat:wmpGuess.lat,lng:wmpGuess.lng,score:sc,inBounds:correct,iso2:wmpGuess.iso2,speedBonus}};
   await wmpInitDb().collection('rooms').doc(wmpRoomId).update(upd).catch(console.error);
 
   // Check if all answered (host auto-advances)
@@ -1422,15 +1479,23 @@ function wmpShowRoundResult() {
 
   // Sort players by total score
   const sorted=[...(players||[])].sort((a,b)=>(b.score||0)-(a.score||0));
-  const roundSc=Object.fromEntries(Object.entries(answers||{}).map(([pid,a])=>[pid,a.score||0]));
-  document.getElementById('wmp-round-scores').innerHTML=sorted.map((p,i)=>`
+  const roundAns=answers||{};
+  document.getElementById('wmp-round-scores').innerHTML=sorted.map((p,i)=>{
+    const ans=roundAns[p.id]||{};
+    const rs=ans.score||0;
+    const spd=ans.speedBonus||0;
+    const scoreStr=spd>0
+      ?`<span style="color:var(--green);font-weight:700;">+${rs-spd}</span><span style="color:var(--gold);font-size:12px;margin-right:3px;"> ⚡+${spd}</span>`
+      :`<span style="color:var(--green);font-weight:700;">+${rs}</span>`;
+    return `
     <div class="wmp-score-row">
       <div style="width:20px;font-size:13px;font-weight:800;color:var(--muted);text-align:center;">${i+1}</div>
       <div class="wmp-color-dot" style="background:${p.color}"></div>
       <div style="flex:1;font-weight:700;font-size:14px;">${wmpEsc(p.name)}</div>
-      <div style="color:var(--green);font-weight:700;">+${roundSc[p.id]||0}</div>
+      <div style="display:flex;align-items:center;">${scoreStr}</div>
       <div style="color:var(--gold);font-weight:800;font-size:18px;min-width:36px;text-align:end;">${p.score||0}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   const hostBtns=document.getElementById('wmp-result-host-btns');
   const waitMsg=document.getElementById('wmp-result-wait-msg');
