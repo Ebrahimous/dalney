@@ -226,12 +226,12 @@
     .menu-intro{text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;}
     .menu-intro .menu-icon{font-size:46px;}
     /* Kuwait menu — world-style cards */
-    .kw-card{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);padding:14px 16px;cursor:pointer;width:100%;color:var(--text);font-family:inherit;transition:border-color .15s,transform .12s;}
-    .kw-card:active{transform:scale(0.97);}
-    .kw-card .kc-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
-    .kw-card .kc-title{font-size:15px;font-weight:800;text-align:start;}
-    .kw-card .kc-desc{font-size:12px;color:var(--muted);text-align:start;line-height:1.4;}
-    .kw-card .kc-arrow{font-size:20px;color:var(--muted);flex-shrink:0;}
+    .kw-card{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#58a6ff 0%,#3a8edc 100%);border:none;border-radius:var(--radius);padding:14px 16px;cursor:pointer;width:100%;color:#000;font-family:inherit;transition:transform .12s,filter .12s;box-shadow:0 4px 16px rgba(88,166,255,.25);}
+    .kw-card:active{transform:scale(0.97);filter:brightness(1.08);}
+    .kw-card .kc-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;background:rgba(255,255,255,.22);}
+    .kw-card .kc-title{font-size:15px;font-weight:800;text-align:start;color:#000;}
+    .kw-card .kc-desc{font-size:12px;color:rgba(0,0,0,.6);text-align:start;line-height:1.4;}
+    .kw-card .kc-arrow{font-size:20px;color:rgba(0,0,0,.35);flex-shrink:0;}
     #kw-menu-logo{font-size:64px;text-align:center;line-height:1;}
     .menu-intro p{color:var(--muted);font-size:14px;max-width:280px;}
     .settings-card{background:var(--card);border-radius:var(--radius);padding:16px;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:16px;}
@@ -300,19 +300,20 @@
   <div style="flex-shrink:0;">
     <button class="back-btn" onclick="showScreen('home-screen')">→</button>
   </div>
-  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:8px;margin-bottom:28px;">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:16px;margin-bottom:32px;">
     <div id="kw-menu-logo">📍</div>
     <div style="font-family:'Lalezar',sans-serif;font-size:36px;color:var(--blue);line-height:1.1;">دلني</div>
     <div style="font-size:15px;font-weight:700;color:var(--muted);letter-spacing:1px;">بالكويت</div>
+    <div style="font-size:13px;font-weight:600;color:var(--muted);opacity:.7;">ورنا شطارتك</div>
   </div>
   <div style="display:flex;flex-direction:column;gap:12px;">
-    <button class="kw-card" style="border-color:rgba(88,166,255,.3);" onclick="showScreen('sp-mode-screen')">
-      <div class="kc-icon" style="background:rgba(88,166,255,.15);color:var(--blue);">🗺️</div>
+    <button class="kw-card" onclick="showScreen('sp-mode-screen')">
+      <div class="kc-icon">🗺️</div>
       <div style="flex:1;"><div class="kc-title">لعب فردي</div><div class="kc-desc">اختبر معرفتك بمناطق الكويت</div></div>
       <div class="kc-arrow">‹</div>
     </button>
-    <button class="kw-card" style="border-color:rgba(63,185,80,.3);" onclick="showScreen('mp-menu-screen')">
-      <div class="kc-icon" style="background:rgba(63,185,80,.15);color:var(--green);">👥</div>
+    <button class="kw-card" onclick="showScreen('mp-menu-screen')">
+      <div class="kc-icon">👥</div>
       <div style="flex:1;"><div class="kc-title">لعب جماعي</div><div class="kc-desc">العب مع الأصدقاء في نفس الوقت</div></div>
       <div class="kc-arrow">‹</div>
     </button>
