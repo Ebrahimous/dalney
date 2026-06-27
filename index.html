@@ -307,7 +307,7 @@
     <div style="font-size:13px;font-weight:600;color:var(--muted);opacity:.7;">ورنا شطارتك</div>
   </div>
   <div style="display:flex;flex-direction:column;gap:12px;">
-    <button class="kw-card" onclick="showScreen('sp-mode-screen')">
+    <button class="kw-card" onclick="showSoloSetup()">
       <div class="kc-icon">🗺️</div>
       <div style="flex:1;"><div class="kc-title">لعب فردي</div><div class="kc-desc">اختبر معرفتك بمناطق الكويت</div></div>
       <div class="kc-arrow">‹</div>
@@ -333,47 +333,44 @@
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div><p style="padding-top:4px;">يمكنك اختيار عدد جولات اللعبة (5، 10، أو 20). يُحسب "أفضل معدل" كمتوسط نقاطك لكل جولة (من 100)، فهو قابل للمقارنة بغض النظر عن عدد الجولات.</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">📷</div><p style="padding-top:4px;">في <b>صور الأماكن</b>، تُعرض لك صورة فقط دون اسم الموقع — حدد مكانها على الخريطة بالاعتماد على الصورة وحدها.</p></div>
   </div>
-  <button class="btn btn-primary" style="margin-top:24px;" onclick="showScreen('sp-mode-screen')">ابدأ الآن</button>
+  <button class="btn btn-primary" style="margin-top:24px;" onclick="showSoloSetup()">ابدأ الآن</button>
 </div>
 
-<!-- SINGLE PLAYER MODE SELECT -->
-<!-- SOLO: scoring picker -->
-<div id="sp-mode-screen" class="screen" style="padding:20px;gap:16px;">
+<!-- SOLO SETUP (merged: scoring + content + rounds) -->
+<div id="sp-setup-screen" class="screen" style="padding:20px;gap:14px;">
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
     <button class="back-btn" onclick="showScreen('kw-menu-screen')">→</button>
     <h2 style="font-size:18px;">لعب فردي</h2>
   </div>
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;">
-    <button class="mode-card" onclick="openScoringContent('normal')">
-      <div class="mode-icon" style="background:rgba(255,255,255,.2);">🗺️</div>
-      <div class="mode-text"><div class="mode-title">عادي</div></div>
-      <div class="mode-arrow">‹</div>
-    </button>
-    <button class="mode-card" onclick="openScoringContent('competitive')">
-      <div class="mode-icon" style="background:rgba(255,255,255,.2);">🥇</div>
-      <div class="mode-text"><div class="mode-title">تنافسي</div></div>
-      <div class="mode-arrow">‹</div>
-    </button>
-  </div>
-</div>
-
-<!-- SOLO: content picker (populated dynamically) -->
-<div id="sp-content-screen" class="screen" style="padding:20px;gap:14px;">
-  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-    <button class="back-btn" onclick="showScreen('sp-mode-screen')">→</button>
-    <h2 id="sp-content-title" style="font-size:18px;"></h2>
-  </div>
-  <div class="stat-card" id="sp-hs-card" style="max-width:160px;margin:0 auto;flex-shrink:0;">
+  <div class="stat-card" style="max-width:160px;margin:0 auto;flex-shrink:0;">
     <div class="num" id="stat-highscore">0/100</div><div class="lbl">أفضل معدل</div>
   </div>
-  <div class="settings-card" style="flex-shrink:0;">
-    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات</label>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
-      <button class="time-opt active" id="rc-10" onclick="setRoundCount(this,10)">10</button>
-      <button class="time-opt"        id="rc-20" onclick="setRoundCount(this,20)">20</button>
+  <div class="settings-card" style="flex-shrink:0;gap:18px;">
+    <div>
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">نوع اللعب</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="time-opt active" id="sm-normal"      onclick="spSetScoring(this,'normal')">🗺️ عادي</button>
+        <button class="time-opt"        id="sm-competitive" onclick="spSetScoring(this,'competitive')">🥇 تنافسي</button>
+      </div>
+    </div>
+    <div>
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">نوع المحتوى</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <button class="time-opt active" id="ct-names"  onclick="spSetContent(this,'names')">🗺️ أسماء</button>
+        <button class="time-opt"        id="ct-photos" onclick="spSetContent(this,'photos')">📷 صور</button>
+        <button class="time-opt"        id="ct-mix"    onclick="spSetContent(this,'mix')">🔀 مزيج</button>
+      </div>
+    </div>
+    <div>
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="time-opt active" id="rc-10" onclick="setRoundCount(this,10)">10</button>
+        <button class="time-opt"        id="rc-20" onclick="setRoundCount(this,20)">20</button>
+      </div>
     </div>
   </div>
-  <div id="sp-content-cards" style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;"></div>
+  <div style="flex:1;"></div>
+  <button class="btn btn-primary" style="flex-shrink:0;" onclick="startSoloGame()">ابدأ اللعبة 🗺️</button>
 </div>
 
 <!-- GAME SCREEN -->
@@ -454,7 +451,7 @@
         onclick="submitToLeaderboard()">🏆 أضف</button>
     </div>
   </div>
-  <button class="btn btn-primary" style="flex-shrink:0;" onclick="startGame(scoringMode,contentMode)">🔄 العب مرة أخرى</button>
+  <button class="btn btn-primary" style="flex-shrink:0;" onclick="startSoloGame()">🔄 العب مرة أخرى</button>
   <button class="btn btn-secondary" style="flex-shrink:0;" onclick="exitGame(true)">🏠 الرئيسية</button>
 </div>
 
@@ -1246,7 +1243,7 @@ window.addEventListener('popstate', () => {
     }
   }
 });
-function updateHomeStats() { /* highscore now shown per mode in sp-content-screen */ }
+function updateHomeStats() { /* highscore shown on sp-setup-screen */ }
 
 // Kuwait menu logo — cycles emoji like the globe in world.html
 (function() {
@@ -1521,30 +1518,54 @@ function polygonCentroid(poly) {
   return [lat/poly.length, lng/poly.length];
 }
 
-// ── Game ──────────────────────────────────────────────────────────────────────
-function openScoringContent(scoring) {
-  document.getElementById('sp-content-title').textContent = scoring === 'competitive' ? 'تنافسي 🥇' : 'عادي';
-  // Highscore for this mode
-  document.getElementById('stat-highscore').textContent = getStats(scoring).highscore + '/100';
-  // Reset round count buttons to reflect current selectedRounds
-  [10,20].forEach(n => {
-    const btn = document.getElementById('rc-' + n);
-    if (btn) btn.classList.toggle('active', n === selectedRounds);
+// ── Solo setup ────────────────────────────────────────────────────────────────
+function showSoloSetup() {
+  // Restore last-used settings from localStorage
+  const savedScoring  = localStorage.getItem('sp_scoring')  || 'normal';
+  const savedContent  = localStorage.getItem('sp_content')  || 'names';
+  const savedRounds   = parseInt(localStorage.getItem('sp_rounds') || '10', 10);
+  // Apply scoring toggle
+  ['normal','competitive'].forEach(s => {
+    document.getElementById('sm-' + s)?.classList.toggle('active', s === savedScoring);
   });
-  // Content cards (uniform blue styling regardless of scoring mode)
-  const modes = [
-    { icon:'🗺️', title:'أسماء الأماكن', content:'names' },
-    { icon:'📷', title:'صور الأماكن',   content:'photos' },
-    { icon:'🔀', title:'مزيج',           content:'mix' },
-  ];
-  document.getElementById('sp-content-cards').innerHTML = modes.map(m => `
-    <button class="mode-card" onclick="startGame('${scoring}','${m.content}')">
-      <div class="mode-icon" style="background:rgba(255,255,255,.2);">${m.icon}</div>
-      <div class="mode-text"><div class="mode-title">${m.title}</div></div>
-      <div class="mode-arrow">‹</div>
-    </button>`).join('');
-  showScreen('sp-content-screen');
+  scoringMode = savedScoring;
+  // Apply content toggle
+  ['names','photos','mix'].forEach(c => {
+    document.getElementById('ct-' + c)?.classList.toggle('active', c === savedContent);
+  });
+  contentMode = savedContent;
+  // Apply rounds
+  selectedRounds = savedRounds;
+  [10,20].forEach(n => {
+    document.getElementById('rc-' + n)?.classList.toggle('active', n === savedRounds);
+  });
+  // Update highscore display
+  document.getElementById('stat-highscore').textContent = getStats(savedScoring).highscore + '/100';
+  showScreen('sp-setup-screen');
 }
+
+function spSetScoring(el, scoring) {
+  scoringMode = scoring;
+  el.parentElement.querySelectorAll('.time-opt').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('stat-highscore').textContent = getStats(scoring).highscore + '/100';
+}
+
+function spSetContent(el, content) {
+  contentMode = content;
+  el.parentElement.querySelectorAll('.time-opt').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function startSoloGame() {
+  // Persist settings for next session
+  localStorage.setItem('sp_scoring', scoringMode);
+  localStorage.setItem('sp_content', contentMode);
+  localStorage.setItem('sp_rounds',  selectedRounds);
+  startGame(scoringMode, contentMode);
+}
+
+// ── Game ──────────────────────────────────────────────────────────────────────
 
 function startGame(scoring, content) {
   scoringMode = scoring || 'normal';
