@@ -1021,7 +1021,7 @@ let wmpRoomId=null, wmpPlayerId=null, wmpIsHost=false, wmpRoom=null;
 let wmpListener=null, wmpBrowseListener=null;
 let wmpGuess=null, wmpAnswered=false, wmpCurrentRound=0, wmpLastStatus=null;
 let wmpGameMap=null, wmpGameMarker=null, wmpGameHighlight=null, wmpResultMap=null;
-let wmpTimerIv=null, wmpRoomPublic=true;
+let wmpTimerIv=null, wmpRoomPublic=true, wmpAdvancing=false;
 let wmpSelectedDiff='medium', wmpSelectedRounds=10, wmpTimeLimit=30;
 
 function wmpGenId() { return Math.random().toString(36).slice(2,10); }
@@ -1240,31 +1240,38 @@ async function wmpJoin() {
   if (code.length<1) { alert('أدخل رمز الغرفة'); return; }
   const nameRaw=(document.getElementById('wmp-join-name')||{}).value||'';
   const name=nameRaw.trim();
+  const roomRef=db.collection('rooms').doc(code);
+
+  // Generate ID once per session — prevents duplicate entries on double-tap
+  if (!wmpPlayerId) wmpPlayerId=wmpGenId();
 
   const doJoin=async(finalName)=>{
     try {
-      const snap=await db.collection('rooms').doc(code).get();
-      if (!snap.exists) { alert('لم يتم العثور على الغرفة'); return; }
-      const r=snap.data();
-      if (r.status!=='waiting') { alert('اللعبة بدأت بالفعل'); return; }
-      if (r.game!=='world') { alert('هذه الغرفة ليست للعبة دول العالم'); return; }
-      wmpPlayerId=wmpGenId(); wmpRoomId=code; wmpIsHost=false;
-      const players=r.players||[];
-      const usedColors=new Set(players.map(p=>p.color));
-      const color=WMP_COLORS.find(c=>!usedColors.has(c))||WMP_COLORS[0];
-      const updated=[...players,{id:wmpPlayerId,name:finalName,color,score:0}];
-      await db.collection('rooms').doc(code).update({players:updated}).catch(console.error);
+      // Atomic transaction: prevents race condition when two players join simultaneously
+      await db.runTransaction(async t=>{
+        const snap=await t.get(roomRef);
+        if (!snap.exists) throw new Error('لم يتم العثور على الغرفة');
+        const r=snap.data();
+        if (r.status!=='waiting') throw new Error('اللعبة بدأت بالفعل');
+        if (r.game!=='world') throw new Error('هذه الغرفة ليست للعبة دول العالم');
+        const players=r.players||[];
+        if (players.find(p=>p.id===wmpPlayerId)) return; // already in room, skip
+        const usedColors=new Set(players.map(p=>p.color));
+        const color=WMP_COLORS.find(c=>!usedColors.has(c))||WMP_COLORS[0];
+        t.update(roomRef,{players:[...players,{id:wmpPlayerId,name:finalName,color,score:0}]});
+      });
+      wmpRoomId=code; wmpIsHost=false;
       showScreen('wmp-wait-screen');
-      wmpListener=db.collection('rooms').doc(code).onSnapshot(snap2=>{
+      wmpListener=roomRef.onSnapshot(snap2=>{
         if (!snap2.exists) { wmpLeave(); return; }
         wmpRoom=snap2.data(); wmpSync();
       });
     } catch(e) { alert('فشل الانضمام: '+e.message); }
   };
 
-  if(!name){
+  if (!name) {
     try {
-      const snap=await db.collection('rooms').doc(code).get();
+      const snap=await roomRef.get();
       if (!snap.exists) { alert('لم يتم العثور على الغرفة'); return; }
       const defaultName=`لاعب ${(snap.data().players||[]).length+1}`;
       wmpConfirm(`ستدخل اللعبة باسم "${defaultName}"، هل أنت متأكد؟`,'نعم، ادخل بهذا الاسم','لا، أريد تغيير الاسم',()=>doJoin(defaultName));
@@ -1302,12 +1309,22 @@ function wmpSync() {
   }
   if (status==='playing') {
     if (round!==wmpCurrentRound) {
-      wmpCurrentRound=round; wmpAnswered=false; wmpGuess=null;
+      wmpCurrentRound=round; wmpAnswered=false; wmpGuess=null; wmpAdvancing=false;
       playWorldSound('round');
       showScreen('wmp-game-screen');
       wmpInitGameRound();
     }
     wmpUpdateAnsweredStatus();
+    // Host: end round as soon as every player has submitted an answer
+    if (wmpIsHost && !wmpAdvancing) {
+      const numPlayers=(wmpRoom.players||[]).length;
+      const numAnswers=Object.keys(wmpRoom.answers||{}).length;
+      if (numPlayers>0 && numAnswers>=numPlayers) {
+        wmpAdvancing=true;
+        clearInterval(wmpTimerIv);
+        setTimeout(()=>wmpHostShowResults(),800);
+      }
+    }
     return;
   }
   if (status==='results') {
@@ -1477,15 +1494,15 @@ function wmpShowRoundResult() {
     }catch(e){console.warn(e);}
   },300);
 
-  // Sort players by total score
-  const sorted=[...(players||[])].sort((a,b)=>(b.score||0)-(a.score||0));
+  // Sort players by THIS ROUND's score (descending)
   const roundAns=answers||{};
+  const sorted=[...(players||[])].sort((a,b)=>(roundAns[b.id]?.score||0)-(roundAns[a.id]?.score||0));
   document.getElementById('wmp-round-scores').innerHTML=sorted.map((p,i)=>{
     const ans=roundAns[p.id]||{};
     const rs=ans.score||0;
     const spd=ans.speedBonus||0;
     const scoreStr=spd>0
-      ?`<span style="color:var(--green);font-weight:700;">+${rs-spd}</span><span style="color:var(--gold);font-size:12px;margin-right:3px;"> ⚡+${spd}</span>`
+      ?`<span style="color:var(--green);font-weight:700;">+${rs-spd}</span><span style="color:var(--gold);font-size:12px;margin-right:3px;"> ⏱+${spd}</span>`
       :`<span style="color:var(--green);font-weight:700;">+${rs}</span>`;
     return `
     <div class="wmp-score-row">
@@ -1493,7 +1510,6 @@ function wmpShowRoundResult() {
       <div class="wmp-color-dot" style="background:${p.color}"></div>
       <div style="flex:1;font-weight:700;font-size:14px;">${wmpEsc(p.name)}</div>
       <div style="display:flex;align-items:center;">${scoreStr}</div>
-      <div style="color:var(--gold);font-weight:800;font-size:18px;min-width:36px;text-align:end;">${p.score||0}</div>
     </div>`;
   }).join('');
 
@@ -1541,10 +1557,15 @@ function wmpLeave() {
   if (wmpListener){wmpListener();wmpListener=null;}
   wmpStopBrowsing();
   clearInterval(wmpTimerIv);
-  // Remove self from players list
-  if (wmpRoomId && wmpPlayerId && !wmpIsHost) {
-    const players=(wmpRoom?.players||[]).filter(p=>p.id!==wmpPlayerId);
-    wmpInitDb().collection('rooms').doc(wmpRoomId).update({players}).catch(()=>{});
+  if (wmpRoomId) {
+    if (wmpIsHost) {
+      // Host leaving closes the room for everyone
+      wmpInitDb().collection('rooms').doc(wmpRoomId).delete().catch(()=>{});
+    } else {
+      // Guest leaving: remove self from players list
+      const players=(wmpRoom?.players||[]).filter(p=>p.id!==wmpPlayerId);
+      wmpInitDb().collection('rooms').doc(wmpRoomId).update({players}).catch(()=>{});
+    }
   }
   wmpReset();
   showScreen('home-screen');
@@ -1554,7 +1575,7 @@ function wmpReset() {
   if(wmpGameMap){wmpGameMap.remove();wmpGameMap=null;}
   if(wmpResultMap){wmpResultMap.remove();wmpResultMap=null;}
   wmpRoomId=null;wmpPlayerId=null;wmpIsHost=false;wmpRoom=null;
-  wmpGuess=null;wmpAnswered=false;wmpCurrentRound=0;wmpLastStatus=null;
+  wmpGuess=null;wmpAnswered=false;wmpCurrentRound=0;wmpLastStatus=null;wmpAdvancing=false;
   clearInterval(wmpTimerIv);
 }
 
