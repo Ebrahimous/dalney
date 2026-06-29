@@ -324,8 +324,7 @@
       <button class="btn btn-secondary" onclick="showScreen('how-screen')" style="font-size:12px;padding:8px;">❓ شرح طريقة اللعب</button>
     </div>
   </div>
-  <div style="text-align:center;padding:8px 0 4px;">
-    <div id="home-loc-count" style="font-size:11px;color:var(--muted);opacity:.55;font-weight:600;"></div>
+  <div style="text-align:center;padding:12px 0;">
     <span id="admin-tap-zone" style="color:var(--surface);font-size:11px;cursor:default;user-select:none;" onclick="adminTap()">v1.0</span>
   </div>
 </div>
@@ -1278,9 +1277,6 @@ function updateHomeStats() {
   const val = document.getElementById('home-best-val');
   if (el && val && best > 0) { val.textContent = best; el.style.display = ''; }
   else if (el) el.style.display = 'none';
-  // Live location count
-  const countEl = document.getElementById('home-loc-count');
-  if (countEl && locations.length) countEl.textContent = locations.length + ' موقع مخبأ في الكويت 📍';
 }
 
 // Home screen — location teaser
