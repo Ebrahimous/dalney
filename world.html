@@ -191,12 +191,9 @@
   </div>
   <div id="progress-wrap"><div id="progress-bar"></div></div>
   <div id="round-tracker" style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center;flex-shrink:0;min-height:14px;"></div>
-  <div class="country-card" style="position:relative;">
+  <div class="country-card">
     <img id="country-flag-img" src="" alt="" style="height:52px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.4);object-fit:cover;">
     <div class="country-name" id="country-name">—</div>
-    <div id="capital-hint" style="display:none;font-size:13px;color:var(--muted);margin-top:6px;">🏙️ العاصمة: <span id="capital-name"></span></div>
-    <button id="hint-btn" onclick="useCapitalHint()" title="تلميح: العاصمة (−30 نقطة من الحد الأقصى)"
-      style="position:absolute;top:8px;left:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:4px 9px;font-size:13px;cursor:pointer;color:var(--muted);">💡</button>
   </div>
   <div id="game-map"></div>
   <button class="btn btn-primary" id="submit-btn" disabled onclick="submitGuess()">تأكيد ✓</button>
@@ -488,38 +485,6 @@ const TIER_MEDIUM = new Set([
 // ═══════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════
-// Capital cities keyed by ISO2
-const CAPITALS = {
-  AF:'كابول',AG:'سانت جونز',AL:'تيرانا',AM:'يريفان',AO:'لواندا',AR:'بوينس آيرس',AT:'فيينا',AU:'كانبيرا',AZ:'باكو',
-  BA:'سراييفو',BB:'بريدجتاون',BD:'دكا',BE:'بروكسل',BF:'واغادوغو',BG:'صوفيا',BH:'المنامة',BI:'بوجومبورا',
-  BJ:'بورتو نوفو',BN:'بندر سيري بيغاوان',BO:'سوكري',BR:'برازيليا',BS:'ناساو',BT:'تيمفو',BW:'خابورون',BY:'مينسك',BZ:'بلموبان',
-  CA:'أوتاوا',CD:'كينشاسا',CF:'بانغي',CG:'برازافيل',CH:'برن',CI:'أبيدجان',CL:'سانتياغو',CM:'ياوندي',CN:'بكين',CO:'بوغوتا',
-  CR:'سان خوسيه',CU:'هافانا',CV:'براية',CY:'نيقوسيا',CZ:'براغ',
-  DE:'برلين',DJ:'جيبوتي',DK:'كوبنهاغن',DM:'روزو',DO:'سانتو دومينغو',DZ:'الجزائر',
-  EC:'كيتو',EE:'تالين',EG:'القاهرة',ER:'أسمرة',ES:'مدريد',ET:'أديس أبابا',
-  FI:'هلسنكي',FJ:'سوفا',FM:'باليكير',FR:'باريس',
-  GA:'ليبرفيل',GB:'لندن',GD:'سانت جورج',GE:'تبليسي',GH:'أكرا',GM:'بانجول',GN:'كوناكري',GQ:'مالابو',GR:'أثينا',GT:'غواتيمالا سيتي',
-  GW:'بيساو',GY:'جورج تاون',
-  HN:'تيغوسيغالبا',HR:'زغرب',HT:'بور أو برنس',HU:'بودابست',
-  ID:'جاكرتا',IE:'دبلن',IL:'القدس',IN:'نيودلهي',IQ:'بغداد',IR:'طهران',IS:'ريكيافيك',IT:'روما',
-  JM:'كينغستون',JO:'عمان',JP:'طوكيو',
-  KE:'نيروبي',KG:'بيشكيك',KH:'بنوم بنه',KI:'تاراوا',KM:'موروني',KN:'باستير',KP:'بيونغ يانغ',KR:'سيول',KW:'الكويت',KZ:'أستانا',
-  LA:'فيينتيان',LB:'بيروت',LC:'كاستريس',LI:'فادوز',LK:'سري جاياواردينيبورا كوتي',LR:'مونروفيا',LS:'ماسيرو',LT:'فيلنيوس',LU:'لوكسمبورغ',LV:'ريغا',LY:'طرابلس',
-  MA:'الرباط',MC:'موناكو',MD:'كيشيناو',ME:'بودغوريتسا',MG:'أنتاناناريفو',MH:'ماجورو',MK:'سكوبيه',ML:'باماكو',MM:'نيبيداو',MN:'أولان باتور',MR:'نواكشوط',MT:'فاليتا',MU:'بورت لويس',MV:'مالي',MW:'ليلونغوي',MX:'مكسيكو سيتي',MY:'كوالالمبور',MZ:'مابوتو',
-  NA:'ويندهوك',NE:'نيامي',NG:'أبوجا',NI:'ماناغوا',NL:'أمستردام',NO:'أوسلو',NP:'كاتماندو',NR:'يارين',NZ:'ويلينغتون',
-  OM:'مسقط',
-  PA:'بنما سيتي',PE:'ليما',PG:'بورت مورسبي',PH:'مانيلا',PK:'إسلام آباد',PL:'وارسو',PS:'رام الله',PT:'لشبونة',PW:'ملكيسيت',PY:'أسونسيون',
-  QA:'الدوحة',
-  RO:'بوخارست',RS:'بلغراد',RU:'موسكو',RW:'كيغالي',
-  SA:'الرياض',SB:'هونيارا',SC:'فيكتوريا',SD:'الخرطوم',SE:'ستوكهولم',SG:'سنغافورة',SI:'ليوبليانا',SK:'براتيسلافا',SL:'فريتاون',SM:'سان مارينو',SN:'داكار',SO:'مقديشو',SR:'باراماريبو',SS:'جوبا',ST:'ساو تومي',SV:'سان سلفادور',SY:'دمشق',SZ:'مباباني',
-  TD:'نجامينا',TG:'لومي',TH:'بانكوك',TJ:'دوشنبه',TL:'ديلي',TM:'عشق آباد',TN:'تونس',TO:'نوكو ألوفا',TR:'أنقرة',TT:'بورت أوف سبين',TV:'فونافوتي',TZ:'دودوما',
-  UA:'كييف',UG:'كمبالا',US:'واشنطن',UY:'مونتيفيديو',UZ:'طشقند',
-  VA:'الفاتيكان',VC:'كينغستاون',VE:'كاراكاس',VN:'هانوي',VU:'بورت فيلا',
-  WS:'أبيا',
-  XK:'بريشتينا',
-  YE:'صنعاء',
-  ZA:'بريتوريا',ZM:'لوساكا',ZW:'هراري'
-};
 
 let COUNTRIES = [];
 let selectedRounds = 10;
@@ -529,7 +494,6 @@ let currentRound = 0;
 let totalScore = 0;
 let guess = null;
 let guessedCountry = null;
-let hintUsed = false;
 let gameMap = null, resultMap = null;
 let gameTileLayer = null, satMode = false;
 let guessHighlight = null;
@@ -770,23 +734,9 @@ function startGame() {
 // Alias used by the "play again" button on the summary screen
 function restartGame() { startGame(); }
 
-function useCapitalHint() {
-  if (hintUsed) return;
-  hintUsed = true;
-  const c = gameRounds[currentRound];
-  const cap = CAPITALS[c.iso2] || '—';
-  document.getElementById('capital-name').textContent = cap;
-  document.getElementById('capital-hint').style.display = '';
-  const btn = document.getElementById('hint-btn');
-  if (btn) { btn.textContent = '💡✓'; btn.style.opacity = '.4'; btn.style.pointerEvents = 'none'; }
-}
-
 function loadRound() {
-  guess = null; guessedCountry = null; hintUsed = false;
+  guess = null; guessedCountry = null;
   document.getElementById('submit-btn').disabled = true;
-  document.getElementById('capital-hint').style.display = 'none';
-  const hintBtn = document.getElementById('hint-btn');
-  if (hintBtn) { hintBtn.textContent = '💡'; hintBtn.style.opacity = ''; hintBtn.style.pointerEvents = ''; }
   const c = gameRounds[currentRound];
   document.getElementById('round-badge').textContent = `جولة ${currentRound+1} / ${gameRounds.length}`;
   document.getElementById('country-flag-img').src = c.flagUrl;
@@ -863,9 +813,8 @@ function submitGuess() {
     dk = haversineKm(guessedCountry.lat, guessedCountry.lng, c.lat, c.lng);
     sc = scoreForDist(dk);
   }
-  if (hintUsed) sc = Math.min(sc, 70); // capital hint penalty
   totalScore += sc;
-  c._result = { score:sc, dist:dk, inBounds, guessedIso:guessedCountry.iso2, hintUsed };
+  c._result = { score:sc, dist:dk, inBounds, guessedIso:guessedCountry.iso2 };
 
   document.getElementById('next-btn').textContent = currentRound+1>=gameRounds.length ? 'النتائج ›' : 'التالي ›';
 
