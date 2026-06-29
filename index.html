@@ -101,11 +101,32 @@
 
     /* #1 — Home screen radial glow behind the logo */
     #home-screen{overflow:hidden;}
+    @keyframes glowPulse{
+      0%,100%{opacity:1;transform:translateX(-50%) scale(1);}
+      50%{opacity:.45;transform:translateX(-50%) scale(1.22);}
+    }
     #home-screen::before{
       content:'';position:absolute;top:-80px;left:50%;transform:translateX(-50%);
       width:420px;height:420px;
-      background:radial-gradient(circle,rgba(88,166,255,.13) 0%,transparent 70%);
+      background:radial-gradient(circle,rgba(88,166,255,.15) 0%,transparent 70%);
       pointer-events:none;z-index:0;
+      animation:glowPulse 3.2s ease-in-out infinite;
+    }
+
+    /* Home screen — staggered button entrance */
+    @keyframes btnSlideUp{
+      from{opacity:0;transform:translateY(16px);}
+      to{opacity:1;transform:translateY(0);}
+    }
+    #home-screen.active .btn:nth-child(1){animation:btnSlideUp .4s .26s cubic-bezier(.22,1,.36,1) both;}
+    #home-screen.active .btn:nth-child(2){animation:btnSlideUp .4s .34s cubic-bezier(.22,1,.36,1) both;}
+    #home-screen.active .btn:nth-child(3){animation:btnSlideUp .4s .42s cubic-bezier(.22,1,.36,1) both;}
+    #home-screen.active .btn:nth-child(4){animation:btnSlideUp .4s .50s cubic-bezier(.22,1,.36,1) both;}
+
+    /* Home screen — location teaser */
+    #home-teaser{
+      font-size:12px;font-weight:600;color:var(--muted);opacity:.7;
+      transition:opacity .35s ease;min-height:18px;text-align:center;
     }
 
     /* #2 — Mode card glow + press */
@@ -280,6 +301,7 @@
         </svg>
         <h1 style="font-family:'Lalezar',sans-serif;font-size:42px;color:var(--blue);line-height:1.1;letter-spacing:-1px;">دلني</h1>
         <p style="font-family:'Cairo',sans-serif;font-size:14px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-top:-4px;">ورنا شطارتك</p>
+        <p id="home-teaser"></p>
       </div>
       <img id="mascot-img" src="mascot-clear.png" alt="" style="position:absolute;top:0;left:0;width:66%;max-width:280px;object-fit:contain;z-index:1;pointer-events:none;">
     </div>
@@ -1046,7 +1068,6 @@ const DEFAULTS = [
   {id:'l2', name:'قصر السيف',               category:'معالم', hint:'القصر الأميري التاريخي على الكورنيش بعمارته الإسلامية',      photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Seif%20Palace%2C%20Kuwait%20City.jpg?width=900', lat:29.3725, lng:47.9778, polygon:null},
   {id:'l3', name:'مسجد الدولة الكبير',      category:'مساجد', hint:'أكبر مسجد في الكويت، يستوعب أكثر من عشرة آلاف مصلٍّ',       photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Kuwait%20City%20Grand%20Mosque%20Exterior%20South%20Facade%205.jpg?width=900', lat:29.3647, lng:48.0033, polygon:null},
   {id:'l4', name:'سوق المباركية',            category:'معالم', hint:'أقدم وأشهر سوق شعبي في الكويت',                             photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Souk%20Al-Mubarakiya%2C%20ciudad%20de%20Kuwait%2C%20Kuwait%2C%202024-08-12%2C%20DD%2047.jpg?width=900', lat:29.3710, lng:47.9790, polygon:null},
-  {id:'l5', name:'مول الكويت',              category:'مولات', hint:'من أكبر مراكز التسوق في السالمية',                            photo:'', lat:29.3394, lng:48.0798, polygon:null},
   {id:'l6', name:'الأفنيوز',                category:'مولات', hint:'أكبر مول في الكويت بالقرب من ميدان الهوية الوطنية',          photo:'https://commons.wikimedia.org/wiki/Special:FilePath/The%20Avenues%20Kuwait.jpg?width=900', lat:29.2821, lng:48.0189, polygon:null},
   {id:'l7', name:'جزيرة فيلكا',             category:'معالم', hint:'جزيرة تاريخية في الخليج تحوي آثاراً يونانية وبابلية',        photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Failaka%20Island%202.JPG', lat:29.4390, lng:48.3440, polygon:null},
   {id:'l8', name:'المتحف الوطني الكويتي',   category:'معالم', hint:'يحتوي مقتنيات تاريخية وتراثية من تاريخ الكويت العريق',       photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Kwnmuseum.jpg?width=900', lat:29.3719, lng:47.9826, polygon:null},
@@ -1065,7 +1086,6 @@ const DEFAULTS = [
   {id:'l31',name:'نادي العربي',              category:'معالم', hint:'مقر النادي العربي الرياضي في منطقة المنصورية',               photo:'', lat:29.3571, lng:47.9997, polygon:null},
   {id:'l32',name:'نادي اليرموك',             category:'معالم', hint:'ملعب نادي اليرموك في منطقة مشرف',                            photo:'', lat:29.2914, lng:48.0690, polygon:null},
   {id:'l33',name:'جمعية الشرطة',             category:'معالم', hint:'الجمعية التعاونية للشرطة في منطقة الزهراء',                   photo:'', lat:29.2790, lng:47.9900, polygon:null},
-  {id:'l34',name:'نادي الضباط',              category:'معالم', hint:'نادي ضباط الجيش الكويتي على شارع الخليج العربي',             photo:'', lat:29.3771, lng:48.0046, polygon:null},
   {id:'l35',name:'مركز دسمان للسكري',        category:'معالم', hint:'معهد دسمان لأبحاث وعلاج السكري على شارع جاسم محمد الباهر',  photo:'', lat:29.3898, lng:47.9935, polygon:null},
   {id:'l36',name:'قصر دسمان',               category:'معالم', hint:'القصر الأميري الرسمي لأسرة الصباح الحاكمة في منطقة دسمان',   photo:'', lat:29.3858, lng:47.9991, polygon:null},
   {id:'l37',name:'استاد جابر',              category:'معالم', hint:'الملعب الوطني الدولي الكبير في منطقة العارضية',              photo:'', lat:29.2715, lng:47.9188, polygon:null},
@@ -1076,7 +1096,6 @@ const DEFAULTS = [
   {id:'l42',name:'خيران مول',               category:'مولات', hint:'مول الخيران في مدينة الخيران اللؤلؤة بمحافظة الأحمدي',     photo:'', lat:28.6733, lng:48.3482, polygon:null},
   {id:'l43',name:'منتزه الخيران',            category:'شواطئ', hint:'منتزع الخيران السياحي على ساحل الخليج جنوب الكويت',        photo:'', lat:28.6691, lng:48.3689, polygon:null},
   {id:'l44',name:'دوار الشيراتون',           category:'معالم', hint:'دوار الجهراء الشهير عند بداية شارع فهد السالم وبوابة الجهراء التاريخية', photo:'', lat:29.3690, lng:47.9742, polygon:null},
-  {id:'l45',name:'مصنع كي دي دي',           category:'معالم', hint:'مصنع شركة الكويتية الدنماركية للألبان في الشويخ الصناعية',   photo:'', lat:29.3545, lng:47.9375, polygon:null},
   {id:'l46',name:'برج التحرير',             category:'معالم', hint:'برج اتصالات شاهق في منطقة القبلة، ثاني أطول برج في الكويت',  photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Liberationtower%20kuwait.jpg?width=900', lat:29.3676, lng:47.9716, polygon:null},
   {id:'l47',name:'الحمراء تاور',            category:'معالم', hint:'أطول برج في الكويت، يضم مكاتب ومركزاً تجارياً في منطقة شرق', photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Al%20Hamra%20Tower%20Kuwait%20City%20Kuwait.jpg?width=900', lat:29.3793, lng:47.9931, polygon:null},
   {id:'l48',name:'قصر بيان',                category:'معالم', hint:'مقر القمم والمؤتمرات الرسمية في منطقة بيان',                  photo:'', lat:29.3070, lng:48.0337, polygon:null},
@@ -1084,23 +1103,18 @@ const DEFAULTS = [
   {id:'l50',name:'بيت السدو',               category:'معالم', hint:'بيت تراثي ومتحف للنسيج البدوي بالقرب من المتحف الوطني',       photo:'', lat:29.3747, lng:47.9672, polygon:null},
   {id:'l51',name:'قلعة الجهراء الحمراء',    category:'معالم', hint:'قلعة تاريخية من الطين الأحمر، موقع معركة الجهراء عام 1920',  photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Al%20Jahra%20al-Qasr%20al-Ahmar%20Exterior%201.jpg?width=900', lat:29.3366, lng:47.6755, polygon:null},
   {id:'l52',name:'ميدان الصفاة',            category:'معالم', hint:'ساحة تجارية تاريخية وسط العاصمة قرب شارع فهد السالم',         photo:'', lat:29.3716, lng:47.9736, polygon:null},
-  {id:'l53',name:'متحف طارق رجب',           category:'معالم', hint:'متحف الفن الإسلامي والخط العربي في منطقة الجابرية',           photo:'', lat:29.3169, lng:48.0181, polygon:null},
   {id:'l54',name:'بيت ديكسون',              category:'معالم', hint:'بيت تراثي تاريخي على الكورنيش قرب سوق شرق',                   photo:'', lat:29.3838, lng:47.9790, polygon:null},
-  {id:'l55',name:'مدينة الترفيه',           category:'معالم', hint:'مدينة ملاهي ضخمة قيد التطوير في منطقة الدوحة',                photo:'', lat:29.3650, lng:47.7330, polygon:null},
   {id:'l56',name:'سوق شرق',                 category:'مولات', hint:'مجمع تجاري وممشى بحري في منطقة شرق على الكورنيش',             photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Kuwait%20City%20Souq%20Sharq%2007.jpg?width=900', lat:29.3891, lng:47.9813, polygon:null},
   {id:'l57',name:'مارينا مول',              category:'مولات', hint:'مول تجاري على شارع الخليج العربي في السالمية',                photo:'', lat:29.3395, lng:48.0658, polygon:null},
   {id:'l58',name:'الكوت مول',               category:'مولات', hint:'مول على الواجهة البحرية في الفحيحيل',                         photo:'', lat:29.0814, lng:48.1426, polygon:null},
   {id:'l59',name:'الجزيرة الخضراء',          category:'حدائق', hint:'جزيرة اصطناعية ومنتزه على الكورنيش قرب أبراج الكويت',         photo:'', lat:29.3815, lng:47.9975, polygon:null},
   {id:'l60',name:'أكوا بارك الكويت',         category:'شواطئ', hint:'مدينة مائية شهيرة بجانب أبراج الكويت على الكورنيش',           photo:'', lat:29.3916, lng:48.0036, polygon:null},
   {id:'l61',name:'مجلس الأمة',              category:'حكومي', hint:'مبنى البرلمان الكويتي على شارع الخليج العربي، من تصميم مهندس دار أوبرا سيدني', photo:'https://commons.wikimedia.org/wiki/Special:FilePath/%D8%B5%D9%88%D8%B1%D8%A9%20%D8%AC%D9%88%D9%8A%D8%A9%20%D9%84%D9%85%D8%A8%D9%86%D9%89%20%D9%85%D8%AC%D9%84%D8%B3%20%D8%A7%D9%84%D8%A7%D9%85%D8%A9.jpg?width=900', lat:29.3703, lng:47.9639, polygon:null},
-  {id:'l62',name:'جسر الشيخ جابر',          category:'معالم', hint:'أطول جسر بحري في المنطقة يربط مدينة الكويت بالصبية عبر الجون',  photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Sheikh%20Jaber%20Causeway.jpg?width=900', lat:29.4140, lng:47.9170, polygon:null},
   {id:'l63',name:'مسجد فاطمة',              category:'مساجد', hint:'مسجد بعمارة حديثة مميزة على شكل صدفة في منطقة عبدالله السالم',  photo:'', lat:29.3532, lng:47.9844, polygon:null},
   {id:'l64',name:'جامعة الخليج GUST',       category:'معالم', hint:'جامعة خاصة معروفة في منطقة مشرف',                              photo:'', lat:29.2755, lng:48.0538, polygon:null},
   {id:'l65',name:'الجامعة الأمريكية AUK',   category:'معالم', hint:'جامعة خاصة على الطراز الأمريكي في السالمية',                    photo:'', lat:29.3440, lng:48.0834, polygon:null},
   {id:'l66',name:'جزيرة كبر',               category:'شواطئ', hint:'جزيرة صغيرة جنوب الكويت، وجهة شهيرة لرحلات القوارب والغوص',     photo:'', lat:29.0720, lng:48.4926, polygon:null},
-  {id:'l67',name:'جزيرة بوبيان',            category:'معالم', hint:'أكبر جزر الكويت في أقصى الشمال الشرقي قرب الصبية',              photo:'', lat:29.7500, lng:48.2000, polygon:null},
   {id:'l68',name:'مكتبة الكويت الوطنية',    category:'حكومي', hint:'المكتبة الوطنية الرئيسية على شارع الخليج العربي قرب المتحف الوطني', photo:'', lat:29.3744, lng:47.9680, polygon:null},
-  {id:'l69',name:'حلبة الكويت لرياضة المحركات', category:'معالم', hint:'حلبة سباقات دولية جنوب البلاد قرب الوفرة',                  photo:'', lat:28.9213, lng:48.1396, polygon:null},
   {id:'l70',name:'بنك الكويت المركزي',      category:'حكومي', hint:'المقر الرئيسي لبنك الكويت المركزي بالقرب من بورصة الكويت في شرق', photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Central%20bank%20of%20Kuwait.jpg?width=900', lat:29.3808, lng:47.9774, polygon:null},
   {id:'l71',name:'سوق الجمعة',              category:'أخرى', hint:'سوق شعبي أسبوعي كبير لبيع كل شيء تقريباً في منطقة الري',          photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Friday%20market%20people%20up.jpg?width=900', lat:29.3132, lng:47.9544, polygon:null},
   {id:'l72',name:'جزيرة أم النمل',           category:'معالم', hint:'جزيرة صغيرة داخل خور الكويت قرب الساحل، تضم آثاراً قديمة ومنارة', photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Kuwait%20ESA21888966%20(Kuwait%20Bay)%20(cropped%20to%20Umm%20an%20Namil).jpg?width=600', lat:29.3817, lng:47.8669, polygon:null},
@@ -1195,6 +1209,7 @@ function showScreen(id, fromPop) {
   document.getElementById(id).classList.add('active');
   if (id === 'home-screen') {
     updateHomeStats();
+    startHomeTeaser();
     // Re-trigger mascot entrance animation
     const m = document.getElementById('mascot-img');
     if (m) { m.classList.add('re-enter'); void m.offsetWidth; m.classList.remove('re-enter'); m.classList.add('go'); setTimeout(()=>m.classList.remove('go'),700); }
@@ -1244,6 +1259,25 @@ window.addEventListener('popstate', () => {
   }
 });
 function updateHomeStats() { /* highscore shown on sp-setup-screen */ }
+
+// Home screen — location teaser
+let _teaserIv = null;
+function startHomeTeaser() {
+  const el = document.getElementById('home-teaser');
+  if (!el) return;
+  if (_teaserIv) clearInterval(_teaserIv);
+  const pool = locations.filter(l => l.name);
+  if (!pool.length) { el.style.display = 'none'; return; }
+  const pick = () => {
+    el.style.opacity = '0';
+    setTimeout(() => {
+      el.textContent = 'هل تعرف أين... ' + pool[Math.floor(Math.random()*pool.length)].name + '؟';
+      el.style.opacity = '0.7';
+    }, 350);
+  };
+  pick();
+  _teaserIv = setInterval(pick, 3500);
+}
 
 // Kuwait menu logo — cycles emoji like the globe in world.html
 (function() {
@@ -1788,6 +1822,7 @@ function submitGuess() {
   // Haptic feedback (uses existing vibrate() which respects vibrationOn setting)
   vibrate(sc>=80?[25,40,25]:sc>=40?[20]:[80]);
   setTimeout(()=>playScoreSound(sc), 150);
+  if (sc >= 90 || inArea) setTimeout(launchConfetti, 300);
   const distText = inArea
     ? `✅ داخل المنطقة! 100 نقطة`
     : `📍 المسافة: ${dk<1?(dk*1000).toFixed(0)+' م':(dk).toFixed(1)+' كم'} — +${sc} نقطة`;
