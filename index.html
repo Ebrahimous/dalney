@@ -123,6 +123,11 @@
     #home-screen.active .btn:nth-child(3){animation:btnSlideUp .4s .42s cubic-bezier(.22,1,.36,1) both;}
     #home-screen.active .btn:nth-child(4){animation:btnSlideUp .4s .50s cubic-bezier(.22,1,.36,1) both;}
 
+    /* Category filter chips */
+    .cat-chip{display:inline-flex;align-items:center;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:700;font-family:inherit;border:1.5px solid rgba(255,255,255,.15);background:var(--surface);color:var(--muted);cursor:pointer;transition:all .15s ease;white-space:nowrap;}
+    .cat-chip.active{background:rgba(88,166,255,.18);border-color:var(--blue);color:var(--blue);}
+    #cat-chips{display:flex;flex-wrap:wrap;gap:7px;}
+
     /* Home screen — location teaser */
     #home-teaser{
       font-size:12px;font-weight:600;color:var(--muted);opacity:.7;
@@ -390,6 +395,10 @@
         <button class="time-opt"        id="rc-20" onclick="setRoundCount(this,20)">20</button>
       </div>
     </div>
+    <div>
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">الفئات <span id="cat-all-label" style="font-weight:400;opacity:.7;">(الكل)</span></label>
+      <div id="cat-chips"></div>
+    </div>
   </div>
   <div style="flex:1;"></div>
   <button class="btn btn-primary" style="flex-shrink:0;" onclick="startSoloGame()">ابدأ اللعبة 🗺️</button>
@@ -473,6 +482,7 @@
         onclick="submitToLeaderboard()">🏆 أضف</button>
     </div>
   </div>
+  <button class="btn btn-secondary" style="flex-shrink:0;" onclick="shareResult()">📤 شارك نتيجتك</button>
   <button class="btn btn-primary" style="flex-shrink:0;" onclick="startSoloGame()">🔄 العب مرة أخرى</button>
   <button class="btn btn-secondary" style="flex-shrink:0;" onclick="exitGame(true)">🏠 الرئيسية</button>
 </div>
@@ -916,6 +926,7 @@ function setRoundCount(el, n) {
 const BUILD_VERSION = '2026-06-12.1';
 let scoringMode = 'normal';  // 'normal' | 'competitive'
 let contentMode = 'names';   // 'names' | 'photos' | 'mix'
+let selectedCategories = new Set(); // empty = all categories
 let gameMap = null, resultMap = null, summaryMap = null, adminMap = null, adminMarker = null;
 let gameTileLayer = null, satelliteMode = false;
 let soloTimerIv = null, soloRoundStart = null;
@@ -1271,7 +1282,7 @@ function startHomeTeaser() {
   const pick = () => {
     el.style.opacity = '0';
     setTimeout(() => {
-      el.textContent = 'هل تعرف أين... ' + pool[Math.floor(Math.random()*pool.length)].name + '؟';
+      el.textContent = 'تدري وين... ' + pool[Math.floor(Math.random()*pool.length)].name + '؟';
       el.style.opacity = '0.7';
     }, 350);
   };
@@ -1575,7 +1586,24 @@ function showSoloSetup() {
   });
   // Update highscore display
   document.getElementById('stat-highscore').textContent = getStats(savedScoring).highscore + '/100';
+  // Render category chips from live locations
+  const savedCats = JSON.parse(localStorage.getItem('sp_categories') || '[]');
+  selectedCategories = new Set(savedCats);
+  const cats = [...new Set(locations.map(l => l.category).filter(Boolean))].sort();
+  const chipsEl = document.getElementById('cat-chips');
+  if (chipsEl) {
+    chipsEl.innerHTML = cats.map(c =>
+      `<button class="cat-chip${selectedCategories.has(c)?' active':''}" onclick="spToggleCategory(this,'${c}')">${c}</button>`
+    ).join('');
+  }
+  document.getElementById('cat-all-label').style.display = selectedCategories.size ? 'none' : '';
   showScreen('sp-setup-screen');
+}
+
+function spToggleCategory(el, cat) {
+  if (selectedCategories.has(cat)) { selectedCategories.delete(cat); el.classList.remove('active'); }
+  else { selectedCategories.add(cat); el.classList.add('active'); }
+  document.getElementById('cat-all-label').style.display = selectedCategories.size ? 'none' : '';
 }
 
 function spSetScoring(el, scoring) {
@@ -1596,6 +1624,7 @@ function startSoloGame() {
   localStorage.setItem('sp_scoring', scoringMode);
   localStorage.setItem('sp_content', contentMode);
   localStorage.setItem('sp_rounds',  selectedRounds);
+  localStorage.setItem('sp_categories', JSON.stringify([...selectedCategories]));
   startGame(scoringMode, contentMode);
 }
 
@@ -1604,7 +1633,10 @@ function startSoloGame() {
 function startGame(scoring, content) {
   scoringMode = scoring || 'normal';
   contentMode = content || 'names';
-  let pool = locations;
+  let pool = selectedCategories.size
+    ? locations.filter(l => selectedCategories.has(l.category))
+    : locations;
+  if (pool.length === 0) pool = locations; // fallback if filter returns nothing
   if (contentMode === 'photos') {
     pool = locations.filter(l => getLocPhotos(l).length > 0);
     if (pool.length === 0) {
@@ -1986,6 +2018,21 @@ function initSummaryMap(markerRefs) {
   });
 
   if (allBounds.length) summaryMap.fitBounds(L.latLngBounds(allBounds).pad(0.15));
+}
+
+function shareResult() {
+  const avg = Math.round((totalScore / gameRounds.length) * 10) / 10;
+  const modeLabel = scoringMode === 'competitive' ? '🥇 تنافسي' : '🗺️ عادي';
+  const blocks = gameRounds.map(r => {
+    const sc = r._result?.score || 0;
+    return sc >= 90 ? '🟢' : sc >= 60 ? '🟡' : '🔴';
+  }).join('');
+  const text = `🗺️ دلني بالكويت\n${modeLabel} | ${gameRounds.length} جولات\n\n${blocks}\n\nالمعدل: ${avg}/100\ndalney.pages.dev`;
+  if (navigator.share) {
+    navigator.share({ text }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text).then(() => showToast('✅ تم نسخ النتيجة'));
+  }
 }
 
 function exitGame(toHome) {
