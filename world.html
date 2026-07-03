@@ -14,9 +14,9 @@
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{touch-action:pan-x pan-y;height:100%;overflow:hidden;}
     :root{
-      --bg:#0d1117;--surface:#161b22;--card:#21262d;
+      --bg:#090E1A;--surface:#111827;--card:#1A2235;
       --blue:#58a6ff;--green:#3fb950;--red:#f85149;--gold:#f39c12;
-      --text:#eaeaea;--muted:#8892b0;--radius:16px;
+      --text:#E8E6E3;--muted:#8892b0;--radius:16px;
     }
     body{font-family:'Cairo','Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100dvh;overflow:hidden;}
     .screen{display:none;flex-direction:column;height:100dvh;overflow-y:auto;padding:16px;}
@@ -84,6 +84,16 @@
 
     /* ── #2 Result tint ── */
     #result-screen{transition:background .3s ease;}
+
+    /* ── Stars ── */
+    #w-result-stars{text-align:center;font-size:26px;letter-spacing:3px;flex-shrink:0;min-height:34px;line-height:1;}
+    .star-pop{display:inline-block;animation:starPop .35s cubic-bezier(.34,1.56,.64,1) both;}
+    @keyframes starPop{0%{transform:scale(0) rotate(-15deg);opacity:0;}70%{transform:scale(1.3) rotate(5deg);opacity:1;}100%{transform:scale(1) rotate(0);opacity:1;}}
+
+    /* ── Result score display ── */
+    #w-result-score{text-align:center;font-size:72px;font-weight:900;line-height:1;letter-spacing:-2px;flex-shrink:0;}
+    @keyframes fadeSlideUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+    .dist-reveal{animation:fadeSlideUp .4s ease both;}
 
     /* ── #3 Tracker dots ── */
     .tracker-dot{width:16px;height:16px;border-radius:50%;display:inline-block;flex-shrink:0;transition:box-shadow .3s;}
@@ -206,12 +216,14 @@
 </div>
 
 <!-- ══════════════ RESULT ══════════════ -->
-<div id="result-screen" class="screen" style="padding:12px;gap:8px;">
-  <div class="game-header">
+<div id="result-screen" class="screen" style="padding:12px;gap:6px;">
+  <div class="game-header" style="flex-shrink:0;">
     <button class="back-btn" onclick="confirmExit()">→</button>
-    <span style="flex:1;"></span>
+    <div id="w-result-score" style="color:var(--green);">0</div>
+    <span style="width:36px;"></span>
   </div>
-  <div id="result-map"></div>
+  <div id="w-result-stars"></div>
+  <div id="result-map" style="flex:1;min-height:0;"></div>
   <div id="guess-label" style="text-align:center;font-size:14px;font-weight:700;flex-shrink:0;padding:4px 0;min-height:28px;"></div>
   <button class="btn btn-primary" id="next-btn" onclick="nextRound()">التالي ›</button>
 </div>
@@ -709,6 +721,7 @@ function haversineKm(lat1,lng1,lat2,lng2) {
 function scoreForDist(dk) {
   return Math.round(Math.max(0, 100 * Math.exp(-dk / SCORE_DECAY)));
 }
+function getStars(sc) { return sc >= 90 ? 3 : sc >= 70 ? 2 : sc >= 45 ? 1 : 0; }
 
 function osmLayer() {
   return L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{
@@ -873,9 +886,27 @@ function submitGuess() {
     sc = scoreForDist(dk);
   }
   totalScore += sc;
-  c._result = { score:sc, dist:dk, inBounds, guessedIso:guessedCountry.iso2 };
+  const stars = getStars(sc);
+  c._result = { score:sc, dist:dk, inBounds, guessedIso:guessedCountry.iso2, stars };
 
   document.getElementById('next-btn').textContent = currentRound+1>=gameRounds.length ? 'النتائج ›' : 'التالي ›';
+
+  // Score + stars reveal
+  const scoreColor = inBounds ? 'var(--green)' : sc >= 40 ? 'var(--gold)' : 'var(--red)';
+  const wScoreEl = document.getElementById('w-result-score');
+  if (wScoreEl) { wScoreEl.style.color = scoreColor; wScoreEl.textContent = sc; }
+  const wStarsEl = document.getElementById('w-result-stars');
+  if (wStarsEl) {
+    wStarsEl.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => {
+        const sp = document.createElement('span'); sp.className = 'star-pop';
+        sp.textContent = i < stars ? '⭐' : '✩';
+        sp.style.color = i < stars ? '#f39c12' : 'rgba(255,255,255,.2)';
+        wStarsEl.appendChild(sp);
+      }, 200 + i * 140);
+    }
+  }
 
   // Sound + confetti
   playWorldSound(inBounds ? 'correct' : 'wrong');
@@ -999,12 +1030,17 @@ function showSummary() {
     const row=document.createElement('div');
     row.className='round-row';
     row.style.borderInlineStartColor=scoreColor;
+    const starsStr = ['','⭐','⭐⭐','⭐⭐⭐'][res.stars || 0] || '';
     row.innerHTML=`
       <div style="display:flex;align-items:center;gap:10px;">
         <img src="${c.flagUrl}" style="height:18px;border-radius:3px;flex-shrink:0;">
         <span style="font-size:14px;font-weight:700;">${c.name}</span>
       </div>
-      <div style="font-size:20px;">${res.inBounds ? '✅' : '❌'}</div>`;
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <span style="font-size:11px;letter-spacing:1px;">${starsStr}</span>
+        <span style="font-weight:700;color:${scoreColor};">${res.score}</span>
+        <span style="font-size:18px;">${res.inBounds ? '✅' : '❌'}</span>
+      </div>`;
     rs.appendChild(row);
   });
 
@@ -1759,64 +1795,4 @@ function wmpShowFinalMap() {
       style:{color:r.inBounds?'#3fb950':'#f85149',weight:1,fillColor:r.inBounds?'#3fb950':'#f85149',fillOpacity:.45}
     }).addTo(wmpFinalMap);
   });
-  setTimeout(()=>{ if(wmpFinalMap) wmpFinalMap.invalidateSize(); }, 300);
-}
-
-async function wmpHostReplay() {
-  if (!wmpIsHost||!wmpRoomId) return;
-  const pool=wmpGetPool(wmpRoom.difficulty||'medium');
-  const n=wmpRoom.totalRounds||10;
-  const isoOrder=shuffle(pool.map(c=>c.iso2)).slice(0,n);
-  const players=(wmpRoom.players||[]).map(p=>({...p,score:0}));
-  await wmpInitDb().collection('rooms').doc(wmpRoomId).update({
-    status:'waiting', round:0, answers:{}, currentCountry:null, isoOrder, players, roundStartAt:null
-  }).catch(console.error);
-}
-
-function wmpConfirmEnd() {
-  if(confirm('إنهاء اللعبة؟')) wmpInitDb().collection('rooms').doc(wmpRoomId).update({status:'finished'}).catch(()=>{});
-}
-
-function wmpLeave() {
-  if (wmpListener){wmpListener();wmpListener=null;}
-  wmpStopBrowsing();
-  clearInterval(wmpTimerIv);
-  if (wmpRoomId) {
-    if (wmpIsHost) {
-      // Host leaving closes the room for everyone
-      wmpInitDb().collection('rooms').doc(wmpRoomId).delete().catch(()=>{});
-    } else {
-      // Guest leaving: remove self from players list
-      const players=(wmpRoom?.players||[]).filter(p=>p.id!==wmpPlayerId);
-      wmpInitDb().collection('rooms').doc(wmpRoomId).update({players}).catch(()=>{});
-    }
-  }
-  wmpReset();
-  showScreen('home-screen');
-}
-
-function wmpReset() {
-  if(wmpGameMap){wmpGameMap.remove();wmpGameMap=null;}
-  if(wmpResultMap){wmpResultMap.remove();wmpResultMap=null;}
-  if(wmpFinalMap){wmpFinalMap.remove();wmpFinalMap=null;}
-  wmpRoomId=null;wmpPlayerId=null;wmpIsHost=false;wmpRoom=null;
-  wmpGuess=null;wmpAnswered=false;wmpCurrentRound=0;wmpLastStatus=null;wmpAdvancing=false;
-  wmpRoundHistory=[];
-  clearInterval(wmpTimerIv);
-}
-
-loadData();
-
-// Globe emoji rotation — cycles 🌍 🌎 🌏 to simulate spinning
-(function() {
-  const globes = ['🌍','🌎','🌏'];
-  let idx = 0;
-  setInterval(() => {
-    idx = (idx + 1) % globes.length;
-    const el = document.querySelector('.home-logo');
-    if (el) el.textContent = globes[idx];
-  }, 1600);
-})();
-</script>
-</body>
-</html>
+  setTimeout(()=>{ if(wmpFinalMap) wmpF

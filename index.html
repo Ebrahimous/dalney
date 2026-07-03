@@ -19,9 +19,9 @@
        pinch-to-zoom keeps working on the map specifically. */
     html,body{touch-action:pan-x pan-y;-ms-touch-action:pan-x pan-y;}
     :root{
-      --bg:#0d1117;--surface:#161b22;--card:#21262d;--dark:#0d1117;
+      --bg:#090E1A;--surface:#111827;--card:#1A2235;--dark:#090E1A;
       --blue:#58a6ff;--green:#3fb950;--red:#f85149;--gold:#f39c12;
-      --text:#eaeaea;--muted:#8892b0;--radius:16px;
+      --text:#E8E6E3;--muted:#8892b0;--radius:16px;
     }
     body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);color:var(--text);height:100dvh;overflow:hidden;}
     .screen{display:none;flex-direction:column;height:100dvh;overflow-y:auto;padding:16px;}
@@ -245,6 +245,109 @@
     ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
     .player-chip{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:10px;padding:12px;border:1px solid rgba(255,255,255,.07);}
     .color-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+
+    /* ── Photo fullscreen mode ──────────────────────────────────────────────── */
+    /* When a photo round is active, the photo fills all available flex space   */
+    /* and the map becomes a fixed corner mini-widget.                           */
+    #game-screen.photo-fs { position: relative; }
+    #game-screen.photo-fs .hint-panel {
+      flex: 1; min-height: 0; padding: 0;
+      overflow: hidden; border-radius: var(--radius);
+    }
+    #game-screen.photo-fs .hint-panel .hint-photo {
+      width: 100%; height: 100%; object-fit: cover;
+      max-height: none !important; margin: 0;
+      border-radius: var(--radius); display: block !important;
+    }
+    /* Mini map in corner */
+    #game-screen.photo-fs #game-map {
+      position: fixed;
+      left: 12px; bottom: 78px;
+      width: 150px; height: 150px;
+      min-height: unset; flex: none;
+      border-radius: 14px;
+      border: 2.5px solid var(--blue);
+      box-shadow: 0 4px 24px rgba(0,0,0,.75), 0 0 0 1px rgba(88,166,255,.15);
+      z-index: 600; overflow: hidden; cursor: pointer;
+      transition: all 0.3s cubic-bezier(.22,1,.36,1);
+    }
+    /* Expanded map (bottom sheet) */
+    #game-screen.photo-fs #game-map.map-exp {
+      position: fixed;
+      left: 0; bottom: 0;
+      width: 100%; height: 62dvh;
+      border-radius: var(--radius) var(--radius) 0 0;
+      border: none; border-top: 1px solid rgba(88,166,255,.25);
+      z-index: 900; cursor: default;
+      box-shadow: 0 -8px 40px rgba(0,0,0,.6);
+    }
+    /* Close button for expanded map */
+    #photo-map-close {
+      display: none; position: fixed;
+      top: 14px; right: 14px; z-index: 920;
+      background: rgba(9,14,26,.92); border: 1px solid rgba(255,255,255,.15);
+      color: var(--text); border-radius: 10px;
+      padding: 8px 16px; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+      box-shadow: 0 2px 12px rgba(0,0,0,.5);
+    }
+    /* Expand nudge label over mini map */
+    #photo-map-nudge {
+      position: fixed; z-index: 610; pointer-events: none;
+      left: 12px; bottom: 78px; width: 150px;
+      text-align: center;
+      padding: 4px 0 5px;
+      background: rgba(9,14,26,.82);
+      color: var(--blue); font-size: 10px; font-weight: 700;
+      border-radius: 0 0 12px 12px;
+      letter-spacing: .03em;
+      transition: opacity 0.25s;
+    }
+
+    /* ── Pin-drop animation for result map ────────────────────────────────── */
+    @keyframes pinDrop {
+      0%   { transform: translateY(-36px) scale(.7); opacity: 0; }
+      55%  { transform: translateY(7px) scale(1.08); opacity: 1; }
+      75%  { transform: translateY(-3px) scale(.97); }
+      100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .pin-drop { animation: pinDrop 0.48s cubic-bezier(.34,1.56,.64,1) forwards; }
+
+    /* ── Stars display ────────────────────────────────────────────────────── */
+    #result-stars {
+      text-align: center; font-size: 26px; letter-spacing: 3px;
+      flex-shrink: 0; min-height: 34px; line-height: 1;
+    }
+    .star-pop { display: inline-block; animation: starPop .35s cubic-bezier(.34,1.56,.64,1) both; }
+    @keyframes starPop {
+      0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+      70%  { transform: scale(1.3) rotate(5deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0); opacity: 1; }
+    }
+
+    /* ── Streak badge ─────────────────────────────────────────────────────── */
+    #streak-badge {
+      display: none;
+      background: rgba(243,156,18,.15); border: 1px solid rgba(243,156,18,.35);
+      border-radius: 20px; padding: 3px 10px;
+      font-size: 13px; font-weight: 800; color: var(--gold);
+      flex-shrink: 0;
+      animation: streakPop .4s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @keyframes streakPop {
+      0%   { transform: scale(0.6); opacity: 0; }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+
+    /* ── Result screen drama ──────────────────────────────────────────────── */
+    /* Bigger, bolder score on result screen */
+    #result-screen .score-flash { font-size: 80px; font-weight: 900; line-height: 1; letter-spacing: -2px; }
+    /* Dist-info gains a reveal animation */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .dist-reveal { animation: fadeSlideUp .4s ease both; }
     .mp-timer{background:var(--surface);border-radius:20px;padding:4px 14px;font-size:16px;font-weight:800;color:var(--gold);}
     .time-opt{background:var(--surface);border:1px solid rgba(255,255,255,.12);color:var(--muted);padding:10px 6px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;width:100%;}
     .time-opt.active{background:var(--blue);color:#000;border-color:var(--blue);}
@@ -274,6 +377,10 @@
 
 <!-- Confetti canvas (fixed overlay, always present, drawn into by JS) -->
 <canvas id="confetti-canvas"></canvas>
+
+<!-- Photo-mode expanded-map controls (fixed overlays, JS-managed) -->
+<button id="photo-map-close" onclick="collapsePhotoMap()">← رجوع للصورة</button>
+<div id="photo-map-nudge">اضغط للخريطة</div>
 
 <!-- Loading overlay -->
 <div id="loading-overlay">
@@ -416,6 +523,7 @@
     <button class="back-btn" onclick="exitGame()">→</button>
     <span class="round-badge" id="round-badge">جولة 1 / 5</span>
     <div class="mp-timer" id="solo-timer-badge" style="display:none;">30</div>
+    <div id="streak-badge"></div>
     <span id="score-badge" style="font-weight:700;color:var(--gold);">0</span>
     <button class="flag-btn" onclick="reportLocation(gameRounds[currentRound])" title="الإبلاغ عن مشكلة في الموقع" style="width:36px;height:28px;padding:0;font-size:14px;flex-shrink:0;">🚩</button>
   </div>
@@ -439,6 +547,7 @@
     <span style="width:36px;"></span>
   </div>
   <div id="feedback-label"></div>
+  <div id="result-stars"></div>
   <p class="dist-info" id="dist-info" style="margin-bottom:0;"></p>
   <div id="result-map" style="flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;"></div>
   <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -935,6 +1044,10 @@ const lbCol = db.collection('leaderboard');
 const KW = [29.3759, 47.9774];
 let locations = [], gameRounds = [], currentRound = 0, totalScore = 0, guess = null;
 let selectedRounds = 10; // 10 | 20 — chosen on the solo mode-select screen
+let currentStreak = 0; // consecutive rounds where player earned ≥1 star
+
+// Returns 0-3 stars for a given round score
+function getStars(sc) { return sc >= 90 ? 3 : sc >= 70 ? 2 : sc >= 45 ? 1 : 0; }
 
 function setRoundCount(el, n) {
   selectedRounds = n;
@@ -943,7 +1056,7 @@ function setRoundCount(el, n) {
 }
 // Bump this whenever you deploy — shown in the admin panel so you can tell
 // whether a device (e.g. your phone) is running stale cached code.
-const BUILD_VERSION = '2026-07-01.1';
+const BUILD_VERSION = '2026-07-04.1';
 let scoringMode = 'normal';  // 'normal' | 'competitive'
 let contentMode = 'names';   // 'names' | 'photos' | 'mix'
 let gameMap = null, resultMap = null, summaryMap = null, adminMap = null, adminMarker = null;
@@ -1598,7 +1711,8 @@ function startGame(scoring, content) {
   }
   if (summaryMap) { summaryMap.remove(); summaryMap = null; }
   gameRounds = shuffle([...pool]).slice(0, Math.min(selectedRounds, pool.length));
-  currentRound = 0; totalScore = 0; guess = null;
+  currentRound = 0; totalScore = 0; guess = null; currentStreak = 0;
+  const sb = document.getElementById('streak-badge'); if (sb) sb.style.display = 'none';
   // Mix mode: decide per-round whether it's a photo or names round
   if (contentMode === 'mix') {
     gameRounds.forEach(loc => {
@@ -1698,14 +1812,62 @@ function loadRound() {
     textEl.textContent = loc.hint || '';
   }
   const roundPhoto = photoRound ? pickRandomPhoto(loc) : '';
-  if (roundPhoto) { p.src=roundPhoto; p.style.display='block'; p.onerror=()=>{p.style.display='none'; if(gameMap) fixMapHeight('game-map','game-screen');}; }
-  else p.style.display = 'none';
-  // Recalculate map height every round (hint panel size may differ between photo/names rounds)
-  if (gameMap) requestAnimationFrame(() => fixMapHeight('game-map', 'game-screen'));
+  if (roundPhoto) {
+    p.src = roundPhoto; p.style.display = 'block';
+    p.onerror = () => { p.style.display = 'none'; enterNamesLayout(); };
+  } else p.style.display = 'none';
+
+  // Photo-fs layout: photo fills screen, map becomes corner widget
+  const gameScreenEl = document.getElementById('game-screen');
+  const mapEl = document.getElementById('game-map');
+  const nudgeEl = document.getElementById('photo-map-nudge');
+  if (photoRound && roundPhoto) {
+    gameScreenEl.classList.add('photo-fs');
+    mapEl.classList.remove('map-exp');
+    if (nudgeEl) nudgeEl.style.display = 'block';
+    document.getElementById('photo-map-close').style.display = 'none';
+    if (gameMap) setTimeout(() => gameMap.invalidateSize(), 50);
+  } else {
+    enterNamesLayout();
+  }
   if (gameMap) gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
   // Competitive timer — start after a brief delay so the map has time to init
+
   if (scoringMode === 'competitive') setTimeout(startSoloTimer, 400);
   else stopSoloTimer();
+}
+
+// Switch game screen back to normal names-mode layout
+function enterNamesLayout() {
+  const gameScreenEl = document.getElementById('game-screen');
+  gameScreenEl.classList.remove('photo-fs');
+  const mapEl = document.getElementById('game-map');
+  mapEl.classList.remove('map-exp');
+  mapEl.style.height = ''; mapEl.style.flex = '';
+  const nudgeEl = document.getElementById('photo-map-nudge');
+  if (nudgeEl) nudgeEl.style.display = 'none';
+  document.getElementById('photo-map-close').style.display = 'none';
+  if (gameMap) requestAnimationFrame(() => fixMapHeight('game-map', 'game-screen'));
+}
+
+// Expand/collapse the corner mini-map in photo-fs mode
+function expandPhotoMap() {
+  const mapEl = document.getElementById('game-map');
+  mapEl.classList.add('map-exp');
+  document.getElementById('photo-map-close').style.display = 'block';
+  const nudgeEl = document.getElementById('photo-map-nudge');
+  if (nudgeEl) nudgeEl.style.display = 'none';
+  setTimeout(() => { if (gameMap) gameMap.invalidateSize(); }, 320);
+}
+
+function collapsePhotoMap() {
+  const mapEl = document.getElementById('game-map');
+  mapEl.classList.remove('map-exp');
+  document.getElementById('photo-map-close').style.display = 'none';
+  // Show nudge only if no guess placed yet
+  const nudgeEl = document.getElementById('photo-map-nudge');
+  if (nudgeEl) nudgeEl.style.display = guess ? 'none' : 'block';
+  setTimeout(() => { if (gameMap) gameMap.invalidateSize(); }, 320);
 }
 
 function initGameMap() {
@@ -1748,15 +1910,31 @@ function initGameMap() {
   }
 
   gameMap.on('click', e => {
+    const gsEl = document.getElementById('game-screen');
+    const mapEl = document.getElementById('game-map');
+    const inPhotoFs = gsEl.classList.contains('photo-fs');
+
+    // In photo-fs mode, first tap on mini-map expands it; don't place guess yet
+    if (inPhotoFs && !mapEl.classList.contains('map-exp')) {
+      expandPhotoMap();
+      return;
+    }
+
     // Dismiss nudge on first tap
     const nudge = document.getElementById('tap-nudge');
     if (nudge) { nudge.remove(); localStorage.setItem('tapNudgeSeen','1'); }
+
     guess = e.latlng;
     gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
     const icon = L.divIcon({className:'',html:'<div class="guess-marker-icon"></div>',iconSize:[42,42],iconAnchor:[21,42]});
     L.marker(e.latlng, {icon}).addTo(gameMap);
     document.getElementById('submit-btn').disabled = false;
     playSound('pin');
+
+    // In photo-fs mode: after placing guess, collapse map so player sees the photo + submit btn
+    if (inPhotoFs && mapEl.classList.contains('map-exp')) {
+      setTimeout(() => collapsePhotoMap(), 350);
+    }
   });
 }
 
@@ -1783,29 +1961,76 @@ function submitGuess() {
     sc = Math.min(100, Math.round(sc * (0.8 + 0.4 * speedFactor)));
   }
   totalScore += sc;
-  gameRounds[currentRound]._result = {score:sc, dist:dk, inArea, gLat:guess.lat, gLng:guess.lng};
-  // Animated score count-up
+  const stars = getStars(sc);
+  gameRounds[currentRound]._result = {score:sc, dist:dk, inArea, gLat:guess.lat, gLng:guess.lng, stars};
+
+  // ── Streak tracking ──────────────────────────────────────────────────────
+  if (stars >= 1) {
+    currentStreak++;
+  } else {
+    currentStreak = 0;
+  }
+  const streakEl = document.getElementById('streak-badge');
+  if (streakEl) {
+    if (currentStreak >= 3) {
+      streakEl.textContent = `🔥 ${currentStreak}`;
+      streakEl.style.display = 'block';
+      streakEl.style.animation = 'none';
+      streakEl.offsetWidth; // reflow to restart animation
+      streakEl.style.animation = '';
+    } else {
+      streakEl.style.display = 'none';
+    }
+  }
+
+  // ── Score count-up & feedback ────────────────────────────────────────────
   const scoreColor = sc>=80?'var(--green)':sc>=40?'var(--gold)':'var(--red)';
   const scoreEl = document.getElementById('score-flash');
   scoreEl.style.color = scoreColor;
-  animateCount(scoreEl, sc, 550);
-  // #1 Qualitative feedback label
+  animateCount(scoreEl, sc, 650);
   const fbEl = document.getElementById('feedback-label');
   fbEl.style.opacity = '0'; fbEl.style.transform = 'scale(.85)';
   fbEl.style.color = scoreColor;
   const isLate = scoringMode === 'competitive' && elapsed != null && elapsed > COMPETITIVE_TIME / 2;
   fbEl.textContent = (inArea && isLate) ? 'ممتاز لكن متأخر! ⏰'
     : sc>=90?'ممتاز! 🎯':sc>=70?'رائع! 👏':sc>=40?'تقريباً! 👀':'بعيد! 😬';
-  setTimeout(() => { fbEl.style.opacity='1'; fbEl.style.transform='scale(1)'; }, 220);
-  // Haptic feedback (uses existing vibrate() which respects vibrationOn setting)
-  vibrate(sc>=80?[25,40,25]:sc>=40?[20]:[80]);
-  setTimeout(()=>playScoreSound(sc), 150);
-  if (sc >= 90 || inArea) setTimeout(launchConfetti, 300);
+  setTimeout(() => { fbEl.style.opacity='1'; fbEl.style.transform='scale(1)'; }, 200);
+
+  // ── Stars reveal (staggered) ─────────────────────────────────────────────
+  const starsEl = document.getElementById('result-stars');
+  if (starsEl) {
+    starsEl.innerHTML = '';
+    const FILLED = '⭐', EMPTY = '✩';
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => {
+        const span = document.createElement('span');
+        span.className = 'star-pop';
+        span.textContent = i < stars ? FILLED : EMPTY;
+        span.style.color = i < stars ? '#f39c12' : 'rgba(255,255,255,.2)';
+        span.style.animationDelay = '0ms';
+        starsEl.appendChild(span);
+      }, 350 + i * 160);
+    }
+  }
+
+  // ── Distance text (revealed after slight delay) ──────────────────────────
   const distText = inArea
     ? `✅ داخل المنطقة! 100 نقطة`
     : `📍 المسافة: ${dk<1?(dk*1000).toFixed(0)+' م':(dk).toFixed(1)+' كم'} — +${sc} نقطة`;
-  document.getElementById('dist-info').textContent = isPhotoRound() ? `${loc.name} • ${distText}` : distText;
+  const distEl = document.getElementById('dist-info');
+  distEl.textContent = isPhotoRound() ? `${loc.name} • ${distText}` : distText;
+  distEl.classList.remove('dist-reveal');
+  setTimeout(() => distEl.classList.add('dist-reveal'), 500);
+
+  // ── Haptic + sound ───────────────────────────────────────────────────────
+  vibrate(sc>=80?[25,40,25]:sc>=40?[20]:[80]);
+  setTimeout(()=>playScoreSound(sc), 150);
+  if (sc >= 90 || inArea) setTimeout(launchConfetti, 400);
+
   document.getElementById('next-btn').textContent = currentRound+1 >= gameRounds.length ? 'النتائج ›' : 'التالي ›';
+
+  // Also ensure photo-fs layout is fully exited before showing result
+  enterNamesLayout();
   showScreen('result-screen');
   requestAnimationFrame(() => requestAnimationFrame(() => {
     try { initResultMap(loc, guess); } catch(e) { console.warn(e); }
@@ -1817,18 +2042,53 @@ function initResultMap(loc, g) {
   fixMapHeight('result-map', 'result-screen');
   resultMap = L.map('result-map', {zoomControl:true, minZoom:7, maxZoom:17});
   osmTileLayer().addTo(resultMap);
+
   const ci = L.divIcon({className:'',html:'<div class="correct-marker-icon"><div class="flag-pulse"></div><div class="flag-emoji">🚩</div></div>',iconSize:[42,42],iconAnchor:[21,42]});
   const gi = L.divIcon({className:'',html:'<div class="guess-marker-icon"></div>',iconSize:[42,42],iconAnchor:[21,42]});
   const poly = loc.polygon;
-  if (poly && poly.length >= 3)
-    L.polygon(poly, {color:'#3fb950',fillColor:'#3fb950',fillOpacity:.15,weight:2}).addTo(resultMap);
-  L.marker([loc.lat,loc.lng],{icon:ci}).addTo(resultMap).bindPopup('✅ '+loc.name).openPopup();
-  L.marker([g.lat,g.lng],{icon:gi}).addTo(resultMap).bindPopup('📍 تخمينك');
-  L.polyline([[loc.lat,loc.lng],[g.lat,g.lng]],{color:'#f39c12',weight:2,dashArray:'6,6',opacity:.8}).addTo(resultMap);
+
+  // Fit bounds first so the map settles before animations
   const bounds = poly && poly.length >= 3
     ? L.latLngBounds([...poly.map(p=>L.latLng(p[0],p[1])), L.latLng(g.lat,g.lng)]).pad(0.3)
-    : L.latLngBounds([[loc.lat,loc.lng],[g.lat,g.lng]]).pad(0.4);
-  resultMap.fitBounds(bounds);
+    : L.latLngBounds([[loc.lat,loc.lng],[g.lat,g.lng]]).pad(0.45);
+  resultMap.fitBounds(bounds, {animate:false});
+
+  if (poly && poly.length >= 3)
+    L.polygon(poly, {color:'#3fb950',fillColor:'#3fb950',fillOpacity:.15,weight:2}).addTo(resultMap);
+
+  // ── Staggered reveal: guess pin → line draws → correct pin drops ──────────
+
+  // t=0: Guess pin drops in
+  const gm = L.marker([g.lat,g.lng],{icon:gi}).addTo(resultMap).bindPopup('📍 تخمينك');
+  requestAnimationFrame(() => {
+    const el = gm.getElement();
+    if (el) { el.style.opacity='0'; el.classList.add('pin-drop'); el.style.opacity=''; }
+  });
+
+  // t=500ms: Line draws from guess to correct position
+  const line = L.polyline([[g.lat,g.lng],[loc.lat,loc.lng]], {
+    color:'#f39c12', weight:2.5, opacity:0.9, dashArray:null
+  }).addTo(resultMap);
+  setTimeout(() => {
+    const pathEl = line.getElement ? line.getElement() : null;
+    if (pathEl) {
+      pathEl.style.strokeDasharray = '800';
+      pathEl.style.strokeDashoffset = '800';
+      pathEl.getBoundingClientRect(); // force reflow
+      pathEl.style.transition = 'stroke-dashoffset 0.65s ease-in-out';
+      pathEl.style.strokeDashoffset = '0';
+    }
+  }, 500);
+
+  // t=900ms: Correct pin drops in with popup
+  setTimeout(() => {
+    const cm = L.marker([loc.lat,loc.lng],{icon:ci}).addTo(resultMap);
+    requestAnimationFrame(() => {
+      const el = cm.getElement();
+      if (el) { el.style.opacity='0'; el.classList.add('pin-drop'); el.style.opacity=''; }
+    });
+    setTimeout(() => cm.bindPopup('✅ '+loc.name).openPopup(), 350);
+  }, 900);
 }
 
 function nextRound() {
@@ -1880,12 +2140,14 @@ function showSummary() {
     row.className = 'round-row';
     row.style.cursor = 'pointer';
     row.style.borderInlineStart = `3px solid ${scoreColor}`;
+    const starsStr = ['','⭐','⭐⭐','⭐⭐⭐'][res.stars || 0] || '';
     row.innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden;">
         <div style="width:24px;height:24px;border-radius:50%;background:var(--surface);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${i+1}</div>
         <span style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${loc.name}</span>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <span style="font-size:11px;letter-spacing:1px;">${starsStr}</span>
         <span style="font-size:12px;color:var(--muted);">${distText}</span>
         <span style="font-weight:700;color:${scoreColor};min-width:28px;text-align:end;">${res.score}</span>
       </div>`;
@@ -3203,251 +3465,4 @@ async function mpJoin() {
     mpIsHost = false;
     mpLastStatus = null;
     // Pick first color not already used by a current player (avoids
-    // duplicate colors when players leave and others join afterwards).
-    const usedColors = new Set(room.players.map(p=>p.color));
-    const color = MP_COLORS.find(c=>!usedColors.has(c)) || MP_COLORS[0];
-    const finalName = name || `لاعب ${room.players.length+1}`;
-    await db.collection('rooms').doc(code).update({players:[...room.players,{id:mpPlayerId,name:finalName,color,score:0,selfie:mpMySelfie||null,emoji:mpMyEmoji||null}]});
-    reset();
-    showScreen('mp-wait-screen');
-    mpListener = db.collection('rooms').doc(code).onSnapshot(snap=>{
-      if (!snap.exists) { mpLeave(); return; }
-      mpRoom = snap.data();
-      mpSync();
-    });
-  } catch(e) {
-    showToast('❌ خطأ في الاتصال');
-    reset();
-  }
-}
-
-function mpRenderWaitPlayers() {
-  checkPlayerJoinSound(mpRoom.players);
-  document.getElementById('mp-wait-players').innerHTML = (mpRoom.players||[]).map(p=>`
-    <div class="player-chip">
-      <div class="color-dot" style="background:${p.color}"></div>
-      <span style="font-weight:600;font-size:15px;">${p.name}</span>
-      ${p.id===mpPlayerId?'<span style="margin-right:auto;font-size:11px;color:var(--muted);">(أنت)</span>':''}
-      ${p.id===(mpRoom.hostId||'')?'<span style="font-size:13px;">👑</span>':''}
-    </div>`).join('');
-}
-
-async function mpSubmitGuess() {
-  if (!mpGuess || mpAnswered) return;
-  playSound('submit');
-  mpAnswered = true;
-  // Keep the timer running after answering — it stays visible until the
-  // round ends for everyone, so players can see how much time is left.
-  const sb = document.getElementById('mp-submit-btn');
-  sb.disabled = true; sb.textContent = '✓ تم الإرسال';
-  const loc = mpRoom.loc;
-  const poly = loc.polygon ? polyFromDb(loc.polygon) : null;
-  let sc, dk=0, inArea=false;
-  if (poly && poly.length>=3 && pointInPolygon(mpGuess.lat,mpGuess.lng,poly)) {
-    inArea=true; sc=100; dk=0;
-  } else {
-    const target = poly && poly.length>=3 ? polygonCentroid(poly) : [loc.lat,loc.lng];
-    dk = L.latLng(mpGuess).distanceTo(L.latLng(target[0],target[1]))/1000;
-    sc = Math.round(Math.max(0, 100*Math.exp(-dk/3.5)));
-  }
-  // Speed bonus: answering faster keeps more of the accuracy score (up to 10%).
-  // Two players with identical accuracy will get different scores based on how
-  // quickly they answered. No effect in untimed (∞) rounds.
-  const timeLimit = mpRoom.timeLimit || 0;
-  const elapsed = mpRoom.roundStartAt ? Math.max(0, (Date.now() - new Date(mpRoom.roundStartAt).getTime())/1000) : null;
-  if (timeLimit > 0 && elapsed != null) {
-    const speedFactor = Math.max(0, 1 - elapsed/timeLimit); // 1 = instant, 0 = used full time
-    sc = Math.round(sc * (0.9 + 0.1*speedFactor));
-  }
-  // Feedback label + haptic
-  const mpFb = document.getElementById('mp-feedback-label');
-  if (mpFb) {
-    const scoreColor = sc>=80?'var(--green)':sc>=40?'var(--gold)':'var(--red)';
-    mpFb.style.color = scoreColor;
-    mpFb.textContent = sc>=90?'ممتاز! 🎯':sc>=70?'رائع! 👏':sc>=40?'تقريباً! 👀':'بعيد! 😬';
-    mpFb.style.opacity='0'; mpFb.style.transform='scale(.85)';
-    setTimeout(()=>{ mpFb.style.opacity='1'; mpFb.style.transform='scale(1)'; }, 100);
-  }
-  vibrate(sc>=80?[25,40,25]:sc>=40?[20]:[80]);
-  // Remove our own draggable selection pin — the shared "answered" pin
-  // (with checkmark) takes its place for everyone once synced.
-  if (mpGameMap && mpGameMarker) { mpGameMap.removeLayer(mpGameMarker); mpGameMarker = null; }
-  const update = {};
-  update[`answers.${mpPlayerId}`] = {lat:mpGuess.lat, lng:mpGuess.lng, score:sc, dist:dk, inArea, time: elapsed!=null ? Math.round(elapsed*10)/10 : null};
-  await db.collection('rooms').doc(mpRoomId).update(update);
-  // onSnapshot will trigger mpSync → check all answered → auto-results if so
-}
-
-function mpShowFinal() {
-  playSound('final');
-  showScreen('mp-final-screen');
-  const players = [...(mpRoom.players||[])].sort((a,b)=>(b.score||0)-(a.score||0));
-  const medals = ['🥇','🥈','🥉'];
-  document.getElementById('mp-final-scores').innerHTML = players.map((p,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;background:var(--card);border-radius:12px;padding:14px;border-right:4px solid ${p.color};">
-      <span style="font-size:24px;">${medals[i]||`#${i+1}`}</span>
-      ${mpMiniPinHtml(p)}
-      <span style="flex:1;font-weight:700;font-size:15px;">${p.name}</span>
-      <span style="font-size:22px;font-weight:900;color:${p.color};">${p.score||0}</span>
-    </div>`).join('');
-  const replayBtn = document.getElementById('mp-replay-btn');
-  if (replayBtn) replayBtn.style.display = mpIsHost ? 'block' : 'none';
-}
-
-// ── Replay flow ──────────────────────────────────────────────────────────────
-// Host asks to play again: room is reset back to 'waiting' (score=0, round=0)
-// so the host returns to the lobby, while every participant is asked whether
-// they want to join the new round.
-async function mpRequestReplay() {
-  if (!mpRoomId || !mpRoom) return;
-  const resetPlayers = (mpRoom.players||[]).map(p=>({...p, score:0}));
-  await db.collection('rooms').doc(mpRoomId).update({
-    status:'waiting', round:0, answers:{}, roundStartAt:null, loc:null,
-    players: resetPlayers
-  }).catch(()=>{});
-}
-
-function mpShowReplayPrompt() {
-  showConfirm('🔄 المضيف يريد إعادة اللعب! هل تريد الانضمام لجولة جديدة؟', ok => {
-    if (ok) { showScreen('mp-wait-screen'); mpRenderWaitPlayers(); }
-    else mpLeave();
-  });
-}
-
-function startSoloTimer() {
-  stopSoloTimer();
-  soloRoundStart = Date.now();
-  const el = document.getElementById('solo-timer-badge');
-  if (!el) return;
-  el.style.display = '';
-  let lastSec = -1;
-  function tick() {
-    const elapsed = (Date.now() - soloRoundStart) / 1000;
-    const rem = Math.max(0, COMPETITIVE_TIME - elapsed);
-    const sec = Math.ceil(rem);
-    el.textContent = sec;
-    el.style.color = rem <= 5 ? 'var(--red)' : 'var(--gold)';
-    if (rem <= 5 && rem > 0 && sec !== lastSec) { lastSec = sec; playSound('tick'); }
-    if (rem <= 0) {
-      stopSoloTimer();
-      // Auto-submit if guess placed, otherwise skip round with 0 score
-      if (guess) { submitGuess(); }
-      else {
-        gameRounds[currentRound]._result = { score:0, dist:null, inArea:false, gLat:null, gLng:null };
-        showToast('⏰ انتهى الوقت!');
-        setTimeout(() => nextRound(), 800);
-      }
-    }
-  }
-  tick();
-  soloTimerIv = setInterval(tick, 250);
-}
-
-function stopSoloTimer() {
-  if (soloTimerIv) { clearInterval(soloTimerIv); soloTimerIv = null; }
-  const el = document.getElementById('solo-timer-badge');
-  if (el) el.style.display = 'none';
-}
-
-function mpStartTimer(elId, startAt, duration, onExpire) {
-  clearInterval(mpTimerIv);
-  const el = document.getElementById(elId);
-  if (duration === 0) { el.textContent = '∞'; el.style.color = 'var(--gold)'; return; }
-  let expired = false;
-  let lastTickSec = -1;
-  function tick() {
-    const elapsed = (Date.now()-new Date(startAt).getTime())/1000;
-    if (elapsed < 0) {
-      // Prep window: show countdown to start
-      el.textContent = Math.ceil(-elapsed);
-      el.style.color = 'var(--muted)';
-      return;
-    }
-    const rem = Math.max(0, duration-elapsed);
-    el.textContent = Math.ceil(rem);
-    el.style.color = rem<=3 ? 'var(--red)' : 'var(--gold)';
-    if (rem>0 && rem<=3) {
-      const sec = Math.ceil(rem);
-      if (sec !== lastTickSec) { lastTickSec = sec; playSound('tick'); }
-    }
-    if (rem<=0 && !expired) { expired=true; clearInterval(mpTimerIv); onExpire(); }
-  }
-  tick();
-  mpTimerIv = setInterval(tick, 250);
-}
-
-async function mpLeave() {
-  if (mpListener) { mpListener(); mpListener=null; }
-  clearInterval(mpTimerIv);
-  // If we're still in the lobby (game hasn't started), remove ourselves
-  // from the room's player list so we don't leave behind a "ghost" entry
-  // that shows up stuck in the host's lobby and occupies a player slot,
-  // blocking others from joining and preventing us from rejoining.
-  if (mpRoomId && mpPlayerId && !mpIsHost && mpRoom && mpRoom.status === 'waiting') {
-    try {
-      const updatedPlayers = (mpRoom.players||[]).filter(p=>p.id!==mpPlayerId);
-      await db.collection('rooms').doc(mpRoomId).update({players:updatedPlayers});
-    } catch(e) {}
-  }
-  if (mpGameMap)   { try{mpGameMap.remove();}catch(e){}   mpGameMap=null; }
-  if (mpHostMap)   { try{mpHostMap.remove();}catch(e){}   mpHostMap=null; }
-  if (mpResultMap) { try{mpResultMap.remove();}catch(e){} mpResultMap=null; }
-  mpRoomId=null; mpPlayerId=null; mpIsHost=false; mpRoom=null;
-  mpCurrentRound=0; mpGuess=null; mpAnswered=false; mpLastPlayerCount=0;
-  showScreen('home-screen');
-}
-
-function mpBackHome() {
-  if (mpIsHost && mpRoomId) db.collection('rooms').doc(mpRoomId).delete().catch(()=>{});
-  mpLeave();
-}
-
-function mpReset() {
-  mpCloseCamera();
-  mpCloseEmojiPicker();
-  if (mpListener) { mpListener(); mpListener=null; }
-  clearInterval(mpTimerIv);
-  if (mpGameMap)   { try{mpGameMap.remove();}catch(e){}   mpGameMap=null; }
-  if (mpHostMap)   { try{mpHostMap.remove();}catch(e){}   mpHostMap=null; }
-  if (mpResultMap) { try{mpResultMap.remove();}catch(e){} mpResultMap=null; }
-  mpHostMapLayers=[]; mpGameMarker=null; mpAnswerStatusControl=null; mpLastStatus=null;
-  mpRoomId=null; mpPlayerId=null; mpIsHost=false; mpRoom=null;
-  mpCurrentRound=0; mpGuess=null; mpAnswered=false; mpLastPlayerCount=0;
-  mpMySelfie=null; mpMyEmoji=null;
-  ['mp-host-selfie-preview','mp-join-selfie-preview'].forEach(id=>{
-    const el = document.getElementById(id);
-    if (el) { el.style.backgroundImage=''; el.textContent='📷'; }
-  });
-  ['mp-host-selfie','mp-join-selfie'].forEach(id=>{
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-}
-
-// ── Global UI tap sound ─────────────────────────────────────────────────────
-document.addEventListener('click', e => {
-  const target = e.target.closest('.btn, .back-btn, .time-opt, .mode-card, .player-chip');
-  if (!target || target.id === 'sound-toggle-btn' || target.id === 'vibration-toggle-btn') return;
-  playSound('tap');
-}, true);
-
-// ── Boot ──────────────────────────────────────────────────────────────────────
-(async () => {
-  try {
-    await loadData();
-  } catch(e) {
-    console.error('Firebase load error:', e);
-    showToast('⚠️ تعذر الاتصال بالخادم');
-  }
-  // Count this page load as a visit (fire-and-forget) — skip devices that have logged into admin
-  if (localStorage.getItem('dalney_owner') !== '1') {
-    locsCol.doc('meta_config').set({visitCount: firebase.firestore.FieldValue.increment(1)}, {merge:true}).catch(()=>{});
-  }
-  updateSoundToggleUI();
-  updateVibrationToggleUI();
-  document.getElementById('loading-overlay').classList.add('hidden');
-  showScreen('home-screen');
-})();
-</script>
-</body>
-</html>
+    // duplicate colors when players leave and others jo
