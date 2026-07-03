@@ -3465,4 +3465,251 @@ async function mpJoin() {
     mpIsHost = false;
     mpLastStatus = null;
     // Pick first color not already used by a current player (avoids
-    // duplicate colors when players leave and others jo
+    // duplicate colors when players leave and others join afterwards).
+    const usedColors = new Set(room.players.map(p=>p.color));
+    const color = MP_COLORS.find(c=>!usedColors.has(c)) || MP_COLORS[0];
+    const finalName = name || `لاعب ${room.players.length+1}`;
+    await db.collection('rooms').doc(code).update({players:[...room.players,{id:mpPlayerId,name:finalName,color,score:0,selfie:mpMySelfie||null,emoji:mpMyEmoji||null}]});
+    reset();
+    showScreen('mp-wait-screen');
+    mpListener = db.collection('rooms').doc(code).onSnapshot(snap=>{
+      if (!snap.exists) { mpLeave(); return; }
+      mpRoom = snap.data();
+      mpSync();
+    });
+  } catch(e) {
+    showToast('❌ خطأ في الاتصال');
+    reset();
+  }
+}
+
+function mpRenderWaitPlayers() {
+  checkPlayerJoinSound(mpRoom.players);
+  document.getElementById('mp-wait-players').innerHTML = (mpRoom.players||[]).map(p=>`
+    <div class="player-chip">
+      <div class="color-dot" style="background:${p.color}"></div>
+      <span style="font-weight:600;font-size:15px;">${p.name}</span>
+      ${p.id===mpPlayerId?'<span style="margin-right:auto;font-size:11px;color:var(--muted);">(أنت)</span>':''}
+      ${p.id===(mpRoom.hostId||'')?'<span style="font-size:13px;">👑</span>':''}
+    </div>`).join('');
+}
+
+async function mpSubmitGuess() {
+  if (!mpGuess || mpAnswered) return;
+  playSound('submit');
+  mpAnswered = true;
+  // Keep the timer running after answering — it stays visible until the
+  // round ends for everyone, so players can see how much time is left.
+  const sb = document.getElementById('mp-submit-btn');
+  sb.disabled = true; sb.textContent = '✓ تم الإرسال';
+  const loc = mpRoom.loc;
+  const poly = loc.polygon ? polyFromDb(loc.polygon) : null;
+  let sc, dk=0, inArea=false;
+  if (poly && poly.length>=3 && pointInPolygon(mpGuess.lat,mpGuess.lng,poly)) {
+    inArea=true; sc=100; dk=0;
+  } else {
+    const target = poly && poly.length>=3 ? polygonCentroid(poly) : [loc.lat,loc.lng];
+    dk = L.latLng(mpGuess).distanceTo(L.latLng(target[0],target[1]))/1000;
+    sc = Math.round(Math.max(0, 100*Math.exp(-dk/3.5)));
+  }
+  // Speed bonus: answering faster keeps more of the accuracy score (up to 10%).
+  // Two players with identical accuracy will get different scores based on how
+  // quickly they answered. No effect in untimed (∞) rounds.
+  const timeLimit = mpRoom.timeLimit || 0;
+  const elapsed = mpRoom.roundStartAt ? Math.max(0, (Date.now() - new Date(mpRoom.roundStartAt).getTime())/1000) : null;
+  if (timeLimit > 0 && elapsed != null) {
+    const speedFactor = Math.max(0, 1 - elapsed/timeLimit); // 1 = instant, 0 = used full time
+    sc = Math.round(sc * (0.9 + 0.1*speedFactor));
+  }
+  // Feedback label + haptic
+  const mpFb = document.getElementById('mp-feedback-label');
+  if (mpFb) {
+    const scoreColor = sc>=80?'var(--green)':sc>=40?'var(--gold)':'var(--red)';
+    mpFb.style.color = scoreColor;
+    mpFb.textContent = sc>=90?'ممتاز! 🎯':sc>=70?'رائع! 👏':sc>=40?'تقريباً! 👀':'بعيد! 😬';
+    mpFb.style.opacity='0'; mpFb.style.transform='scale(.85)';
+    setTimeout(()=>{ mpFb.style.opacity='1'; mpFb.style.transform='scale(1)'; }, 100);
+  }
+  vibrate(sc>=80?[25,40,25]:sc>=40?[20]:[80]);
+  // Remove our own draggable selection pin — the shared "answered" pin
+  // (with checkmark) takes its place for everyone once synced.
+  if (mpGameMap && mpGameMarker) { mpGameMap.removeLayer(mpGameMarker); mpGameMarker = null; }
+  const update = {};
+  update[`answers.${mpPlayerId}`] = {lat:mpGuess.lat, lng:mpGuess.lng, score:sc, dist:dk, inArea, time: elapsed!=null ? Math.round(elapsed*10)/10 : null};
+  await db.collection('rooms').doc(mpRoomId).update(update);
+  // onSnapshot will trigger mpSync → check all answered → auto-results if so
+}
+
+function mpShowFinal() {
+  playSound('final');
+  showScreen('mp-final-screen');
+  const players = [...(mpRoom.players||[])].sort((a,b)=>(b.score||0)-(a.score||0));
+  const medals = ['🥇','🥈','🥉'];
+  document.getElementById('mp-final-scores').innerHTML = players.map((p,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;background:var(--card);border-radius:12px;padding:14px;border-right:4px solid ${p.color};">
+      <span style="font-size:24px;">${medals[i]||`#${i+1}`}</span>
+      ${mpMiniPinHtml(p)}
+      <span style="flex:1;font-weight:700;font-size:15px;">${p.name}</span>
+      <span style="font-size:22px;font-weight:900;color:${p.color};">${p.score||0}</span>
+    </div>`).join('');
+  const replayBtn = document.getElementById('mp-replay-btn');
+  if (replayBtn) replayBtn.style.display = mpIsHost ? 'block' : 'none';
+}
+
+// ── Replay flow ──────────────────────────────────────────────────────────────
+// Host asks to play again: room is reset back to 'waiting' (score=0, round=0)
+// so the host returns to the lobby, while every participant is asked whether
+// they want to join the new round.
+async function mpRequestReplay() {
+  if (!mpRoomId || !mpRoom) return;
+  const resetPlayers = (mpRoom.players||[]).map(p=>({...p, score:0}));
+  await db.collection('rooms').doc(mpRoomId).update({
+    status:'waiting', round:0, answers:{}, roundStartAt:null, loc:null,
+    players: resetPlayers
+  }).catch(()=>{});
+}
+
+function mpShowReplayPrompt() {
+  showConfirm('🔄 المضيف يريد إعادة اللعب! هل تريد الانضمام لجولة جديدة؟', ok => {
+    if (ok) { showScreen('mp-wait-screen'); mpRenderWaitPlayers(); }
+    else mpLeave();
+  });
+}
+
+function startSoloTimer() {
+  stopSoloTimer();
+  soloRoundStart = Date.now();
+  const el = document.getElementById('solo-timer-badge');
+  if (!el) return;
+  el.style.display = '';
+  let lastSec = -1;
+  function tick() {
+    const elapsed = (Date.now() - soloRoundStart) / 1000;
+    const rem = Math.max(0, COMPETITIVE_TIME - elapsed);
+    const sec = Math.ceil(rem);
+    el.textContent = sec;
+    el.style.color = rem <= 5 ? 'var(--red)' : 'var(--gold)';
+    if (rem <= 5 && rem > 0 && sec !== lastSec) { lastSec = sec; playSound('tick'); }
+    if (rem <= 0) {
+      stopSoloTimer();
+      // Auto-submit if guess placed, otherwise skip round with 0 score
+      if (guess) { submitGuess(); }
+      else {
+        gameRounds[currentRound]._result = { score:0, dist:null, inArea:false, gLat:null, gLng:null };
+        showToast('⏰ انتهى الوقت!');
+        setTimeout(() => nextRound(), 800);
+      }
+    }
+  }
+  tick();
+  soloTimerIv = setInterval(tick, 250);
+}
+
+function stopSoloTimer() {
+  if (soloTimerIv) { clearInterval(soloTimerIv); soloTimerIv = null; }
+  const el = document.getElementById('solo-timer-badge');
+  if (el) el.style.display = 'none';
+}
+
+function mpStartTimer(elId, startAt, duration, onExpire) {
+  clearInterval(mpTimerIv);
+  const el = document.getElementById(elId);
+  if (duration === 0) { el.textContent = '∞'; el.style.color = 'var(--gold)'; return; }
+  let expired = false;
+  let lastTickSec = -1;
+  function tick() {
+    const elapsed = (Date.now()-new Date(startAt).getTime())/1000;
+    if (elapsed < 0) {
+      // Prep window: show countdown to start
+      el.textContent = Math.ceil(-elapsed);
+      el.style.color = 'var(--muted)';
+      return;
+    }
+    const rem = Math.max(0, duration-elapsed);
+    el.textContent = Math.ceil(rem);
+    el.style.color = rem<=3 ? 'var(--red)' : 'var(--gold)';
+    if (rem>0 && rem<=3) {
+      const sec = Math.ceil(rem);
+      if (sec !== lastTickSec) { lastTickSec = sec; playSound('tick'); }
+    }
+    if (rem<=0 && !expired) { expired=true; clearInterval(mpTimerIv); onExpire(); }
+  }
+  tick();
+  mpTimerIv = setInterval(tick, 250);
+}
+
+async function mpLeave() {
+  if (mpListener) { mpListener(); mpListener=null; }
+  clearInterval(mpTimerIv);
+  // If we're still in the lobby (game hasn't started), remove ourselves
+  // from the room's player list so we don't leave behind a "ghost" entry
+  // that shows up stuck in the host's lobby and occupies a player slot,
+  // blocking others from joining and preventing us from rejoining.
+  if (mpRoomId && mpPlayerId && !mpIsHost && mpRoom && mpRoom.status === 'waiting') {
+    try {
+      const updatedPlayers = (mpRoom.players||[]).filter(p=>p.id!==mpPlayerId);
+      await db.collection('rooms').doc(mpRoomId).update({players:updatedPlayers});
+    } catch(e) {}
+  }
+  if (mpGameMap)   { try{mpGameMap.remove();}catch(e){}   mpGameMap=null; }
+  if (mpHostMap)   { try{mpHostMap.remove();}catch(e){}   mpHostMap=null; }
+  if (mpResultMap) { try{mpResultMap.remove();}catch(e){} mpResultMap=null; }
+  mpRoomId=null; mpPlayerId=null; mpIsHost=false; mpRoom=null;
+  mpCurrentRound=0; mpGuess=null; mpAnswered=false; mpLastPlayerCount=0;
+  showScreen('home-screen');
+}
+
+function mpBackHome() {
+  if (mpIsHost && mpRoomId) db.collection('rooms').doc(mpRoomId).delete().catch(()=>{});
+  mpLeave();
+}
+
+function mpReset() {
+  mpCloseCamera();
+  mpCloseEmojiPicker();
+  if (mpListener) { mpListener(); mpListener=null; }
+  clearInterval(mpTimerIv);
+  if (mpGameMap)   { try{mpGameMap.remove();}catch(e){}   mpGameMap=null; }
+  if (mpHostMap)   { try{mpHostMap.remove();}catch(e){}   mpHostMap=null; }
+  if (mpResultMap) { try{mpResultMap.remove();}catch(e){} mpResultMap=null; }
+  mpHostMapLayers=[]; mpGameMarker=null; mpAnswerStatusControl=null; mpLastStatus=null;
+  mpRoomId=null; mpPlayerId=null; mpIsHost=false; mpRoom=null;
+  mpCurrentRound=0; mpGuess=null; mpAnswered=false; mpLastPlayerCount=0;
+  mpMySelfie=null; mpMyEmoji=null;
+  ['mp-host-selfie-preview','mp-join-selfie-preview'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) { el.style.backgroundImage=''; el.textContent='📷'; }
+  });
+  ['mp-host-selfie','mp-join-selfie'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+// ── Global UI tap sound ─────────────────────────────────────────────────────
+document.addEventListener('click', e => {
+  const target = e.target.closest('.btn, .back-btn, .time-opt, .mode-card, .player-chip');
+  if (!target || target.id === 'sound-toggle-btn' || target.id === 'vibration-toggle-btn') return;
+  playSound('tap');
+}, true);
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+(async () => {
+  try {
+    await loadData();
+  } catch(e) {
+    console.error('Firebase load error:', e);
+    showToast('⚠️ تعذر الاتصال بالخادم');
+  }
+  // Count this page load as a visit (fire-and-forget) — skip devices that have logged into admin
+  if (localStorage.getItem('dalney_owner') !== '1') {
+    locsCol.doc('meta_config').set({visitCount: firebase.firestore.FieldValue.increment(1)}, {merge:true}).catch(()=>{});
+  }
+  updateSoundToggleUI();
+  updateVibrationToggleUI();
+  document.getElementById('loading-overlay').classList.add('hidden');
+  showScreen('home-screen');
+})();
+</script>
+</body>
+</html>
