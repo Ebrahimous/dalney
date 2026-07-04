@@ -272,15 +272,9 @@
       transition: all 0.3s cubic-bezier(.22,1,.36,1);
     }
     /* Expanded map — bottom sheet */
-    /* Expanded map — swaps with photo, fills flex:1 */
+    /* Expanded map — positioned by JS inline styles (see expandPhotoMap) */
     #game-screen.photo-fs #game-map.map-exp {
-      position: static;
-      flex: 1; min-height: 0;
-      width: auto; height: auto;
-      border-radius: var(--radius);
-      border: none;
-      z-index: auto; cursor: default;
-      box-shadow: none;
+      transition: none !important;
     }
     /* Photo thumbnail shown while map is expanded — sits in the map's old corner */
     #photo-thumb {
@@ -2012,16 +2006,27 @@ function enterNamesLayout() {
   if (gameMap) requestAnimationFrame(() => fixMapHeight('game-map', 'game-screen'));
 }
 
-// Expand: map takes the photo's flex:1 slot; photo thumbnail goes to map's corner
+// Expand: measure photo's exact position, then snap map there via fixed coords
 function expandPhotoMap() {
   const mapEl = document.getElementById('game-map');
   const hintPanel = document.querySelector('#game-screen .hint-panel');
+  // Measure the photo area BEFORE hiding it
+  const r = hintPanel ? hintPanel.getBoundingClientRect() : null;
   mapEl.classList.add('map-exp');
-  if (hintPanel) hintPanel.style.display = 'none';   // hide photo panel
+  if (hintPanel) hintPanel.style.display = 'none';
+  // Position map at exactly where the photo was
+  if (r) {
+    Object.assign(mapEl.style, {
+      position: 'fixed', top: r.top + 'px', left: r.left + 'px',
+      width: r.width + 'px', height: r.height + 'px',
+      bottom: 'auto', borderRadius: 'var(--radius)',
+      border: 'none', boxShadow: 'none', zIndex: '900', cursor: 'default'
+    });
+  }
   document.getElementById('photo-map-close').style.display = 'none';
   const nudgeEl = document.getElementById('photo-map-nudge');
   if (nudgeEl) nudgeEl.style.display = 'none';
-  // Show photo as thumbnail at the corner where map was
+  // Photo thumbnail goes to the corner where the map was
   const thumb = document.getElementById('photo-thumb');
   if (thumb) {
     const photo = gameRounds[currentRound]?.photo;
@@ -2034,7 +2039,10 @@ function collapsePhotoMap() {
   const mapEl = document.getElementById('game-map');
   const hintPanel = document.querySelector('#game-screen .hint-panel');
   mapEl.classList.remove('map-exp');
-  if (hintPanel) hintPanel.style.display = '';   // restore photo panel
+  if (hintPanel) hintPanel.style.display = '';
+  // Clear all inline styles set during expansion
+  ['position','top','left','width','height','bottom',
+   'borderRadius','border','boxShadow','zIndex','cursor'].forEach(p => mapEl.style[p] = '');
   document.getElementById('photo-map-close').style.display = 'none';
   document.getElementById('photo-thumb').style.display = 'none';
   const nudgeEl = document.getElementById('photo-map-nudge');
