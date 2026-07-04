@@ -272,34 +272,36 @@
       transition: all 0.3s cubic-bezier(.22,1,.36,1);
     }
     /* Expanded map — bottom sheet */
+    /* Expanded map — swaps with photo, fills flex:1 */
     #game-screen.photo-fs #game-map.map-exp {
-      position: fixed;
-      left: 0; bottom: 0; top: auto;
-      width: 100%; height: 62vh;
-      border-radius: 16px 16px 0 0;
-      border: 1.5px solid rgba(255,255,255,.08); border-bottom: none;
-      z-index: 900; cursor: default;
-      box-shadow: 0 -6px 32px rgba(0,0,0,.6);
+      position: static;
+      flex: 1; min-height: 0;
+      width: auto; height: auto;
+      border-radius: var(--radius);
+      border: none;
+      z-index: auto; cursor: default;
+      box-shadow: none;
     }
-    /* Photo thumbnail shown while map is expanded */
+    /* Photo thumbnail shown while map is expanded — sits in the map's old corner */
     #photo-thumb {
       display: none; position: fixed;
-      top: 14px; right: 14px; z-index: 920;
-      width: 90px; height: 90px; border-radius: 10px;
+      bottom: 78px; left: 12px; z-index: 920;
+      width: 150px; height: 150px; border-radius: 14px;
       object-fit: cover;
-      border: 2px solid rgba(255,255,255,.25);
-      box-shadow: 0 4px 16px rgba(0,0,0,.6);
+      border: 2.5px solid var(--blue);
+      box-shadow: 0 4px 24px rgba(0,0,0,.75), 0 0 0 1px rgba(88,166,255,.15);
+      cursor: pointer;
     }
     /* Close button for expanded map */
     #photo-map-close {
       display: none; position: fixed;
-      bottom: calc(62vh + 10px); left: 50%; transform: translateX(-50%);
+      bottom: calc(62vh - 52px); left: 50%; transform: translateX(-50%);
       z-index: 920;
-      background: rgba(9,14,26,.92); border: 1px solid rgba(255,255,255,.15);
-      color: var(--text); border-radius: 10px;
-      padding: 10px 28px; font-size: 14px; font-weight: 700;
+      background: rgba(9,14,26,.88); border: 1px solid rgba(255,255,255,.15);
+      color: var(--text); border-radius: 20px;
+      padding: 8px 22px; font-size: 13px; font-weight: 700;
       cursor: pointer; font-family: inherit;
-      box-shadow: 0 2px 12px rgba(0,0,0,.5);
+      box-shadow: 0 2px 12px rgba(0,0,0,.6);
     }
     /* Expand nudge label over mini map */
     #photo-map-nudge {
@@ -1998,6 +2000,8 @@ function loadRound() {
 function enterNamesLayout() {
   const gameScreenEl = document.getElementById('game-screen');
   gameScreenEl.classList.remove('photo-fs');
+  const hintPanel = document.querySelector('#game-screen .hint-panel');
+  if (hintPanel) hintPanel.style.display = '';   // restore if hidden by swap
   const mapEl = document.getElementById('game-map');
   mapEl.classList.remove('map-exp');
   mapEl.style.height = ''; mapEl.style.flex = '';
@@ -2008,23 +2012,31 @@ function enterNamesLayout() {
   if (gameMap) requestAnimationFrame(() => fixMapHeight('game-map', 'game-screen'));
 }
 
-// Expand/collapse the corner mini-map in photo-fs mode
+// Expand: map takes the photo's flex:1 slot; photo thumbnail goes to map's corner
 function expandPhotoMap() {
   const mapEl = document.getElementById('game-map');
+  const hintPanel = document.querySelector('#game-screen .hint-panel');
   mapEl.classList.add('map-exp');
-  document.getElementById('photo-map-close').style.display = 'block';
+  if (hintPanel) hintPanel.style.display = 'none';   // hide photo panel
+  document.getElementById('photo-map-close').style.display = 'none';
   const nudgeEl = document.getElementById('photo-map-nudge');
   if (nudgeEl) nudgeEl.style.display = 'none';
-  // Photo stays visible in top portion — no thumbnail needed
+  // Show photo as thumbnail at the corner where map was
+  const thumb = document.getElementById('photo-thumb');
+  if (thumb) {
+    const photo = gameRounds[currentRound]?.photo;
+    if (photo) { thumb.src = photo; thumb.style.display = 'block'; }
+  }
   setTimeout(() => { if (gameMap) gameMap.invalidateSize(); }, 50);
 }
 
 function collapsePhotoMap() {
   const mapEl = document.getElementById('game-map');
+  const hintPanel = document.querySelector('#game-screen .hint-panel');
   mapEl.classList.remove('map-exp');
+  if (hintPanel) hintPanel.style.display = '';   // restore photo panel
   document.getElementById('photo-map-close').style.display = 'none';
   document.getElementById('photo-thumb').style.display = 'none';
-  // Show nudge only if no guess placed yet
   const nudgeEl = document.getElementById('photo-map-nudge');
   if (nudgeEl) nudgeEl.style.display = guess ? 'none' : 'block';
   setTimeout(() => { if (gameMap) gameMap.invalidateSize(); }, 320);
