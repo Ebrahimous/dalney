@@ -503,18 +503,14 @@
     <button class="back-btn" onclick="showScreen('kw-menu-screen')">→</button>
     <h2 style="font-size:18px;">لعب فردي</h2>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;flex-shrink:0;">
-    <div class="stat-card" style="padding:10px 6px;">
-      <div class="num" id="pr-normal" style="font-size:18px;">—</div>
-      <div class="lbl" style="font-size:10px;">🗺️ عادي</div>
-    </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;flex-shrink:0;">
     <div class="stat-card" style="padding:10px 6px;">
       <div class="num" id="pr-competitive" style="font-size:18px;">—</div>
-      <div class="lbl" style="font-size:10px;">🥇 تنافسي</div>
+      <div class="lbl" style="font-size:10px;">عادي</div>
     </div>
     <div class="stat-card" style="padding:10px 6px;">
       <div class="num" id="pr-timeattack" style="font-size:18px;">—</div>
-      <div class="lbl" style="font-size:10px;">⚡ وقت</div>
+      <div class="lbl" style="font-size:10px;">⚡ تحدي الدقيقة</div>
     </div>
   </div>
   <!-- hidden helper used by spSetScoring for active-mode display -->
@@ -522,24 +518,21 @@
   <div class="settings-card" style="flex-shrink:0;gap:18px;">
     <div>
       <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">نوع اللعب</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-        <button class="time-opt active" id="sm-normal"      onclick="spSetScoring(this,'normal')">🗺️ عادي</button>
-        <button class="time-opt"        id="sm-competitive" onclick="spSetScoring(this,'competitive')">🥇 تنافسي</button>
-        <button class="time-opt"        id="sm-timeattack"  onclick="spSetScoring(this,'timeattack')">⚡ وقت</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="time-opt active" id="sm-competitive" onclick="spSetScoring(this,'competitive')">عادي</button>
+        <button class="time-opt"        id="sm-timeattack"  onclick="spSetScoring(this,'timeattack')">⚡ تحدي الدقيقة</button>
       </div>
     </div>
     <div>
       <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">نوع المحتوى</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-        <button class="time-opt active" id="ct-names"  onclick="spSetContent(this,'names')">🗺️ أسماء</button>
-        <button class="time-opt"        id="ct-photos" onclick="spSetContent(this,'photos')">📷 صور</button>
-        <button class="time-opt"        id="ct-mix"    onclick="spSetContent(this,'mix')">🔀 مزيج</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="time-opt active" id="ct-names"  onclick="spToggleContent('names')">🗺️ أسماء</button>
+        <button class="time-opt"        id="ct-photos" onclick="spToggleContent('photos')">📷 صور</button>
       </div>
     </div>
     <div id="round-count-row">
       <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-        <button class="time-opt"        id="rc-5"  onclick="setRoundCount(this,5)">5</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <button class="time-opt active" id="rc-10" onclick="setRoundCount(this,10)">10</button>
         <button class="time-opt"        id="rc-20" onclick="setRoundCount(this,20)">20</button>
       </div>
@@ -1336,18 +1329,16 @@ function getStats(mode) {
 }
 
 function refreshPersonalRecords() {
-  ['normal','competitive','timeattack'].forEach(m => {
-    const elId = m === 'normal' ? 'pr-normal' : m === 'competitive' ? 'pr-competitive' : 'pr-timeattack';
+  ['competitive','timeattack'].forEach(m => {
+    const elId = m === 'competitive' ? 'pr-competitive' : 'pr-timeattack';
     const el = document.getElementById(elId);
     if (!el) return;
     const val = getStats(m).highscore;
     el.textContent = val > 0 ? val + '/100' : '—';
-    // Highlight the currently selected mode
     el.parentElement.style.borderColor = '';
   });
   // Highlight active mode card
-  const activeMode = timeAttackMode ? 'timeattack' : scoringMode;
-  const activeId = activeMode === 'normal' ? 'pr-normal' : activeMode === 'competitive' ? 'pr-competitive' : 'pr-timeattack';
+  const activeId = timeAttackMode ? 'pr-timeattack' : 'pr-competitive';
   const activeEl = document.getElementById(activeId);
   if (activeEl) activeEl.parentElement.style.borderColor = 'var(--blue)';
 }
@@ -1767,27 +1758,28 @@ function polygonCentroid(poly) {
 // ── Solo setup ────────────────────────────────────────────────────────────────
 function showSoloSetup() {
   // Restore last-used settings from localStorage
-  const savedScoring  = localStorage.getItem('sp_scoring')  || 'normal';
-  const savedContent  = localStorage.getItem('sp_content')  || 'names';
-  const savedRounds   = parseInt(localStorage.getItem('sp_rounds') || '10', 10);
-  // Apply scoring toggle (normal / competitive / timeattack)
+  // Map old 'normal' saves to 'competitive' (normal was removed)
+  const rawScoring = localStorage.getItem('sp_scoring') || 'competitive';
+  const savedScoring = rawScoring === 'normal' ? 'competitive' : rawScoring;
+  const savedContent = localStorage.getItem('sp_content') || 'names';
+  const savedRounds = Math.max(10, parseInt(localStorage.getItem('sp_rounds') || '10', 10));
+  // Apply scoring toggle
   timeAttackMode = savedScoring === 'timeattack';
-  scoringMode = timeAttackMode ? 'normal' : savedScoring;
-  ['normal','competitive','timeattack'].forEach(s => {
+  scoringMode = 'competitive';
+  ['competitive','timeattack'].forEach(s => {
     document.getElementById('sm-' + s)?.classList.toggle('active', s === savedScoring);
   });
   // Show/hide round count row
   const rcRow = document.getElementById('round-count-row');
   if (rcRow) rcRow.style.display = timeAttackMode ? 'none' : '';
-  // Apply content toggle
-  ['names','photos','mix'].forEach(c => {
-    document.getElementById('ct-' + c)?.classList.toggle('active', c === savedContent);
-  });
-  contentMode = savedContent;
-  // Apply rounds
-  selectedRounds = savedRounds;
-  [5,10,20].forEach(n => {
-    document.getElementById('rc-' + n)?.classList.toggle('active', n === savedRounds);
+  // Apply content toggles (names/photos can both be active = mix)
+  document.getElementById('ct-names')?.classList.toggle('active', savedContent !== 'photos');
+  document.getElementById('ct-photos')?.classList.toggle('active', savedContent === 'photos' || savedContent === 'mix');
+  contentMode = savedContent === 'mix' ? 'mix' : savedContent === 'photos' ? 'photos' : 'names';
+  // Apply rounds (10 or 20 only)
+  selectedRounds = [10,20].includes(savedRounds) ? savedRounds : 10;
+  [10,20].forEach(n => {
+    document.getElementById('rc-' + n)?.classList.toggle('active', n === selectedRounds);
   });
   // Update personal records display
   refreshPersonalRecords();
@@ -1796,7 +1788,7 @@ function showSoloSetup() {
 
 function spSetScoring(el, scoring) {
   timeAttackMode = scoring === 'timeattack';
-  scoringMode = timeAttackMode ? 'normal' : scoring;
+  scoringMode = 'competitive'; // always competitive scoring now
   el.parentElement.querySelectorAll('.time-opt').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   const rcRow = document.getElementById('round-count-row');
@@ -1804,15 +1796,28 @@ function spSetScoring(el, scoring) {
   refreshPersonalRecords();
 }
 
-function spSetContent(el, content) {
-  contentMode = content;
-  el.parentElement.querySelectorAll('.time-opt').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
+function spToggleContent(type) {
+  const namesBtn = document.getElementById('ct-names');
+  const photosBtn = document.getElementById('ct-photos');
+  // Toggle the clicked one
+  if (type === 'names') namesBtn.classList.toggle('active');
+  else photosBtn.classList.toggle('active');
+  // If both are now off, turn the OTHER one on
+  const namesOn = namesBtn.classList.contains('active');
+  const photosOn = photosBtn.classList.contains('active');
+  if (!namesOn && !photosOn) {
+    if (type === 'names') photosBtn.classList.add('active');
+    else namesBtn.classList.add('active');
+  }
+  // Derive contentMode from toggle state
+  const n = namesBtn.classList.contains('active');
+  const p = photosBtn.classList.contains('active');
+  contentMode = (n && p) ? 'mix' : p ? 'photos' : 'names';
 }
 
 function startSoloGame() {
   // Persist settings for next session
-  localStorage.setItem('sp_scoring', timeAttackMode ? 'timeattack' : scoringMode);
+  localStorage.setItem('sp_scoring', timeAttackMode ? 'timeattack' : 'competitive');
   localStorage.setItem('sp_content', contentMode);
   localStorage.setItem('sp_rounds',  selectedRounds);
   startGame(scoringMode, contentMode);
@@ -2433,7 +2438,7 @@ function showSummary() {
   // Leaderboard submit section (competitive only)
   const lbSection = document.getElementById('lb-submit-section');
   if (lbSection) {
-    if (!timeAttackMode && scoringMode === 'competitive') {
+    if (!timeAttackMode && !challengeMode) {
       lbSection.style.display = '';
       const saved = localStorage.getItem('lb_name') || '';
       const inp = document.getElementById('lb-name-input');
@@ -2588,7 +2593,7 @@ function generateChallengeLink() {
 
 function shareResult() {
   const avg = Math.round((totalScore / gameRounds.length) * 10) / 10;
-  const modeLabel = timeAttackMode ? '⚡ وقت' : scoringMode === 'competitive' ? '🥇 تنافسي' : '🗺️ عادي';
+  const modeLabel = timeAttackMode ? '⚡ تحدي الدقيقة' : 'عادي';
   const blocks = gameRounds.map(r => {
     const sc = r._result?.score || 0;
     return sc >= 90 ? '🟢' : sc >= 60 ? '🟡' : '🔴';
