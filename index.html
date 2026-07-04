@@ -2026,10 +2026,10 @@ function expandPhotoMap() {
   document.getElementById('photo-map-close').style.display = 'none';
   const nudgeEl = document.getElementById('photo-map-nudge');
   if (nudgeEl) nudgeEl.style.display = 'none';
-  // Photo thumbnail goes to the corner where the map was
+  // Photo thumbnail — read actual displayed src from hint-photo (handles multi-photo random pick)
   const thumb = document.getElementById('photo-thumb');
   if (thumb) {
-    const photo = gameRounds[currentRound]?.photo;
+    const photo = document.getElementById('hint-photo')?.src || gameRounds[currentRound]?.photo;
     if (photo) { thumb.src = photo; thumb.style.display = 'block'; }
   }
   setTimeout(() => { if (gameMap) gameMap.invalidateSize(); }, 50);
