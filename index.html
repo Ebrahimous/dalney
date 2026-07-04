@@ -271,15 +271,15 @@
       z-index: 600; overflow: hidden; cursor: pointer;
       transition: all 0.3s cubic-bezier(.22,1,.36,1);
     }
-    /* Expanded map (full screen) */
+    /* Expanded map — bottom sheet */
     #game-screen.photo-fs #game-map.map-exp {
       position: fixed;
-      left: 0; top: 0;
-      width: 100%; height: 100dvh;
-      border-radius: 0;
-      border: none;
+      left: 0; bottom: 0; top: auto;
+      width: 100%; height: 62vh;
+      border-radius: 16px 16px 0 0;
+      border: 1.5px solid rgba(255,255,255,.08); border-bottom: none;
       z-index: 900; cursor: default;
-      box-shadow: none;
+      box-shadow: 0 -6px 32px rgba(0,0,0,.6);
     }
     /* Photo thumbnail shown while map is expanded */
     #photo-thumb {
@@ -293,7 +293,7 @@
     /* Close button for expanded map */
     #photo-map-close {
       display: none; position: fixed;
-      bottom: 20px; left: 50%; transform: translateX(-50%);
+      bottom: calc(62vh + 10px); left: 50%; transform: translateX(-50%);
       z-index: 920;
       background: rgba(9,14,26,.92); border: 1px solid rgba(255,255,255,.15);
       color: var(--text); border-radius: 10px;
@@ -2015,12 +2015,7 @@ function expandPhotoMap() {
   document.getElementById('photo-map-close').style.display = 'block';
   const nudgeEl = document.getElementById('photo-map-nudge');
   if (nudgeEl) nudgeEl.style.display = 'none';
-  // Show photo thumbnail so player can still see the photo
-  const thumb = document.getElementById('photo-thumb');
-  if (thumb && gameRounds[currentRound] && gameRounds[currentRound].photo) {
-    thumb.src = gameRounds[currentRound].photo;
-    thumb.style.display = 'block';
-  }
+  // Photo stays visible in top portion — no thumbnail needed
   setTimeout(() => { if (gameMap) gameMap.invalidateSize(); }, 50);
 }
 
@@ -2731,8 +2726,8 @@ async function loadLeaderboard(mode) {
   try {
     // ── World solo tab ──
     if (mode === 'world') {
-      const snap = await db.collection('worldLeaderboard').orderBy('pct','desc').limit(50).get();
-      const docs = snap.docs.map(d => d.data()).slice(0, 30);
+      const snap = await db.collection('worldLeaderboard').limit(100).get();
+      const docs = snap.docs.map(d => d.data()).sort((a,b)=>(b.pct||0)-(a.pct||0)).slice(0, 30);
       if (!docs.length) {
         list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px;font-size:14px;">لا يوجد إدخالات بعد 🙂</div>';
         return;
@@ -2791,7 +2786,7 @@ async function loadLeaderboard(mode) {
     });
   } catch(e) {
     console.error('loadLeaderboard', e);
-    list.innerHTML = '<div style="text-align:center;color:var(--red);padding:24px;font-size:13px;">تعذّر التحميل. تحقق من اتصالك.</div>';
+    list.innerHTML = `<div style="text-align:center;color:var(--red);padding:24px;font-size:13px;">تعذّر التحميل (${e.code||e.message||''})</div>`;
   }
 }
 
