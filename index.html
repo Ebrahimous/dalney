@@ -271,23 +271,33 @@
       z-index: 600; overflow: hidden; cursor: pointer;
       transition: all 0.3s cubic-bezier(.22,1,.36,1);
     }
-    /* Expanded map (bottom sheet) */
+    /* Expanded map (full screen) */
     #game-screen.photo-fs #game-map.map-exp {
       position: fixed;
-      left: 0; bottom: 0;
-      width: 100%; height: 62dvh;
-      border-radius: var(--radius) var(--radius) 0 0;
-      border: none; border-top: 1px solid rgba(88,166,255,.25);
+      left: 0; top: 0;
+      width: 100%; height: 100dvh;
+      border-radius: 0;
+      border: none;
       z-index: 900; cursor: default;
-      box-shadow: 0 -8px 40px rgba(0,0,0,.6);
+      box-shadow: none;
+    }
+    /* Photo thumbnail shown while map is expanded */
+    #photo-thumb {
+      display: none; position: fixed;
+      top: 14px; right: 14px; z-index: 920;
+      width: 90px; height: 90px; border-radius: 10px;
+      object-fit: cover;
+      border: 2px solid rgba(255,255,255,.25);
+      box-shadow: 0 4px 16px rgba(0,0,0,.6);
     }
     /* Close button for expanded map */
     #photo-map-close {
       display: none; position: fixed;
-      top: 14px; right: 14px; z-index: 920;
+      bottom: 20px; left: 50%; transform: translateX(-50%);
+      z-index: 920;
       background: rgba(9,14,26,.92); border: 1px solid rgba(255,255,255,.15);
       color: var(--text); border-radius: 10px;
-      padding: 8px 16px; font-size: 14px; font-weight: 700;
+      padding: 10px 28px; font-size: 14px; font-weight: 700;
       cursor: pointer; font-family: inherit;
       box-shadow: 0 2px 12px rgba(0,0,0,.5);
     }
@@ -353,6 +363,12 @@
     .time-opt{background:var(--surface);border:1px solid rgba(255,255,255,.12);color:var(--muted);padding:10px 6px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;width:100%;}
     .time-opt.active{background:var(--blue);color:#000;border-color:var(--blue);}
     .time-opt-sm{padding:8px 2px;font-size:12px;}
+    .time-opt.ta-active{background:#c0392b;color:#fff;border-color:#c0392b;}
+    #ta-bar{background:var(--surface);border-bottom:1px solid rgba(255,255,255,.1);padding:8px 14px;align-items:center;gap:10px;flex-shrink:0;}
+    #ta-time{font-size:26px;font-weight:900;color:var(--gold);min-width:36px;text-align:center;}
+    #ta-progress{flex:1;height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;}
+    #ta-fill{height:100%;background:var(--gold);border-radius:3px;transition:width .5s linear;width:100%;}
+    #ta-count{font-size:12px;color:var(--muted);white-space:nowrap;}
     .mode-card{display:flex;align-items:center;gap:14px;background:var(--blue);border:1px solid var(--blue);border-radius:var(--radius);padding:14px 16px;cursor:pointer;width:100%;color:#000;font-family:inherit;}
     .mode-card:active{background:#4a95e8;border-color:#4a95e8;}
     .mode-card .mode-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
@@ -381,6 +397,7 @@
 
 <!-- Photo-mode expanded-map controls (fixed overlays, JS-managed) -->
 <button id="photo-map-close" onclick="collapsePhotoMap()">← رجوع للصورة</button>
+<img id="photo-thumb" src="" alt="photo" onclick="collapsePhotoMap()">
 <div id="photo-map-nudge">اضغط للخريطة</div>
 
 <!-- Loading overlay -->
@@ -486,15 +503,29 @@
     <button class="back-btn" onclick="showScreen('kw-menu-screen')">→</button>
     <h2 style="font-size:18px;">لعب فردي</h2>
   </div>
-  <div class="stat-card" style="max-width:160px;margin:0 auto;flex-shrink:0;">
-    <div class="num" id="stat-highscore">0/100</div><div class="lbl">أفضل معدل</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;flex-shrink:0;">
+    <div class="stat-card" style="padding:10px 6px;">
+      <div class="num" id="pr-normal" style="font-size:18px;">—</div>
+      <div class="lbl" style="font-size:10px;">🗺️ عادي</div>
+    </div>
+    <div class="stat-card" style="padding:10px 6px;">
+      <div class="num" id="pr-competitive" style="font-size:18px;">—</div>
+      <div class="lbl" style="font-size:10px;">🥇 تنافسي</div>
+    </div>
+    <div class="stat-card" style="padding:10px 6px;">
+      <div class="num" id="pr-timeattack" style="font-size:18px;">—</div>
+      <div class="lbl" style="font-size:10px;">⚡ وقت</div>
+    </div>
   </div>
+  <!-- hidden helper used by spSetScoring for active-mode display -->
+  <div id="stat-highscore" style="display:none;"></div>
   <div class="settings-card" style="flex-shrink:0;gap:18px;">
     <div>
       <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">نوع اللعب</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
         <button class="time-opt active" id="sm-normal"      onclick="spSetScoring(this,'normal')">🗺️ عادي</button>
         <button class="time-opt"        id="sm-competitive" onclick="spSetScoring(this,'competitive')">🥇 تنافسي</button>
+        <button class="time-opt"        id="sm-timeattack"  onclick="spSetScoring(this,'timeattack')">⚡ وقت</button>
       </div>
     </div>
     <div>
@@ -505,7 +536,7 @@
         <button class="time-opt"        id="ct-mix"    onclick="spSetContent(this,'mix')">🔀 مزيج</button>
       </div>
     </div>
-    <div>
+    <div id="round-count-row">
       <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:8px;">عدد الجولات</label>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
         <button class="time-opt"        id="rc-5"  onclick="setRoundCount(this,5)">5</button>
@@ -520,6 +551,11 @@
 
 <!-- GAME SCREEN -->
 <div id="game-screen" class="screen" style="padding:12px;gap:8px;overflow:hidden;">
+  <div id="ta-bar" style="display:none;flex-wrap:nowrap;">
+    <span id="ta-time">60</span>
+    <div id="ta-progress"><div id="ta-fill"></div></div>
+    <span id="ta-count">0 جولة</span>
+  </div>
   <div class="game-header">
     <button class="back-btn" onclick="exitGame()">→</button>
     <span class="round-badge" id="round-badge">جولة 1 / 5</span>
@@ -598,9 +634,27 @@
         onclick="submitToLeaderboard()">🏆 أضف</button>
     </div>
   </div>
+  <div id="challenge-result-banner" style="display:none;background:var(--card);border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);padding:14px 16px;text-align:center;flex-shrink:0;">
+    <div id="challenge-result-text" style="font-weight:700;font-size:15px;"></div>
+    <div id="challenge-result-sub" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
+  </div>
   <button class="btn btn-secondary" style="flex-shrink:0;" onclick="shareResult()">📤 شارك نتيجتك</button>
+  <button class="btn btn-secondary" style="flex-shrink:0;" onclick="generateChallengeLink()">🔗 تحدى صديق</button>
   <button class="btn btn-primary" style="flex-shrink:0;" onclick="startSoloGame()">🔄 العب مرة أخرى</button>
   <button class="btn btn-secondary" style="flex-shrink:0;" onclick="exitGame(true)">🏠 الرئيسية</button>
+</div>
+
+
+<!-- CHALLENGE SCREEN -->
+<div id="challenge-screen" class="screen" style="padding:24px;gap:20px;align-items:center;justify-content:center;text-align:center;">
+  <div style="font-size:60px;">⚡</div>
+  <div>
+    <h2 id="challenge-title" style="font-size:20px;font-weight:800;margin-bottom:8px;"></h2>
+    <div id="challenge-score-display" style="font-size:52px;font-weight:900;color:var(--gold);line-height:1;"></div>
+    <div id="challenge-desc" style="color:var(--muted);font-size:13px;margin-top:8px;"></div>
+  </div>
+  <button class="btn btn-primary" style="width:100%;" onclick="startChallengeGame()">اقبل التحدي 🎯</button>
+  <button class="btn btn-secondary" style="width:100%;" onclick="showScreen('home-screen')">تجاهل</button>
 </div>
 
 <!-- MULTIPLAYER MENU -->
@@ -941,7 +995,13 @@
     <div class="form-group">
       <label>صور إضافية (تُعرض عشوائياً في وضع الصور)</label>
       <div id="edit-extra-photos"></div>
-      <button type="button" onclick="addExtraPhoto('edit')" class="btn btn-sm btn-secondary" style="margin-top:6px;">➕ إضافة صورة</button>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <label class="btn btn-sm btn-secondary" style="cursor:pointer;flex:1;text-align:center;">
+          📁 رفع صور (متعدد)
+          <input type="file" accept="image/*" multiple style="display:none" onchange="addExtraPhotoBulk('edit',this)">
+        </label>
+        <button type="button" onclick="addExtraPhoto('edit')" class="btn btn-sm btn-secondary" style="flex:1;">🔗 إضافة URL</button>
+      </div>
     </div>
     <div class="form-group">
       <label>الموقع على الخريطة</label>
@@ -1062,6 +1122,15 @@ const lbCol = db.collection('leaderboard');
 const KW = [29.3759, 47.9774];
 let locations = [], gameRounds = [], currentRound = 0, totalScore = 0, guess = null;
 let selectedRounds = 10; // 10 | 20 — chosen on the solo mode-select screen
+let timeAttackMode = false;
+let timeAttackIv = null;
+let timeAttackEnd = null;
+let timeAttackCompleted = 0;
+const TIME_ATTACK_SECONDS = 60;
+let challengeMode = false;
+let challengerName = '';
+let challengerScore = 0;
+let challengeDocIds = [];
 let currentStreak = 0; // consecutive rounds where player earned ≥1 star
 
 // Returns 0-3 stars for a given round score
@@ -1262,11 +1331,29 @@ async function deleteLocFromDb(docId) {
 
 // ── Stats (local — per player) ────────────────────────────────────────────────
 function getStats(mode) {
-  const key = mode === 'competitive' ? 'q8avg_comp' : 'q8avg';
+  const key = mode === 'competitive' ? 'q8avg_comp' : mode === 'timeattack' ? 'q8avg_ta' : 'q8avg';
   return { highscore: parseFloat(localStorage.getItem(key) || '0') };
 }
+
+function refreshPersonalRecords() {
+  ['normal','competitive','timeattack'].forEach(m => {
+    const elId = m === 'normal' ? 'pr-normal' : m === 'competitive' ? 'pr-competitive' : 'pr-timeattack';
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const val = getStats(m).highscore;
+    el.textContent = val > 0 ? val + '/100' : '—';
+    // Highlight the currently selected mode
+    el.parentElement.style.borderColor = '';
+  });
+  // Highlight active mode card
+  const activeMode = timeAttackMode ? 'timeattack' : scoringMode;
+  const activeId = activeMode === 'normal' ? 'pr-normal' : activeMode === 'competitive' ? 'pr-competitive' : 'pr-timeattack';
+  const activeEl = document.getElementById(activeId);
+  if (activeEl) activeEl.parentElement.style.borderColor = 'var(--blue)';
+}
+
 function setHighscore(v, mode) {
-  const key = mode === 'competitive' ? 'q8avg_comp' : 'q8avg';
+  const key = mode === 'competitive' ? 'q8avg_comp' : mode === 'timeattack' ? 'q8avg_ta' : 'q8avg';
   localStorage.setItem(key, v);
 }
 
@@ -1564,6 +1651,21 @@ function addExtraPhoto(prefix) {
   renderExtraPhotos(prefix);
 }
 
+function addExtraPhotoBulk(prefix, input) {
+  if (!input.files || !input.files.length) return;
+  const files = Array.from(input.files);
+  let processed = 0;
+  files.forEach(file => {
+    resizeImageFile(file, dataUrl => {
+      editExtraPhotos.push(dataUrl);
+      processed++;
+      if (processed === files.length) renderExtraPhotos(prefix);
+    });
+  });
+  input.value = '';
+  showToast(`⏳ جاري معالجة ${files.length} صورة…`);
+}
+
 // ── Polygon drawing ───────────────────────────────────────────────────────────
 function getMap(ctx) { return ctx === 'new' ? adminMap : editMap; }
 
@@ -1668,11 +1770,15 @@ function showSoloSetup() {
   const savedScoring  = localStorage.getItem('sp_scoring')  || 'normal';
   const savedContent  = localStorage.getItem('sp_content')  || 'names';
   const savedRounds   = parseInt(localStorage.getItem('sp_rounds') || '10', 10);
-  // Apply scoring toggle
-  ['normal','competitive'].forEach(s => {
+  // Apply scoring toggle (normal / competitive / timeattack)
+  timeAttackMode = savedScoring === 'timeattack';
+  scoringMode = timeAttackMode ? 'normal' : savedScoring;
+  ['normal','competitive','timeattack'].forEach(s => {
     document.getElementById('sm-' + s)?.classList.toggle('active', s === savedScoring);
   });
-  scoringMode = savedScoring;
+  // Show/hide round count row
+  const rcRow = document.getElementById('round-count-row');
+  if (rcRow) rcRow.style.display = timeAttackMode ? 'none' : '';
   // Apply content toggle
   ['names','photos','mix'].forEach(c => {
     document.getElementById('ct-' + c)?.classList.toggle('active', c === savedContent);
@@ -1683,16 +1789,19 @@ function showSoloSetup() {
   [5,10,20].forEach(n => {
     document.getElementById('rc-' + n)?.classList.toggle('active', n === savedRounds);
   });
-  // Update highscore display
-  document.getElementById('stat-highscore').textContent = getStats(savedScoring).highscore + '/100';
+  // Update personal records display
+  refreshPersonalRecords();
   showScreen('sp-setup-screen');
 }
 
 function spSetScoring(el, scoring) {
-  scoringMode = scoring;
+  timeAttackMode = scoring === 'timeattack';
+  scoringMode = timeAttackMode ? 'normal' : scoring;
   el.parentElement.querySelectorAll('.time-opt').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('stat-highscore').textContent = getStats(scoring).highscore + '/100';
+  const rcRow = document.getElementById('round-count-row');
+  if (rcRow) rcRow.style.display = timeAttackMode ? 'none' : '';
+  refreshPersonalRecords();
 }
 
 function spSetContent(el, content) {
@@ -1703,7 +1812,7 @@ function spSetContent(el, content) {
 
 function startSoloGame() {
   // Persist settings for next session
-  localStorage.setItem('sp_scoring', scoringMode);
+  localStorage.setItem('sp_scoring', timeAttackMode ? 'timeattack' : scoringMode);
   localStorage.setItem('sp_content', contentMode);
   localStorage.setItem('sp_rounds',  selectedRounds);
   startGame(scoringMode, contentMode);
@@ -1729,8 +1838,12 @@ function startGame(scoring, content) {
     return;
   }
   if (summaryMap) { summaryMap.remove(); summaryMap = null; }
-  gameRounds = shuffle([...pool]).slice(0, Math.min(selectedRounds, pool.length));
-  currentRound = 0; totalScore = 0; guess = null; currentStreak = 0;
+  if (timeAttackMode) {
+    gameRounds = shuffle([...pool]); // all locations — timer is the limit
+  } else {
+    gameRounds = shuffle([...pool]).slice(0, Math.min(selectedRounds, pool.length));
+  }
+  currentRound = 0; totalScore = 0; guess = null; currentStreak = 0; timeAttackCompleted = 0;
   const sb = document.getElementById('streak-badge'); if (sb) sb.style.display = 'none';
   // Mix mode: decide per-round whether it's a photo or names round
   if (contentMode === 'mix') {
@@ -1740,6 +1853,7 @@ function startGame(scoring, content) {
     });
   }
   showScreen('game-screen');
+  if (timeAttackMode) startTimeAttackTimer();
   loadRound();
   requestAnimationFrame(() => requestAnimationFrame(() => {
     try { initGameMap(); } catch(e) { console.warn(e); }
@@ -1810,7 +1924,9 @@ function loadRound() {
   const loc = gameRounds[currentRound];
   const photoRound = isPhotoRound();
   const modeSuffix = (photoRound ? ' 📷' : '') + (scoringMode === 'competitive' ? ' 🥇' : '');
-  document.getElementById('round-badge').textContent = `جولة ${currentRound+1} / ${gameRounds.length}` + modeSuffix;
+  document.getElementById('round-badge').textContent = timeAttackMode
+    ? `جولة ${currentRound+1} ⚡` + modeSuffix
+    : `جولة ${currentRound+1} / ${gameRounds.length}` + modeSuffix;
   document.getElementById('score-badge').textContent = totalScore;
   const pct = ((currentRound + 1) / gameRounds.length) * 100;
   requestAnimationFrame(() => { document.getElementById('round-progress-bar').style.width = pct + '%'; });
@@ -1866,6 +1982,7 @@ function enterNamesLayout() {
   const nudgeEl = document.getElementById('photo-map-nudge');
   if (nudgeEl) nudgeEl.style.display = 'none';
   document.getElementById('photo-map-close').style.display = 'none';
+  document.getElementById('photo-thumb').style.display = 'none';
   if (gameMap) requestAnimationFrame(() => fixMapHeight('game-map', 'game-screen'));
 }
 
@@ -1876,13 +1993,20 @@ function expandPhotoMap() {
   document.getElementById('photo-map-close').style.display = 'block';
   const nudgeEl = document.getElementById('photo-map-nudge');
   if (nudgeEl) nudgeEl.style.display = 'none';
-  setTimeout(() => { if (gameMap) gameMap.invalidateSize(); }, 320);
+  // Show photo thumbnail so player can still see the photo
+  const thumb = document.getElementById('photo-thumb');
+  if (thumb && gameRounds[currentRound] && gameRounds[currentRound].photo) {
+    thumb.src = gameRounds[currentRound].photo;
+    thumb.style.display = 'block';
+  }
+  setTimeout(() => { if (gameMap) gameMap.invalidateSize(); }, 50);
 }
 
 function collapsePhotoMap() {
   const mapEl = document.getElementById('game-map');
   mapEl.classList.remove('map-exp');
   document.getElementById('photo-map-close').style.display = 'none';
+  document.getElementById('photo-thumb').style.display = 'none';
   // Show nudge only if no guess placed yet
   const nudgeEl = document.getElementById('photo-map-nudge');
   if (nudgeEl) nudgeEl.style.display = guess ? 'none' : 'block';
@@ -2134,6 +2258,27 @@ function submitGuess() {
   setTimeout(()=>playScoreSound(sc), 150);
   if (sc >= 90 || inArea) setTimeout(launchConfetti, 400);
 
+  // ── Time Attack: skip result screen, show toast, auto-advance ─────────────────
+  if (timeAttackMode) {
+    timeAttackCompleted++;
+    const emoji = sc>=90?'🎯':sc>=70?'👏':sc>=40?'👀':'😬';
+    showToast(loc.name + ' • +' + sc + ' نقطة ' + emoji);
+    setTimeout(() => {
+      if (timeAttackIv === null) return; // timer already fired
+      currentRound++;
+      if (currentRound >= gameRounds.length) { endTimeAttack(); return; }
+      playSound('round');
+      guess = null;
+      document.getElementById('submit-btn').disabled = true;
+      if (gameMap) {
+        gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
+        gameMap.setView(KW, 9);
+      }
+      loadRound();
+    }, 1400);
+    return;
+  }
+
   document.getElementById('next-btn').textContent = currentRound+1 >= gameRounds.length ? 'النتائج ›' : 'التالي ›';
 
   // Also ensure photo-fs layout is fully exited before showing result
@@ -2215,13 +2360,29 @@ function nextRound() {
 }
 
 function showSummary() {
+  stopTimeAttackTimer();
+  const effectiveMode = timeAttackMode ? 'timeattack' : scoringMode;
+  const completedCount = timeAttackMode ? timeAttackCompleted : gameRounds.length;
   document.getElementById('final-score').textContent = totalScore;
-  const hs = getStats(scoringMode).highscore;
-  const avg = Math.round((totalScore / gameRounds.length) * 10) / 10;
+  const hs = getStats(effectiveMode).highscore;
+  const avg = completedCount > 0 ? Math.round((totalScore / completedCount) * 10) / 10 : 0;
   const nb = document.getElementById('new-best');
-  if (avg > hs) { setHighscore(avg, scoringMode); nb.textContent = `🏆 رقم قياسي جديد! معدل ${avg}/100`; playSound('final'); }
-  else { nb.textContent = `معدلك: ${avg}/100 — الأفضل: ${hs}/100`; playSound('round'); }
+  if (avg > hs) {
+    setHighscore(avg, effectiveMode);
+    nb.textContent = timeAttackMode
+      ? `🏆 رقم قياسي! ${timeAttackCompleted} جولة في ${TIME_ATTACK_SECONDS} ث • معدل ${avg}/100`
+      : `🏆 رقم قياسي جديد! معدل ${avg}/100`;
+    playSound('final');
+  } else {
+    nb.textContent = timeAttackMode
+      ? `أكملت ${timeAttackCompleted} جولة في ${TIME_ATTACK_SECONDS} ث • معدل ${avg}/100 (أفضل: ${hs}/100)`
+      : `معدلك: ${avg}/100 — الأفضل: ${hs}/100`;
+    playSound('round');
+  }
   // #4 Animate score ring
+  // For time attack, only show completed rounds in breakdown
+  const roundsToShow = timeAttackMode ? gameRounds.filter(r => r._result) : gameRounds;
+
   const ring = document.getElementById('score-ring');
   const avgEl = document.getElementById('avg-display');
   const ringColor = avg>=70?'var(--gold)':avg>=40?'var(--blue)':'var(--red)';
@@ -2238,7 +2399,7 @@ function showSummary() {
   // Round breakdown rows
   const rs = document.getElementById('round-summary'); rs.innerHTML = '';
   const summaryMarkerRefs = []; // filled by initSummaryMap
-  gameRounds.forEach((loc, i) => {
+  roundsToShow.forEach((loc, i) => {
     const res = loc._result || {score:0, dist:null, inArea:false};
     const scoreColor = res.score >= 80 ? 'var(--green)' : res.score >= 40 ? 'var(--gold)' : 'var(--red)';
     const distText = res.inArea ? '✅ داخل المنطقة' :
@@ -2272,7 +2433,7 @@ function showSummary() {
   // Leaderboard submit section (competitive only)
   const lbSection = document.getElementById('lb-submit-section');
   if (lbSection) {
-    if (scoringMode === 'competitive') {
+    if (!timeAttackMode && scoringMode === 'competitive') {
       lbSection.style.display = '';
       const saved = localStorage.getItem('lb_name') || '';
       const inp = document.getElementById('lb-name-input');
@@ -2284,21 +2445,40 @@ function showSummary() {
     }
   }
 
+  // ── Challenge result ──────────────────────────────────────────────────────
+  const bannerEl = document.getElementById('challenge-result-banner');
+  if (challengeMode && bannerEl) {
+    const myAvg = completedCount > 0 ? Math.round((totalScore / completedCount) * 10) / 10 : 0;
+    const won = myAvg > challengerScore;
+    const draw = myAvg === challengerScore;
+    bannerEl.style.display = '';
+    bannerEl.style.borderColor = won ? 'var(--green)' : draw ? 'var(--gold)' : 'var(--red)';
+    document.getElementById('challenge-result-text').textContent = won
+      ? 'لقد فزت! 🏆 تفوقت على ' + challengerName
+      : draw ? 'تعادل! 🤝 نفس نتيجة ' + challengerName
+      : challengerName + ' يفوز هذه المرة 😅';
+    document.getElementById('challenge-result-sub').textContent =
+      'نتيجتك: ' + myAvg + '/100 — نتيجة ' + challengerName + ': ' + challengerScore + '/100';
+  } else if (bannerEl) {
+    bannerEl.style.display = 'none';
+  }
+
   showScreen('summary-screen');
   // 6. Confetti for good scores (avg >= 70)
   if (avg >= 70) setTimeout(launchConfetti, 300);
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    try { initSummaryMap(summaryMarkerRefs); } catch(e) { console.warn(e); }
+    try { initSummaryMap(summaryMarkerRefs, roundsToShow); } catch(e) { console.warn(e); }
   }));
 }
 
-function initSummaryMap(markerRefs) {
+function initSummaryMap(markerRefs, rounds) {
+  rounds = rounds || gameRounds;
   if (summaryMap) { summaryMap.remove(); summaryMap = null; }
   summaryMap = L.map('summary-map', {zoomControl:false, minZoom:7, maxZoom:15, attributionControl:false});
   osmTileLayer().addTo(summaryMap);
   const allBounds = [];
 
-  gameRounds.forEach((loc, i) => {
+  rounds.forEach((loc, i) => {
     const res = loc._result || {};
     const num = i + 1;
 
@@ -2335,9 +2515,80 @@ function initSummaryMap(markerRefs) {
   if (allBounds.length) summaryMap.fitBounds(L.latLngBounds(allBounds).pad(0.15));
 }
 
+
+// ── Challenge a Friend ───────────────────────────────────────────────────────
+function setupChallenge() {
+  const params = new URLSearchParams(location.search);
+  challengeDocIds = (params.get('c') || '').split(',').filter(Boolean);
+  challengerScore = parseFloat(params.get('s') || '0');
+  challengerName = decodeURIComponent(params.get('n') || 'صديق');
+  const cMode = params.get('m') || 'names';
+
+  if (!challengeDocIds.length) { showScreen('home-screen'); return; }
+
+  challengeMode = true;
+  contentMode = cMode;
+
+  document.getElementById('challenge-title').textContent = challengerName + ' يتحداك!';
+  document.getElementById('challenge-score-display').textContent = challengerScore + '/100';
+  document.getElementById('challenge-desc').textContent =
+    'لديه معدل ' + challengerScore + '/100 في ' + challengeDocIds.length + ' جولات — هل تستطيع التفوق عليه؟';
+
+  showScreen('challenge-screen');
+}
+
+function startChallengeGame() {
+  const locs = challengeDocIds
+    .map(id => locations.find(l => l._docId === id))
+    .filter(Boolean);
+  if (!locs.length) {
+    showToast('⚠️ لم يتم العثور على المواقع');
+    showScreen('home-screen');
+    return;
+  }
+  if (summaryMap) { summaryMap.remove(); summaryMap = null; }
+  timeAttackMode = false;
+  scoringMode = 'normal';
+  gameRounds = locs;
+  // Mix mode: mark photo rounds
+  if (contentMode === 'mix') {
+    gameRounds.forEach(loc => {
+      const hasPhoto = getLocPhotos(loc).length > 0;
+      loc._isPhotoRound = hasPhoto && Math.random() > 0.4;
+    });
+  }
+  currentRound = 0; totalScore = 0; guess = null; currentStreak = 0; timeAttackCompleted = 0;
+  const sb = document.getElementById('streak-badge'); if (sb) sb.style.display = 'none';
+  showScreen('game-screen');
+  loadRound();
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    try { initGameMap(); } catch(e) { console.warn(e); }
+  }));
+}
+
+function generateChallengeLink() {
+  const completedRounds = timeAttackMode ? gameRounds.filter(r => r._result) : gameRounds;
+  const ids = completedRounds.map(r => r._docId).filter(Boolean).join(',');
+  if (!ids) { showToast('⚠️ لا يمكن إنشاء الرابط — المواقع غير محفوظة في قاعدة البيانات'); return; }
+
+  const cnt = timeAttackMode ? timeAttackCompleted : gameRounds.length;
+  const avg = cnt > 0 ? Math.round((totalScore / cnt) * 10) / 10 : 0;
+  const name = localStorage.getItem('lb_name') || 'لاعب';
+  const modeParam = contentMode || 'names';
+  const url = location.origin + location.pathname +
+    '?c=' + ids + '&s=' + avg + '&n=' + encodeURIComponent(name) + '&m=' + modeParam;
+
+  const msg = name + ' يتحداك في دلني بالكويت! معدله ' + avg + '/100\nهل تستطيع التفوق عليه؟\n' + url;
+  if (navigator.share) {
+    navigator.share({ text: msg }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(url).then(() => showToast('✅ تم نسخ رابط التحدي!'));
+  }
+}
+
 function shareResult() {
   const avg = Math.round((totalScore / gameRounds.length) * 10) / 10;
-  const modeLabel = scoringMode === 'competitive' ? '🥇 تنافسي' : '🗺️ عادي';
+  const modeLabel = timeAttackMode ? '⚡ وقت' : scoringMode === 'competitive' ? '🥇 تنافسي' : '🗺️ عادي';
   const blocks = gameRounds.map(r => {
     const sc = r._result?.score || 0;
     return sc >= 90 ? '🟢' : sc >= 60 ? '🟡' : '🔴';
@@ -2350,8 +2601,51 @@ function shareResult() {
   }
 }
 
+
+// ── Time Attack ─────────────────────────────────────────────────────────────────────────────
+function startTimeAttackTimer() {
+  stopTimeAttackTimer();
+  const bar = document.getElementById('ta-bar');
+  if (bar) bar.style.display = 'flex';
+  timeAttackEnd = Date.now() + TIME_ATTACK_SECONDS * 1000;
+  updateTaTimer();
+  timeAttackIv = setInterval(updateTaTimer, 250);
+}
+
+function updateTaTimer() {
+  const remaining = Math.max(0, Math.ceil((timeAttackEnd - Date.now()) / 1000));
+  const fill = document.getElementById('ta-fill');
+  const timeEl = document.getElementById('ta-time');
+  const countEl = document.getElementById('ta-count');
+  if (timeEl) {
+    timeEl.textContent = remaining;
+    timeEl.style.color = remaining <= 10 ? 'var(--red)' : 'var(--gold)';
+  }
+  if (fill) fill.style.width = (remaining / TIME_ATTACK_SECONDS * 100) + '%';
+  if (countEl) countEl.textContent = timeAttackCompleted + ' جولة';
+  if (remaining <= 0) {
+    clearInterval(timeAttackIv);
+    timeAttackIv = null;
+    endTimeAttack();
+  }
+}
+
+function stopTimeAttackTimer() {
+  if (timeAttackIv) { clearInterval(timeAttackIv); timeAttackIv = null; }
+  const bar = document.getElementById('ta-bar');
+  if (bar) bar.style.display = 'none';
+}
+
+function endTimeAttack() {
+  stopTimeAttackTimer();
+  const sb = document.getElementById('submit-btn');
+  if (sb) sb.disabled = true;
+  showSummary();
+}
+
 function exitGame(toHome) {
   stopSoloTimer();
+  stopTimeAttackTimer();
   if (summaryMap) { summaryMap.remove(); summaryMap = null; }
   if (toHome) { showScreen('home-screen'); return; }
   showConfirm('هل تريد الخروج من اللعبة؟', ok => {
@@ -3815,7 +4109,11 @@ document.addEventListener('click', e => {
   updateSoundToggleUI();
   updateVibrationToggleUI();
   document.getElementById('loading-overlay').classList.add('hidden');
-  showScreen('home-screen');
+  if (new URLSearchParams(location.search).get('c')) {
+    setupChallenge();
+  } else {
+    showScreen('home-screen');
+  }
 })();
 </script>
 </body>
