@@ -823,6 +823,23 @@
       <button onclick="resetVisitorCount()" title="تصفير العداد" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:2px;">↺</button>
     </div>
   </div>
+  <!-- Backup / Restore -->
+  <div class="admin-card" style="flex-shrink:0;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:14px;font-weight:700;">💾 النسخ الاحتياطي</div>
+        <div id="backup-date-label" style="font-size:12px;margin-top:3px;color:var(--muted);">جاري التحقق…</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button id="backup-export-btn" class="btn btn-secondary" style="font-size:12px;padding:8px 14px;width:auto;" onclick="exportBackup()">📥 تصدير</button>
+        <label class="btn btn-secondary" style="font-size:12px;padding:8px 14px;width:auto;cursor:pointer;" id="backup-import-lbl">
+          📤 استعادة
+          <input type="file" accept=".json" style="display:none" id="backup-import-input" onchange="importBackup(this)">
+        </label>
+      </div>
+    </div>
+  </div>
+
   <div class="admin-card">
     <h3 style="font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleAddLocForm()">
       <span>إضافة موقع جديد</span>
@@ -1278,6 +1295,7 @@ function showScreen(id, fromPop) {
     renderLocList();
     loadReports();
     renderVisitorCount();
+    updateBackupDate();
     document.getElementById('build-version').textContent = BUILD_VERSION;
     requestAnimationFrame(() => requestAnimationFrame(() => {
       try { initAdminMap(); } catch(e) { console.warn(e); }
@@ -1869,6 +1887,94 @@ function collapsePhotoMap() {
   const nudgeEl = document.getElementById('photo-map-nudge');
   if (nudgeEl) nudgeEl.style.display = guess ? 'none' : 'block';
   setTimeout(() => { if (gameMap) gameMap.invalidateSize(); }, 320);
+}
+
+// ── Admin backup / restore ────────────────────────────────────────────────────
+function updateBackupDate() {
+  const el = document.getElementById('backup-date-label');
+  if (!el) return;
+  const last = localStorage.getItem('dalney_last_backup');
+  if (!last) {
+    el.textContent = '⚠️ لم يتم أخذ نسخة احتياطية بعد';
+    el.style.color = 'var(--red)';
+    return;
+  }
+  const days = Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
+  el.textContent = days === 0 ? 'آخر نسخة: اليوم ✅' : `آخر نسخة: منذ ${days} يوم`;
+  el.style.color = days >= 7 ? 'var(--gold)' : 'var(--green)';
+}
+
+async function exportBackup() {
+  const btn = document.getElementById('backup-export-btn');
+  btn.disabled = true; btn.textContent = '⏳ جاري التصدير…';
+  try {
+    const snap = await locsCol.get();
+    const locs = snap.docs
+      .filter(d => d.id !== 'meta_config')
+      .map(d => {
+        const data = d.data();
+        return {
+          docId: d.id,
+          name: data.name || '',
+          lat: data.lat,
+          lng: data.lng,
+          category: data.category || '',
+          hint: data.hint || '',
+          photo: data.photo || null,
+          extraPhotos: data.extraPhotos || [],
+          polygon: data.polygon ? data.polygon.map(p => ({lat: p.a, lng: p.b})) : null,
+          updatedAt: data.updatedAt || null
+        };
+      });
+    const backup = { exported: new Date().toISOString(), version: BUILD_VERSION, count: locs.length, locations: locs };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `dalney-backup-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    localStorage.setItem('dalney_last_backup', new Date().toISOString());
+    updateBackupDate();
+    showToast('✅ تم تصدير ' + locs.length + ' موقع');
+  } catch(e) { showToast('❌ خطأ في التصدير'); console.error(e); }
+  btn.disabled = false; btn.textContent = '📥 تصدير';
+}
+
+async function importBackup(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  let backup;
+  try { backup = JSON.parse(await file.text()); } catch { showToast('❌ ملف غير صالح'); input.value=''; return; }
+  if (!Array.isArray(backup.locations)) { showToast('❌ تنسيق الملف غير صحيح'); input.value=''; return; }
+  const count = backup.locations.length;
+  const dateStr = backup.exported ? backup.exported.slice(0,10) : '؟';
+  if (!confirm(`سيتم استعادة ${count} موقع من نسخة بتاريخ ${dateStr}.\nسيتم الكتابة فوق البيانات الحالية. هل تريد المتابعة؟`)) { input.value=''; return; }
+  const lbl = document.getElementById('backup-import-lbl');
+  lbl.style.pointerEvents = 'none'; lbl.style.opacity = '0.6';
+  lbl.childNodes[0].textContent = '⏳ جاري الاستعادة…';
+  try {
+    const CHUNK = 400;
+    for (let i = 0; i < backup.locations.length; i += CHUNK) {
+      const batch = db.batch();
+      backup.locations.slice(i, i + CHUNK).forEach(loc => {
+        const {docId, polygon, extraPhotos, ...rest} = loc;
+        const dbData = {
+          ...rest,
+          polygon: polygon ? polygon.map(p => ({a: p.lat, b: p.lng})) : null,
+          extraPhotos: extraPhotos || []
+        };
+        // strip nulls
+        Object.keys(dbData).forEach(k => { if (dbData[k] === null || dbData[k] === undefined) delete dbData[k]; });
+        batch.set(docId ? locsCol.doc(docId) : locsCol.doc(), dbData);
+      });
+      await batch.commit();
+    }
+    await loadData(); renderLocList();
+    showToast(`✅ تمت استعادة ${count} موقع`);
+  } catch(e) { showToast('❌ خطأ في الاستعادة'); console.error(e); }
+  lbl.style.pointerEvents = ''; lbl.style.opacity = '';
+  lbl.childNodes[0].textContent = '📤 استعادة';
+  input.value = '';
 }
 
 function initGameMap() {
