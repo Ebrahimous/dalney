@@ -249,67 +249,74 @@
     /* ── Photo fullscreen mode ──────────────────────────────────────────────── */
     /* When a photo round is active, the photo fills all available flex space   */
     /* and the map becomes a fixed corner mini-widget.                           */
+    /* Photo mode uses a class-based swap between two elements:            */
+    /*   - .hint-panel (the photo)  and  #game-map                          */
+    /* Exactly ONE of them is "big" (flex:1, in normal flow); the other is  */
+    /* a fixed 140x140 corner thumbnail. No JS coordinate measuring.        */
     #game-screen.photo-fs { position: relative; }
+
+    /* Corner thumbnail styling shared by whichever element is small */
+    #game-screen.photo-fs .hint-panel,
+    #game-screen.photo-fs #game-map { transition: none; }
+
+    /* --- Default state: PHOTO big, MAP small corner --- */
     #game-screen.photo-fs .hint-panel {
       flex: 1; min-height: 0; padding: 0;
       overflow: hidden; border-radius: var(--radius);
+      background: #000;
     }
     #game-screen.photo-fs .hint-panel .hint-photo {
-      width: 100%; height: 100%; object-fit: cover;
+      width: 100%; height: 100%; object-fit: contain;   /* contain = no cropping */
       max-height: none !important; margin: 0;
       border-radius: var(--radius); display: block !important;
+      background: #000;
     }
-    /* Mini map in corner */
     #game-screen.photo-fs #game-map {
       position: fixed;
-      left: 12px; bottom: 78px;
-      width: 150px; height: 150px;
+      left: 12px; bottom: 84px;
+      width: 140px; height: 140px;
       min-height: unset; flex: none;
       border-radius: 14px;
       border: 2.5px solid var(--blue);
-      box-shadow: 0 4px 24px rgba(0,0,0,.75), 0 0 0 1px rgba(88,166,255,.15);
+      box-shadow: 0 6px 24px rgba(0,0,0,.75), 0 0 0 1px rgba(88,166,255,.15);
       z-index: 600; overflow: hidden; cursor: pointer;
-      transition: all 0.3s cubic-bezier(.22,1,.36,1);
     }
-    /* Expanded map — bottom sheet */
-    /* Expanded map — positioned by JS inline styles (see expandPhotoMap) */
-    #game-screen.photo-fs #game-map.map-exp {
-      transition: none !important;
-    }
-    /* Photo thumbnail shown while map is expanded — sits in the map's old corner */
-    #photo-thumb {
-      display: none; position: fixed;
-      bottom: 78px; left: 12px; z-index: 920;
-      width: 150px; height: 150px; border-radius: 14px;
-      object-fit: cover;
+
+    /* --- Swapped state: MAP big, PHOTO small corner --- */
+    #game-screen.photo-fs.map-big .hint-panel {
+      position: fixed;
+      left: 12px; bottom: 84px;
+      width: 140px; height: 140px;
+      flex: none; min-height: unset; padding: 0;
+      border-radius: 14px; overflow: hidden;
       border: 2.5px solid var(--blue);
-      box-shadow: 0 4px 24px rgba(0,0,0,.75), 0 0 0 1px rgba(88,166,255,.15);
-      cursor: pointer;
+      box-shadow: 0 6px 24px rgba(0,0,0,.75), 0 0 0 1px rgba(88,166,255,.15);
+      z-index: 620; cursor: pointer;
     }
-    /* Close button for expanded map */
-    #photo-map-close {
-      display: none; position: fixed;
-      bottom: calc(62vh - 52px); left: 50%; transform: translateX(-50%);
-      z-index: 920;
-      background: rgba(9,14,26,.88); border: 1px solid rgba(255,255,255,.15);
-      color: var(--text); border-radius: 20px;
-      padding: 8px 22px; font-size: 13px; font-weight: 700;
-      cursor: pointer; font-family: inherit;
-      box-shadow: 0 2px 12px rgba(0,0,0,.6);
+    #game-screen.photo-fs.map-big #game-map {
+      position: relative;
+      left: auto; bottom: auto;
+      width: auto; height: auto;
+      min-height: 0; flex: 1;
+      border: none; box-shadow: none; cursor: crosshair;
+      border-radius: var(--radius);
+      z-index: auto;
     }
-    /* Expand nudge label over mini map */
+
+    /* Nudge label over the small corner (only shown in photo-big state) */
     #photo-map-nudge {
       display: none;
       position: fixed; z-index: 610; pointer-events: none;
-      left: 12px; bottom: 78px; width: 150px;
+      left: 12px; bottom: 84px; width: 140px;
       text-align: center;
       padding: 4px 0 5px;
       background: rgba(9,14,26,.82);
       color: var(--blue); font-size: 10px; font-weight: 700;
       border-radius: 0 0 12px 12px;
       letter-spacing: .03em;
-      transition: opacity 0.25s;
     }
+    /* Legacy elements no longer used by the swap logic */
+    #photo-thumb, #photo-map-close { display: none !important; }
 
     /* ── Pin-drop animation for result map ────────────────────────────────── */
     @keyframes pinDrop {
@@ -399,9 +406,7 @@
 <!-- Confetti canvas (fixed overlay, always present, drawn into by JS) -->
 <canvas id="confetti-canvas"></canvas>
 
-<!-- Photo-mode expanded-map controls (fixed overlays, JS-managed) -->
-<button id="photo-map-close" onclick="collapsePhotoMap()">← رجوع للصورة</button>
-<img id="photo-thumb" src="" alt="photo" onclick="collapsePhotoMap()">
+<!-- Photo-mode nudge label over the corner mini-map -->
 <div id="photo-map-nudge">اضغط للخريطة</div>
 
 <!-- Loading overlay -->
@@ -1149,7 +1154,7 @@ function setRoundCount(el, n) {
 }
 // Bump this whenever you deploy — shown in the admin panel so you can tell
 // whether a device (e.g. your phone) is running stale cached code.
-const BUILD_VERSION = '2026-07-04.1';
+const BUILD_VERSION = '2026-07-06.1';
 let scoringMode = 'normal';  // 'normal' | 'competitive'
 let contentMode = 'names';   // 'names' | 'photos' | 'mix'
 let gameMap = null, resultMap = null, summaryMap = null, adminMap = null, adminMarker = null;
@@ -1972,14 +1977,18 @@ function loadRound() {
 
   // Photo-fs layout: photo fills screen, map becomes corner widget
   const gameScreenEl = document.getElementById('game-screen');
-  const mapEl = document.getElementById('game-map');
   const nudgeEl = document.getElementById('photo-map-nudge');
   if (photoRound && roundPhoto) {
+    // Clear any inline styles left over from a previous name round (fixMapHeight etc.)
+    clearPhotoModeInlineStyles();
     gameScreenEl.classList.add('photo-fs');
-    mapEl.classList.remove('map-exp');
+    gameScreenEl.classList.remove('map-big');     // always start with photo big
     if (nudgeEl) nudgeEl.style.display = 'block';
-    document.getElementById('photo-map-close').style.display = 'none';
-    if (gameMap) setTimeout(() => gameMap.invalidateSize(), 50);
+    // Tapping the small photo thumbnail (while map is big) swaps back to photo big
+    hintPanel.onclick = () => {
+      if (gameScreenEl.classList.contains('map-big')) swapToPhotoBig();
+    };
+    if (gameMap) setTimeout(() => gameMap.invalidateSize(), 60);
   } else {
     enterNamesLayout();
   }
@@ -1990,64 +1999,47 @@ function loadRound() {
   else stopSoloTimer();
 }
 
+// Clear inline styles that fixMapHeight / older code may have left on the
+// game-map or hint-panel, so the class-based photo layout renders cleanly.
+function clearPhotoModeInlineStyles() {
+  const mapEl = document.getElementById('game-map');
+  const hintPanel = document.querySelector('#game-screen .hint-panel');
+  ['position','top','left','right','bottom','width','height','flex',
+   'minHeight','borderRadius','border','boxShadow','zIndex','cursor','display']
+    .forEach(p => { if (mapEl) mapEl.style[p] = ''; });
+  ['position','top','left','right','bottom','width','height','flex',
+   'minHeight','padding','borderRadius','border','boxShadow','zIndex','cursor','display']
+    .forEach(p => { if (hintPanel) hintPanel.style[p] = ''; });
+}
+
 // Switch game screen back to normal names-mode layout
 function enterNamesLayout() {
   const gameScreenEl = document.getElementById('game-screen');
-  gameScreenEl.classList.remove('photo-fs');
+  gameScreenEl.classList.remove('photo-fs', 'map-big');
+  clearPhotoModeInlineStyles();
   const hintPanel = document.querySelector('#game-screen .hint-panel');
-  if (hintPanel) hintPanel.style.display = '';   // restore if hidden by swap
-  const mapEl = document.getElementById('game-map');
-  mapEl.classList.remove('map-exp');
-  mapEl.style.height = ''; mapEl.style.flex = '';
+  if (hintPanel) hintPanel.onclick = null;
   const nudgeEl = document.getElementById('photo-map-nudge');
   if (nudgeEl) nudgeEl.style.display = 'none';
-  document.getElementById('photo-map-close').style.display = 'none';
-  document.getElementById('photo-thumb').style.display = 'none';
-  if (gameMap) requestAnimationFrame(() => fixMapHeight('game-map', 'game-screen'));
+  if (gameMap) requestAnimationFrame(() => { fixMapHeight('game-map', 'game-screen'); gameMap.invalidateSize(); });
 }
 
-// Expand: measure photo's exact position, then snap map there via fixed coords
-function expandPhotoMap() {
-  const mapEl = document.getElementById('game-map');
-  const hintPanel = document.querySelector('#game-screen .hint-panel');
-  // Measure the photo area BEFORE hiding it
-  const r = hintPanel ? hintPanel.getBoundingClientRect() : null;
-  mapEl.classList.add('map-exp');
-  if (hintPanel) hintPanel.style.display = 'none';
-  // Position map at exactly where the photo was
-  if (r) {
-    Object.assign(mapEl.style, {
-      position: 'fixed', top: r.top + 'px', left: r.left + 'px',
-      width: r.width + 'px', height: r.height + 'px',
-      bottom: 'auto', borderRadius: 'var(--radius)',
-      border: 'none', boxShadow: 'none', zIndex: '900', cursor: 'default'
-    });
-  }
-  document.getElementById('photo-map-close').style.display = 'none';
+// Swap: make the MAP big and the photo a small corner thumbnail.
+function swapToMapBig() {
+  const gs = document.getElementById('game-screen');
+  gs.classList.add('map-big');
   const nudgeEl = document.getElementById('photo-map-nudge');
-  if (nudgeEl) nudgeEl.style.display = 'none';
-  // Photo thumbnail — read actual displayed src from hint-photo (handles multi-photo random pick)
-  const thumb = document.getElementById('photo-thumb');
-  if (thumb) {
-    const photo = document.getElementById('hint-photo')?.src || gameRounds[currentRound]?.photo;
-    if (photo) { thumb.src = photo; thumb.style.display = 'block'; }
-  }
-  setTimeout(() => { if (gameMap) gameMap.invalidateSize(); }, 50);
+  if (nudgeEl) nudgeEl.style.display = 'none';   // corner is now the photo, not the map
+  setTimeout(() => { if (gameMap) gameMap.invalidateSize(); }, 70);
 }
 
-function collapsePhotoMap() {
-  const mapEl = document.getElementById('game-map');
-  const hintPanel = document.querySelector('#game-screen .hint-panel');
-  mapEl.classList.remove('map-exp');
-  if (hintPanel) hintPanel.style.display = '';
-  // Clear all inline styles set during expansion
-  ['position','top','left','width','height','bottom',
-   'borderRadius','border','boxShadow','zIndex','cursor'].forEach(p => mapEl.style[p] = '');
-  document.getElementById('photo-map-close').style.display = 'none';
-  document.getElementById('photo-thumb').style.display = 'none';
+// Swap back: make the PHOTO big and the map a small corner widget.
+function swapToPhotoBig() {
+  const gs = document.getElementById('game-screen');
+  gs.classList.remove('map-big');
   const nudgeEl = document.getElementById('photo-map-nudge');
   if (nudgeEl) nudgeEl.style.display = guess ? 'none' : 'block';
-  setTimeout(() => { if (gameMap) gameMap.invalidateSize(); }, 320);
+  setTimeout(() => { if (gameMap) gameMap.invalidateSize(); }, 70);
 }
 
 // ── Admin backup / restore ────────────────────────────────────────────────────
@@ -2141,7 +2133,10 @@ async function importBackup(input) {
 function initGameMap() {
   if (gameMap) { gameMap.remove(); gameMap = null; }
   satelliteMode = false;
-  fixMapHeight('game-map', 'game-screen');
+  // In photo mode the map size is handled by CSS classes; fixMapHeight would
+  // set a stray inline height that breaks the fixed corner widget.
+  if (!document.getElementById('game-screen').classList.contains('photo-fs'))
+    fixMapHeight('game-map', 'game-screen');
   gameMap = L.map('game-map', {zoomControl:true, minZoom:7, maxZoom:17, tap:true, tapTolerance:25});
   gameTileLayer = osmTileLayer();
   gameTileLayer.addTo(gameMap);
@@ -2179,12 +2174,12 @@ function initGameMap() {
 
   gameMap.on('click', e => {
     const gsEl = document.getElementById('game-screen');
-    const mapEl = document.getElementById('game-map');
     const inPhotoFs = gsEl.classList.contains('photo-fs');
 
-    // In photo-fs mode, first tap on mini-map expands it; don't place guess yet
-    if (inPhotoFs && !mapEl.classList.contains('map-exp')) {
-      expandPhotoMap();
+    // In photo-fs mode, if the map is still the small corner, first tap swaps
+    // it to big — don't place a guess yet.
+    if (inPhotoFs && !gsEl.classList.contains('map-big')) {
+      swapToMapBig();
       return;
     }
 
@@ -2192,17 +2187,14 @@ function initGameMap() {
     const nudge = document.getElementById('tap-nudge');
     if (nudge) { nudge.remove(); localStorage.setItem('tapNudgeSeen','1'); }
 
+    // Map is big (or normal names mode) → drop the pin. Map stays big so the
+    // player can see their pin and the confirm button.
     guess = e.latlng;
     gameMap.eachLayer(l => { if (l instanceof L.Marker) gameMap.removeLayer(l); });
     const icon = L.divIcon({className:'',html:'<div class="guess-marker-icon"></div>',iconSize:[42,42],iconAnchor:[21,42]});
     L.marker(e.latlng, {icon}).addTo(gameMap);
     document.getElementById('submit-btn').disabled = false;
     playSound('pin');
-
-    // In photo-fs mode: after placing guess, collapse map so player sees the photo + submit btn
-    if (inPhotoFs && mapEl.classList.contains('map-exp')) {
-      setTimeout(() => collapsePhotoMap(), 350);
-    }
   });
 }
 
@@ -3201,8 +3193,13 @@ function reportLocation(loc) {
 }
 
 window.addEventListener('resize', () => {
-  if (gameMap   && document.getElementById('game-screen').classList.contains('active'))
-    { fixMapHeight('game-map','game-screen'); gameMap.invalidateSize(); }
+  if (gameMap   && document.getElementById('game-screen').classList.contains('active')) {
+    // In photo mode the map is sized by CSS classes (fixed corner or flex:1),
+    // so skip fixMapHeight — it would set a stray inline height and break layout.
+    if (!document.getElementById('game-screen').classList.contains('photo-fs'))
+      fixMapHeight('game-map','game-screen');
+    gameMap.invalidateSize();
+  }
   if (resultMap && document.getElementById('result-screen').classList.contains('active'))
     { fixMapHeight('result-map','result-screen'); resultMap.invalidateSize(); }
   if (mpGameMap && document.getElementById('mp-game-screen').classList.contains('active'))
