@@ -1154,7 +1154,7 @@ function setRoundCount(el, n) {
 }
 // Bump this whenever you deploy — shown in the admin panel so you can tell
 // whether a device (e.g. your phone) is running stale cached code.
-const BUILD_VERSION = '2026-07-06.1';
+const BUILD_VERSION = '2026-07-06.2';
 let scoringMode = 'normal';  // 'normal' | 'competitive'
 let contentMode = 'names';   // 'names' | 'photos' | 'mix'
 let gameMap = null, resultMap = null, summaryMap = null, adminMap = null, adminMarker = null;
@@ -1530,6 +1530,9 @@ function osmTileLayer() {
 
 function fixMapHeight(mapId, screenId) {
   const scr = document.getElementById(screenId), el = document.getElementById(mapId);
+  // Don't compute against a hidden/inactive screen — it yields a bogus tiny
+  // height that then sticks as an inline style and breaks the next layout.
+  if (!scr.offsetHeight) return;
   const ss = window.getComputedStyle(scr);
   const gapPx = parseFloat(ss.rowGap) || parseFloat(ss.gap) || 0;
   const padV = parseFloat(ss.paddingTop) + parseFloat(ss.paddingBottom);
@@ -2012,6 +2015,29 @@ function clearPhotoModeInlineStyles() {
     .forEach(p => { if (hintPanel) hintPanel.style[p] = ''; });
 }
 
+// Size the game map with PURE FLEXBOX (no explicit pixel height) and tell
+// Leaflet to redraw. This is deliberately NOT fixMapHeight: baking an explicit
+// height makes the map vulnerable to the mobile dynamic viewport (dvh) — the
+// height is computed while the address bar is hidden, then the bar reappears,
+// the viewport shrinks, and the now-too-tall map overflows the fixed-height
+// screen and covers the confirm button (the reported bug, worst right after a
+// photo round where the map was last resized big). With flex:1;min-height:0 the
+// map always fits whatever height the screen currently has.
+function sizeGameMapFlex() {
+  const gs = document.getElementById('game-screen');
+  if (!gs || !gs.classList.contains('active') || gs.classList.contains('photo-fs')) return;
+  const m = document.getElementById('game-map');
+  if (m) { m.style.height = ''; m.style.flex = ''; m.style.minHeight = '0'; }
+  if (gameMap) gameMap.invalidateSize();
+}
+// Run across several ticks: the screen switch, Leaflet's cached size, and the
+// mobile address bar can each settle a frame or two apart.
+function settleGameMap() {
+  requestAnimationFrame(sizeGameMapFlex);
+  setTimeout(sizeGameMapFlex, 130);
+  setTimeout(sizeGameMapFlex, 400);
+}
+
 // Switch game screen back to normal names-mode layout
 function enterNamesLayout() {
   const gameScreenEl = document.getElementById('game-screen');
@@ -2021,7 +2047,7 @@ function enterNamesLayout() {
   if (hintPanel) hintPanel.onclick = null;
   const nudgeEl = document.getElementById('photo-map-nudge');
   if (nudgeEl) nudgeEl.style.display = 'none';
-  if (gameMap) requestAnimationFrame(() => { fixMapHeight('game-map', 'game-screen'); gameMap.invalidateSize(); });
+  if (gameMap) settleGameMap();
 }
 
 // Swap: make the MAP big and the photo a small corner thumbnail.
@@ -2133,10 +2159,12 @@ async function importBackup(input) {
 function initGameMap() {
   if (gameMap) { gameMap.remove(); gameMap = null; }
   satelliteMode = false;
-  // In photo mode the map size is handled by CSS classes; fixMapHeight would
-  // set a stray inline height that breaks the fixed corner widget.
-  if (!document.getElementById('game-screen').classList.contains('photo-fs'))
-    fixMapHeight('game-map', 'game-screen');
+  // Name rounds size the map via flexbox (immune to the mobile dvh overflow bug),
+  // photo rounds via CSS classes — in neither case do we bake an explicit height.
+  const gmEl = document.getElementById('game-map');
+  if (gmEl && !document.getElementById('game-screen').classList.contains('photo-fs')) {
+    gmEl.style.height = ''; gmEl.style.flex = ''; gmEl.style.minHeight = '0';
+  }
   gameMap = L.map('game-map', {zoomControl:true, minZoom:7, maxZoom:17, tap:true, tapTolerance:25});
   gameTileLayer = osmTileLayer();
   gameTileLayer.addTo(gameMap);
@@ -3194,10 +3222,9 @@ function reportLocation(loc) {
 
 window.addEventListener('resize', () => {
   if (gameMap   && document.getElementById('game-screen').classList.contains('active')) {
-    // In photo mode the map is sized by CSS classes (fixed corner or flex:1),
-    // so skip fixMapHeight — it would set a stray inline height and break layout.
-    if (!document.getElementById('game-screen').classList.contains('photo-fs'))
-      fixMapHeight('game-map','game-screen');
+    // Game map uses flexbox sizing (no explicit height) so it always fits the
+    // current viewport as the mobile address bar shows/hides. Just redraw.
+    sizeGameMapFlex();
     gameMap.invalidateSize();
   }
   if (resultMap && document.getElementById('result-screen').classList.contains('active'))
