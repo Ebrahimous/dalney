@@ -41,7 +41,15 @@
     .hint-panel.photo-mode{padding:8px;}
     .hint-panel.photo-mode .hint-photo{height:min(240px,32vh);max-height:min(240px,32vh);margin-top:0;}
     .photo-mode-badge{display:inline-block;background:rgba(248,81,73,.15);color:#ff7b72;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;margin-inline-start:6px;}
-    #game-map{flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;}
+    /* position:relative is REQUIRED here (not just left to Leaflet). Leaflet sets
+       an inline position:relative on the container at init, but
+       clearPhotoModeInlineStyles() wipes ALL inline styles (incl. position) on
+       every name round. Without a stylesheet fallback the container becomes
+       static, Leaflet's absolute panes anchor to the viewport instead of the
+       container, and the map paints over the whole screen (header/hint/submit
+       hidden behind it) on any name round after round 1 — the "map covers the
+       whole screen in mix mode" bug. */
+    #game-map{position:relative;flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;}
     .score-flash{font-size:48px;font-weight:900;text-align:center;margin:16px 0;}
     .dist-info{text-align:center;font-size:15px;color:var(--muted);margin-bottom:12px;}
     #result-map{width:100%;border-radius:var(--radius);overflow:hidden;flex-shrink:0;}
@@ -1154,7 +1162,7 @@ function setRoundCount(el, n) {
 }
 // Bump this whenever you deploy — shown in the admin panel so you can tell
 // whether a device (e.g. your phone) is running stale cached code.
-const BUILD_VERSION = '2026-07-06.2';
+const BUILD_VERSION = '2026-07-14.1';
 let scoringMode = 'normal';  // 'normal' | 'competitive'
 let contentMode = 'names';   // 'names' | 'photos' | 'mix'
 let gameMap = null, resultMap = null, summaryMap = null, adminMap = null, adminMarker = null;
