@@ -1672,10 +1672,13 @@ async function wmpSubmitGuess() {
   const sb=document.getElementById('wmp-submit-btn');
   if(sb){sb.disabled=true;sb.textContent='✓ تم';}
 
-  const players=[...(wmpRoom.players||[])];
-  const me=players.find(p=>p.id===wmpPlayerId);
-  if(me) me.score=(me.score||0)+sc;
-  const upd={players,[`answers.${wmpPlayerId}`]:{lat:wmpGuess.lat,lng:wmpGuess.lng,score:sc,inBounds:correct,iso2:wmpGuess.iso2,speedBonus}};
+  // Write ONLY our own answer (score is stored inside it). We must NOT write the
+  // whole players[] array here: two guests submitting at nearly the same moment
+  // would each overwrite the other's players[] write and one player's points
+  // would vanish. The host sums every answer into players[].score in a single
+  // transaction at the results transition (wmpHostShowResults), so scores stay
+  // consistent across all devices.
+  const upd={[`answers.${wmpPlayerId}`]:{lat:wmpGuess.lat,lng:wmpGuess.lng,score:sc,inBounds:correct,iso2:wmpGuess.iso2,speedBonus}};
   await wmpInitDb().collection('rooms').doc(wmpRoomId).update(upd).catch(console.error);
 
   // Check if all answered (host auto-advances)
@@ -1685,10 +1688,31 @@ async function wmpSubmitGuess() {
   }
 }
 
+let wmpResultsLock=false;
 async function wmpHostShowResults() {
   if (!wmpIsHost||!wmpRoomId) return;
+  if (wmpResultsLock) return;              // guard against overlapping triggers (timer + all-answered)
+  wmpResultsLock=true;
   clearInterval(wmpTimerIv);
-  await wmpInitDb().collection('rooms').doc(wmpRoomId).update({status:'results'}).catch(console.error);
+  const db=wmpInitDb();
+  const ref=db.collection('rooms').doc(wmpRoomId);
+  try {
+    // Brief grace window so near-simultaneous answer submissions reach Firestore
+    // before we tally, otherwise a late answer could merge in after tallying and
+    // leave that player's total out of sync across devices.
+    await new Promise(r=>setTimeout(r,400));
+    await db.runTransaction(async tx=>{
+      const snap=await tx.get(ref);
+      const room=snap.data();
+      if(!room || room.status!=='playing') return;  // already tallied/advanced by another trigger
+      const players=(room.players||[]).map(p=>{
+        const ans=(room.answers||{})[p.id];
+        return {...p, score:(p.score||0)+(ans?ans.score:0)};
+      });
+      tx.update(ref,{status:'results', players});
+    });
+  } catch(e){ console.error(e); }
+  finally { wmpResultsLock=false; }
 }
 
 async function wmpHostNextRound() {
@@ -1722,7 +1746,7 @@ function wmpShowRoundResult() {
       if(target?.geometry) L.geoJSON({type:'Feature',geometry:target.geometry},{style:{color:'#3fb950',weight:2.5,fillColor:'#3fb950',fillOpacity:.25}}).addTo(wmpResultMap);
       // All players' pins
       Object.entries(answers||{}).forEach(([pid,ans])=>{
-        if(!ans.lat) return;
+        if(ans.lat == null) return;
         const p=(players||[]).find(x=>x.id===pid);
         const color=p?.color||'#888';
         L.circleMarker([ans.lat,ans.lng],{radius:8,color:'#fff',fillColor:color,fillOpacity:1,weight:2})
@@ -1800,6 +1824,7 @@ function wmpShowFinalMap() {
 
 async function wmpHostReplay() {
   if (!wmpIsHost||!wmpRoomId) return;
+  wmpRoundHistory = [];
   const pool=wmpGetPool(wmpRoom.difficulty||'medium');
   const n=wmpRoom.totalRounds||10;
   const isoOrder=shuffle(pool.map(c=>c.iso2)).slice(0,n);
@@ -1817,42 +1842,4 @@ function wmpLeave() {
   if (wmpListener){wmpListener();wmpListener=null;}
   wmpStopBrowsing();
   clearInterval(wmpTimerIv);
-  if (wmpRoomId) {
-    if (wmpIsHost) {
-      // Host leaving closes the room for everyone
-      wmpInitDb().collection('rooms').doc(wmpRoomId).delete().catch(()=>{});
-    } else {
-      // Guest leaving: remove self from players list
-      const players=(wmpRoom?.players||[]).filter(p=>p.id!==wmpPlayerId);
-      wmpInitDb().collection('rooms').doc(wmpRoomId).update({players}).catch(()=>{});
-    }
-  }
-  wmpReset();
-  showScreen('home-screen');
-}
-
-function wmpReset() {
-  if(wmpGameMap){wmpGameMap.remove();wmpGameMap=null;}
-  if(wmpResultMap){wmpResultMap.remove();wmpResultMap=null;}
-  if(wmpFinalMap){wmpFinalMap.remove();wmpFinalMap=null;}
-  wmpRoomId=null;wmpPlayerId=null;wmpIsHost=false;wmpRoom=null;
-  wmpGuess=null;wmpAnswered=false;wmpCurrentRound=0;wmpLastStatus=null;wmpAdvancing=false;
-  wmpRoundHistory=[];
-  clearInterval(wmpTimerIv);
-}
-
-loadData();
-
-// Globe emoji rotation — cycles 🌍 🌎 🌏 to simulate spinning
-(function() {
-  const globes = ['🌍','🌎','🌏'];
-  let idx = 0;
-  setInterval(() => {
-    idx = (idx + 1) % globes.length;
-    const el = document.querySelector('.home-logo');
-    if (el) el.textContent = globes[idx];
-  }, 1600);
-})();
-</script>
-</body>
-</html>
+  if (wmpR

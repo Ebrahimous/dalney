@@ -508,7 +508,7 @@
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div><p style="padding-top:4px;">ستظهر لك تلميحات عن موقع معين في الكويت (اسم، وصف، أو صورة).</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div><p style="padding-top:4px;">اضغط على الخريطة في المكان الذي تظن أنه الموقع الصحيح.</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div><p style="padding-top:4px;">كلما كنت أقرب، حصلت على نقاط أكثر. الحد الأقصى 100 نقطة في كل جولة.</p></div>
-    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div><p style="padding-top:4px;">يمكنك اختيار عدد جولات اللعبة (5 أو 10 أو 20). يُحسب "أفضل معدل" كمتوسط نقاطك لكل جولة (من 100)، فهو قابل للمقارنة بغض النظر عن عدد الجولات.</p></div>
+    <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div><p style="padding-top:4px;">يمكنك اختيار عدد جولات اللعبة (10 أو 20). يُحسب "أفضل معدل" كمتوسط نقاطك لكل جولة (من 100)، فهو قابل للمقارنة بغض النظر عن عدد الجولات.</p></div>
     <div style="display:flex;gap:12px;align-items:flex-start;"><div style="background:var(--surface);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">📷</div><p style="padding-top:4px;">في <b>صور الأماكن</b>، تُعرض لك صورة فقط دون اسم الموقع — حدد مكانها على الخريطة بالاعتماد على الصورة وحدها.</p></div>
   </div>
   <button class="btn btn-primary" style="margin-top:24px;" onclick="showSoloSetup()">ابدأ الآن</button>
@@ -1162,7 +1162,7 @@ function setRoundCount(el, n) {
 }
 // Bump this whenever you deploy — shown in the admin panel so you can tell
 // whether a device (e.g. your phone) is running stale cached code.
-const BUILD_VERSION = '2026-07-14.1';
+const BUILD_VERSION = '2026-07-14.2';
 let scoringMode = 'normal';  // 'normal' | 'competitive'
 let contentMode = 'names';   // 'names' | 'photos' | 'mix'
 let gameMap = null, resultMap = null, summaryMap = null, adminMap = null, adminMarker = null;
@@ -2477,7 +2477,7 @@ function showSummary() {
     row.innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden;">
         <div style="width:24px;height:24px;border-radius:50%;background:var(--surface);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${i+1}</div>
-        <span style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${loc.name}</span>
+        <span style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(loc.name)}</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
         <span style="font-size:11px;letter-spacing:1px;">${starsStr}</span>
@@ -2554,7 +2554,7 @@ function initSummaryMap(markerRefs, rounds) {
     });
     const correctMarker = L.marker([loc.lat, loc.lng], {icon:correctIcon})
       .addTo(summaryMap)
-      .bindPopup(`<b>${loc.name}</b><br>+${res.score||0} نقطة`);
+      .bindPopup(`<b>${escapeHtml(loc.name)}</b><br>+${res.score||0} نقطة`);
     allBounds.push([loc.lat, loc.lng]);
 
     let center = [loc.lat, loc.lng];
@@ -2586,7 +2586,7 @@ function setupChallenge() {
   const params = new URLSearchParams(location.search);
   challengeDocIds = (params.get('c') || '').split(',').filter(Boolean);
   challengerScore = parseFloat(params.get('s') || '0');
-  challengerName = decodeURIComponent(params.get('n') || 'صديق');
+  challengerName = params.get('n') || 'صديق';
   const cMode = params.get('m') || 'names';
 
   if (!challengeDocIds.length) { showScreen('home-screen'); return; }
@@ -2652,13 +2652,15 @@ function generateChallengeLink() {
 }
 
 function shareResult() {
-  const avg = Math.round((totalScore / gameRounds.length) * 10) / 10;
+  const cnt = timeAttackMode ? timeAttackCompleted : gameRounds.length;
+  const avg = cnt > 0 ? Math.round((totalScore / cnt) * 10) / 10 : 0;
   const modeLabel = timeAttackMode ? '⚡ تحدي الدقيقة' : 'كلاسيك';
-  const blocks = gameRounds.map(r => {
+  const roundsToShare = timeAttackMode ? gameRounds.filter(r => r._result) : gameRounds;
+  const blocks = roundsToShare.map(r => {
     const sc = r._result?.score || 0;
     return sc >= 90 ? '🟢' : sc >= 60 ? '🟡' : '🔴';
   }).join('');
-  const text = `🗺️ دلني بالكويت\n${modeLabel} | ${gameRounds.length} جولات\n\n${blocks}\n\nالمعدل: ${avg}/100\ndalney.pages.dev`;
+  const text = `🗺️ دلني بالكويت\n${modeLabel} | ${cnt} جولات\n\n${blocks}\n\nالمعدل: ${avg}/100\ndalney.pages.dev`;
   if (navigator.share) {
     navigator.share({ text }).catch(() => {});
   } else {
@@ -2995,8 +2997,8 @@ function renderLocList() {
     })() : 'لم يُعدَّل بعد';
     card.innerHTML = `
       <div class="loc-info">
-        <div class="loc-name">${loc.name}${hasPhoto?' <span title="يحتوي على صورة">📷</span>':''}</div>
-        <div class="loc-cat">${loc.category} · ${hasPoly?'منطقة':'نقطة'}</div>
+        <div class="loc-name">${escapeHtml(loc.name)}${hasPhoto?' <span title="يحتوي على صورة">📷</span>':''}</div>
+        <div class="loc-cat">${escapeHtml(loc.category||'')} · ${hasPoly?'منطقة':'نقطة'}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:3px;">🕐 ${ts}</div>
       </div>
       <button class="loc-btn" style="background:var(--surface);" onclick="openEditModal(${i})">✏️</button>
@@ -3083,7 +3085,7 @@ function renderReportList() {
     })() : '';
     card.innerHTML = `
       <div class="loc-info">
-        <div class="loc-name">🚩 ${r.locName || 'موقع غير معروف'}</div>
+        <div class="loc-name">🚩 ${escapeHtml(r.locName || 'موقع غير معروف')}</div>
         <div class="loc-cat">${typeof r.lat==='number'?r.lat.toFixed(4):''}, ${typeof r.lng==='number'?r.lng.toFixed(4):''}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:3px;">🕐 ${ts}</div>
       </div>
@@ -3278,8 +3280,11 @@ function mpPickEmoji(emoji) {
 // Shared avatar renderer for player map pins: selfie photo > chosen emoji >
 // plain pin in the player's assigned color (no fallback initial letter).
 function mpAvatarHtml(p) {
-  if (p.selfie) return `<img src="${p.selfie}" alt="">`;
-  if (p.emoji)  return `<span style="font-size:18px;">${p.emoji}</span>`;
+  // selfie/emoji come from Firestore (any player can write them) — only accept a
+  // data:image URL for the selfie, and HTML-escape the emoji, so a crafted value
+  // can't inject markup/script into the avatar.
+  if (p.selfie && /^data:image\//.test(p.selfie)) return `<img src="${escapeHtml(p.selfie)}" alt="">`;
+  if (p.emoji)  return `<span style="font-size:18px;">${escapeHtml(p.emoji)}</span>`;
   return '';
 }
 
@@ -3568,7 +3573,7 @@ async function mpHostRefreshLocs() {
 function mpUpdateLobby(players) {
   checkPlayerJoinSound(players);
   document.getElementById('mp-lobby-players').innerHTML = players.length
-    ? players.map(p=>`<div class="player-chip"><div class="color-dot" style="background:${p.color}"></div><span style="font-weight:600;font-size:15px;">${p.name}</span>${p.id===mpPlayerId?'<span style="margin-right:auto;font-size:11px;color:var(--gold);">👑 مضيف</span>':''}</div>`).join('')
+    ? players.map(p=>`<div class="player-chip"><div class="color-dot" style="background:${p.color}"></div><span style="font-weight:600;font-size:15px;">${escapeHtml(p.name)}</span>${p.id===mpPlayerId?'<span style="margin-right:auto;font-size:11px;color:var(--gold);">👑 مضيف</span>':''}</div>`).join('')
     : '<p style="text-align:center;color:var(--muted);font-size:14px;">في انتظار انضمام اللاعبين...</p>';
   document.getElementById('mp-start-btn').disabled = players.length < 1;
   // If host is already in the list, lock the join controls
@@ -3581,15 +3586,23 @@ function mpUpdateLobby(players) {
 
 async function mpHostAddSelf() {
   const name = document.getElementById('mp-host-name').value.trim();
-  const currentPlayers = mpRoom ? (mpRoom.players||[]) : [];
-  if (currentPlayers.find(p=>p.id===mpPlayerId)) return; // already added
-  // Pick first color not already used
-  const usedColors = new Set(currentPlayers.map(p=>p.color));
-  const color = MP_COLORS.find(c=>!usedColors.has(c)) || MP_COLORS[0];
-  const finalName = name || `لاعب ${currentPlayers.length+1}`;
-  const hostPlayer = {id:mpPlayerId, name:finalName, color, score:0, selfie:mpMySelfie||null, emoji:mpMyEmoji||null};
-  const updatedPlayers = [...currentPlayers, hostPlayer];
-  await db.collection('rooms').doc(mpRoomId).update({players:updatedPlayers, hostName:finalName});
+  if (!mpRoomId) return;
+  const ref = db.collection('rooms').doc(mpRoomId);
+  try {
+    // Add the host to players[] inside a transaction so a guest joining at the
+    // same instant can't clobber the write (or vice-versa) and drop a player.
+    await db.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
+      const players = snap.data().players || [];
+      if (players.find(p=>p.id===mpPlayerId)) return; // already added
+      const usedColors = new Set(players.map(p=>p.color));
+      const color = MP_COLORS.find(c=>!usedColors.has(c)) || MP_COLORS[0];
+      const finalName = name || `لاعب ${players.length+1}`;
+      const hostPlayer = {id:mpPlayerId, name:finalName, color, score:0, selfie:mpMySelfie||null, emoji:mpMyEmoji||null};
+      tx.update(ref, {players:[...players, hostPlayer], hostName:finalName});
+    });
+  } catch(e) { console.error('mpHostAddSelf', e); }
   // mpUpdateLobby will be called via onSnapshot
 }
 
@@ -3763,7 +3776,7 @@ function mpUpdateLiveAnswerMarkers() {
   const el = mpAnswerStatusControl.getContainer();
   el.innerHTML = (players||[]).map(p=>{
     const answered = !!(answers||{})[p.id];
-    return `<div class="player-pin-mini" title="${p.name}" style="background:${p.color};${answered?'':'opacity:.35;'}">${mpAvatarHtml(p)}${answered?'<div class="answer-check">✓</div>':''}</div>`;
+    return `<div class="player-pin-mini" title="${escapeHtml(p.name)}" style="background:${p.color};${answered?'':'opacity:.35;'}">${mpAvatarHtml(p)}${answered?'<div class="answer-check">✓</div>':''}</div>`;
   }).join('');
 }
 
@@ -3800,7 +3813,7 @@ function mpShowRoundResult() {
     return `<div style="display:flex;flex-direction:column;gap:4px;background:var(--card);border-radius:10px;padding:10px 12px;border-right:4px solid ${p.color};">
       <div style="display:flex;align-items:center;gap:4px;">
         ${mpMiniPinHtml(p)}
-        <span style="flex:1;font-weight:700;font-size:14px;">${p.name}</span>
+        <span style="flex:1;font-weight:700;font-size:14px;">${escapeHtml(p.name)}</span>
         <span style="font-size:16px;font-weight:900;color:${p.color};">${gained} نقطة</span>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding-right:32px;">
@@ -3822,7 +3835,7 @@ function mpShowRoundResult() {
       const locObj = {...loc, polygon: loc.polygon ? polyFromDb(loc.polygon) : null};
       const bounds = [[locObj.lat,locObj.lng]];
       const ci = L.divIcon({html:'<div class="correct-marker-icon"><div class="flag-pulse"></div><div class="flag-emoji">🚩</div></div>',iconSize:[42,42],iconAnchor:[21,42],className:''});
-      L.marker([locObj.lat,locObj.lng],{icon:ci}).bindPopup(`<b>${locObj.name}</b>`).addTo(mpResultMap).openPopup();
+      L.marker([locObj.lat,locObj.lng],{icon:ci}).bindPopup(`<b>${escapeHtml(locObj.name)}</b>`).addTo(mpResultMap).openPopup();
       if (locObj.polygon && locObj.polygon.length>=3)
         L.polygon(locObj.polygon,{color:'#3fb950',fillOpacity:.1,weight:2}).addTo(mpResultMap);
       (players||[]).forEach(p=>{
@@ -3830,7 +3843,7 @@ function mpShowRoundResult() {
         if (!ans || ans.lat == null) return;  // skip blank/no-answer entries
         bounds.push([ans.lat,ans.lng]);
         const pi = L.divIcon({html:`<div class="player-pin-icon" style="background:${p.color};">${mpAvatarHtml(p)}</div>`,iconSize:[36,36],iconAnchor:[18,36],className:''});
-        L.marker([ans.lat,ans.lng],{icon:pi}).bindPopup(`<b>${p.name}</b><br>${ans.score} نقطة — ${(ans.dist||0).toFixed(1)} كم`).addTo(mpResultMap);
+        L.marker([ans.lat,ans.lng],{icon:pi}).bindPopup(`<b>${escapeHtml(p.name)}</b><br>${ans.score} نقطة — ${(ans.dist||0).toFixed(1)} كم`).addTo(mpResultMap);
         L.polyline([[ans.lat,ans.lng],[locObj.lat,locObj.lng]],{color:p.color,weight:1.5,dashArray:'5,5',opacity:.7}).addTo(mpResultMap);
       });
       if (bounds.length>1) mpResultMap.fitBounds(L.latLngBounds(bounds).pad(0.3));
@@ -3966,31 +3979,41 @@ async function mpJoin() {
   const reset = () => { btn.disabled=false; btn.innerHTML=originalHtml; };
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner" style="width:18px;height:18px;border-width:2px;margin:0;"></span>';
+  mpPlayerId = mpGenId();
+  mpRoomId = code;
+  mpIsHost = false;
+  mpLastStatus = null;
+  const ref = db.collection('rooms').doc(code);
   try {
-    const snap = await db.collection('rooms').doc(code).get();
-    if (!snap.exists) { showToast('❌ الغرفة غير موجودة'); reset(); return; }
-    const room = snap.data();
-    if (room.status !== 'waiting') { showToast('❌ اللعبة بدأت بالفعل'); reset(); return; }
-    if (room.players.length >= 8) { showToast('❌ الغرفة ممتلئة'); reset(); return; }
-    mpPlayerId = mpGenId();
-    mpRoomId = code;
-    mpIsHost = false;
-    mpLastStatus = null;
-    // Pick first color not already used by a current player (avoids
-    // duplicate colors when players leave and others join afterwards).
-    const usedColors = new Set(room.players.map(p=>p.color));
-    const color = MP_COLORS.find(c=>!usedColors.has(c)) || MP_COLORS[0];
-    const finalName = name || `لاعب ${room.players.length+1}`;
-    await db.collection('rooms').doc(code).update({players:[...room.players,{id:mpPlayerId,name:finalName,color,score:0,selfie:mpMySelfie||null,emoji:mpMyEmoji||null}]});
+    // Add ourselves to players[] inside a transaction: reading the room and
+    // writing the updated list atomically prevents two players who join at the
+    // same moment from each overwriting the other's write (which would drop one
+    // of them from the lobby and leak a color/slot).
+    await db.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new Error('الغرفة غير موجودة');
+      const room = snap.data();
+      if (room.status !== 'waiting') throw new Error('اللعبة بدأت بالفعل');
+      const players = room.players || [];
+      if (players.length >= 8) throw new Error('الغرفة ممتلئة');
+      if (players.find(p=>p.id===mpPlayerId)) return; // double-tap safety — already joined
+      // Pick first color not already used by a current player (avoids
+      // duplicate colors when players leave and others join afterwards).
+      const usedColors = new Set(players.map(p=>p.color));
+      const color = MP_COLORS.find(c=>!usedColors.has(c)) || MP_COLORS[0];
+      const finalName = name || `لاعب ${players.length+1}`;
+      tx.update(ref, {players:[...players,{id:mpPlayerId,name:finalName,color,score:0,selfie:mpMySelfie||null,emoji:mpMyEmoji||null}]});
+    });
     reset();
     showScreen('mp-wait-screen');
-    mpListener = db.collection('rooms').doc(code).onSnapshot(snap=>{
+    mpListener = ref.onSnapshot(snap=>{
       if (!snap.exists) { mpLeave(); return; }
       mpRoom = snap.data();
       mpSync();
     });
   } catch(e) {
-    showToast('❌ خطأ في الاتصال');
+    mpRoomId = null; mpPlayerId = null; // roll back partial join state
+    showToast('❌ ' + (e && e.message ? e.message : 'خطأ في الاتصال'));
     reset();
   }
 }
@@ -4000,7 +4023,7 @@ function mpRenderWaitPlayers() {
   document.getElementById('mp-wait-players').innerHTML = (mpRoom.players||[]).map(p=>`
     <div class="player-chip">
       <div class="color-dot" style="background:${p.color}"></div>
-      <span style="font-weight:600;font-size:15px;">${p.name}</span>
+      <span style="font-weight:600;font-size:15px;">${escapeHtml(p.name)}</span>
       ${p.id===mpPlayerId?'<span style="margin-right:auto;font-size:11px;color:var(--muted);">(أنت)</span>':''}
       ${p.id===(mpRoom.hostId||'')?'<span style="font-size:13px;">👑</span>':''}
     </div>`).join('');
@@ -4061,7 +4084,7 @@ function mpShowFinal() {
     <div style="display:flex;align-items:center;gap:8px;background:var(--card);border-radius:12px;padding:14px;border-right:4px solid ${p.color};">
       <span style="font-size:24px;">${medals[i]||`#${i+1}`}</span>
       ${mpMiniPinHtml(p)}
-      <span style="flex:1;font-weight:700;font-size:15px;">${p.name}</span>
+      <span style="flex:1;font-weight:700;font-size:15px;">${escapeHtml(p.name)}</span>
       <span style="font-size:22px;font-weight:900;color:${p.color};">${p.score||0}</span>
     </div>`).join('');
   const replayBtn = document.getElementById('mp-replay-btn');
@@ -4108,8 +4131,16 @@ function startSoloTimer() {
       if (guess) { submitGuess(); }
       else {
         gameRounds[currentRound]._result = { score:0, dist:null, inArea:false, gLat:null, gLng:null };
+        currentStreak = 0;
         showToast('⏰ انتهى الوقت!');
-        setTimeout(() => nextRound(), 800);
+        // Show correct pin briefly before advancing
+        const _tloc = gameRounds[currentRound];
+        if (_tloc && gameMap) {
+          const _ci = L.divIcon({className:'',html:'<div class="correct-marker-icon pin-drop"></div>',iconSize:[36,36],iconAnchor:[18,36]});
+          L.marker([_tloc.lat,_tloc.lng],{icon:_ci}).addTo(gameMap);
+          gameMap.panTo([_tloc.lat,_tloc.lng]);
+        }
+        setTimeout(() => nextRound(), 1500);
       }
     }
   }
@@ -4158,9 +4189,16 @@ async function mpLeave() {
   // that shows up stuck in the host's lobby and occupies a player slot,
   // blocking others from joining and preventing us from rejoining.
   if (mpRoomId && mpPlayerId && !mpIsHost && mpRoom && mpRoom.status === 'waiting') {
+    const ref = db.collection('rooms').doc(mpRoomId);
     try {
-      const updatedPlayers = (mpRoom.players||[]).filter(p=>p.id!==mpPlayerId);
-      await db.collection('rooms').doc(mpRoomId).update({players:updatedPlayers});
+      // Remove ourselves inside a transaction so a concurrent join doesn't
+      // resurrect our entry (or drop the joiner) by writing a stale players[].
+      await db.runTransaction(async tx => {
+        const snap = await tx.get(ref);
+        if (!snap.exists) return;
+        const players = (snap.data().players||[]).filter(p=>p.id!==mpPlayerId);
+        tx.update(ref, {players});
+      });
     } catch(e) {}
   }
   if (mpGameMap)   { try{mpGameMap.remove();}catch(e){}   mpGameMap=null; }
@@ -4182,50 +4220,4 @@ function mpReset() {
   if (mpListener) { mpListener(); mpListener=null; }
   clearInterval(mpTimerIv);
   if (mpGameMap)   { try{mpGameMap.remove();}catch(e){}   mpGameMap=null; }
-  if (mpHostMap)   { try{mpHostMap.remove();}catch(e){}   mpHostMap=null; }
-  if (mpResultMap) { try{mpResultMap.remove();}catch(e){} mpResultMap=null; }
-  mpHostMapLayers=[]; mpGameMarker=null; mpAnswerStatusControl=null; mpLastStatus=null;
-  mpRoomId=null; mpPlayerId=null; mpIsHost=false; mpRoom=null;
-  mpCurrentRound=0; mpGuess=null; mpAnswered=false; mpLastPlayerCount=0;
-  mpMySelfie=null; mpMyEmoji=null;
-  ['mp-host-selfie-preview','mp-join-selfie-preview'].forEach(id=>{
-    const el = document.getElementById(id);
-    if (el) { el.style.backgroundImage=''; el.textContent='📷'; }
-  });
-  ['mp-host-selfie','mp-join-selfie'].forEach(id=>{
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-}
-
-// ── Global UI tap sound ─────────────────────────────────────────────────────
-document.addEventListener('click', e => {
-  const target = e.target.closest('.btn, .back-btn, .time-opt, .mode-card, .player-chip');
-  if (!target || target.id === 'sound-toggle-btn' || target.id === 'vibration-toggle-btn') return;
-  playSound('tap');
-}, true);
-
-// ── Boot ──────────────────────────────────────────────────────────────────────
-(async () => {
-  try {
-    await loadData();
-  } catch(e) {
-    console.error('Firebase load error:', e);
-    showToast('⚠️ تعذر الاتصال بالخادم');
-  }
-  // Count this page load as a visit (fire-and-forget) — skip devices that have logged into admin
-  if (localStorage.getItem('dalney_owner') !== '1') {
-    locsCol.doc('meta_config').set({visitCount: firebase.firestore.FieldValue.increment(1)}, {merge:true}).catch(()=>{});
-  }
-  updateSoundToggleUI();
-  updateVibrationToggleUI();
-  document.getElementById('loading-overlay').classList.add('hidden');
-  if (new URLSearchParams(location.search).get('c')) {
-    setupChallenge();
-  } else {
-    showScreen('home-screen');
-  }
-})();
-</script>
-</body>
-</html>
+  if (mpHostMap)   { try{mpHostMap.remove();}catch(e){}   mpH
