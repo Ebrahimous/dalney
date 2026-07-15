@@ -1162,7 +1162,7 @@ function setRoundCount(el, n) {
 }
 // Bump this whenever you deploy — shown in the admin panel so you can tell
 // whether a device (e.g. your phone) is running stale cached code.
-const BUILD_VERSION = '2026-07-14.2';
+const BUILD_VERSION = '2026-07-14.3';
 let scoringMode = 'normal';  // 'normal' | 'competitive'
 let contentMode = 'names';   // 'names' | 'photos' | 'mix'
 let gameMap = null, resultMap = null, summaryMap = null, adminMap = null, adminMarker = null;
@@ -4220,4 +4220,49 @@ function mpReset() {
   if (mpListener) { mpListener(); mpListener=null; }
   clearInterval(mpTimerIv);
   if (mpGameMap)   { try{mpGameMap.remove();}catch(e){}   mpGameMap=null; }
-  if (mpHostMap)   { try{mpHostMap.remove();}catch(e){}   mpH
+  if (mpHostMap)   { try{mpHostMap.remove();}catch(e){}   mpHostMap=null; }
+  if (mpResultMap) { try{mpResultMap.remove();}catch(e){} mpResultMap=null; }
+  mpHostMapLayers=[]; mpGameMarker=null; mpAnswerStatusControl=null; mpLastStatus=null;
+  mpRoomId=null; mpPlayerId=null; mpIsHost=false; mpRoom=null;
+  mpCurrentRound=0; mpGuess=null; mpAnswered=false; mpLastPlayerCount=0;
+  mpMySelfie=null; mpMyEmoji=null;
+  ['mp-host-selfie-preview','mp-join-selfie-preview'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) { el.style.backgroundImage=''; el.textContent='\u{1F4F7}'; }
+  });
+  ['mp-host-selfie','mp-join-selfie'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+// ── Global UI tap sound ──
+document.addEventListener('click', e => {
+  const target = e.target.closest('.btn, .back-btn, .time-opt, .mode-card, .player-chip');
+  if (!target || target.id === 'sound-toggle-btn' || target.id === 'vibration-toggle-btn') return;
+  playSound('tap');
+}, true);
+
+// ── Boot ──
+(async () => {
+  try {
+    await loadData();
+  } catch(e) {
+    console.error('Firebase load error:', e);
+    showToast('\u26A0\uFE0F تعذر الاتصال بالخادم');
+  }
+  if (localStorage.getItem('dalney_owner') !== '1') {
+    locsCol.doc('meta_config').set({visitCount: firebase.firestore.FieldValue.increment(1)}, {merge:true}).catch(()=>{});
+  }
+  updateSoundToggleUI();
+  updateVibrationToggleUI();
+  document.getElementById('loading-overlay').classList.add('hidden');
+  if (new URLSearchParams(location.search).get('c')) {
+    setupChallenge();
+  } else {
+    showScreen('home-screen');
+  }
+})();
+</script>
+</body>
+</html>

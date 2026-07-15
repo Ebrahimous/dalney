@@ -1842,4 +1842,43 @@ function wmpLeave() {
   if (wmpListener){wmpListener();wmpListener=null;}
   wmpStopBrowsing();
   clearInterval(wmpTimerIv);
-  if (wmpR
+  if (wmpRoomId) {
+    if (wmpIsHost) {
+      // Host leaving closes the room for everyone
+      wmpInitDb().collection('rooms').doc(wmpRoomId).delete().catch(()=>{});
+    } else {
+      // Guest leaving: remove self from players list
+      const players=(wmpRoom?.players||[]).filter(p=>p.id!==wmpPlayerId);
+      wmpInitDb().collection('rooms').doc(wmpRoomId).update({players}).catch(()=>{});
+    }
+  }
+  wmpReset();
+  showScreen('home-screen');
+}
+
+function wmpReset() {
+  if(wmpGameMap){wmpGameMap.remove();wmpGameMap=null;}
+  if(wmpResultMap){wmpResultMap.remove();wmpResultMap=null;}
+  if(wmpFinalMap){wmpFinalMap.remove();wmpFinalMap=null;}
+  wmpRoomId=null;wmpPlayerId=null;wmpIsHost=false;wmpRoom=null;
+  wmpGuess=null;wmpAnswered=false;wmpCurrentRound=0;wmpLastStatus=null;wmpAdvancing=false;
+  wmpResultsLock=false;
+  wmpRoundHistory=[];
+  clearInterval(wmpTimerIv);
+}
+
+loadData();
+
+// Globe emoji rotation — cycles through globe faces to simulate spinning
+(function() {
+  const globes = ['\u{1F30D}','\u{1F30E}','\u{1F30F}'];
+  let idx = 0;
+  setInterval(() => {
+    idx = (idx + 1) % globes.length;
+    const el = document.querySelector('.home-logo');
+    if (el) el.textContent = globes[idx];
+  }, 1600);
+})();
+</script>
+</body>
+</html>
